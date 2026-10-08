@@ -18,18 +18,18 @@ const balanceData = [
 ];
 
 const initialPendingFees = [
-  { id: 1, student: 'Rahul Sharma', date: '08/17/23', contact: '9876543210', value: 2700, status: 'Collected', icon: User, color: '#111827', cls: '10th - A' },
-  { id: 2, student: 'Priya Singh', date: '08/17/23', contact: '9876543211', value: 1100, status: 'Overdue', icon: User, color: '#EF4444', cls: '8th - B' },
-  { id: 3, student: 'Amit Kumar', date: '08/16/23', contact: '9876543212', value: 1500, status: 'Due this month', icon: User, color: '#3B82F6', cls: '12th - Sci' },
-  { id: 4, student: 'Neha Gupta', date: '08/16/23', contact: '9876543213', value: 1030, status: 'Overdue', icon: User, color: '#EAB308', cls: '5th - C' },
-  { id: 5, student: 'Vikram Patel', date: '08/16/23', contact: '9876543214', value: 2800, status: 'Collected', icon: User, color: '#111827', cls: '11th - Com' },
-  { id: 6, student: 'Anjali Desai', date: '08/16/23', contact: '9876543215', value: 1200, status: 'Due this month', icon: User, color: '#6B7280', cls: '9th - A' },
-  { id: 7, student: 'Karan Malhotra', date: '08/15/23', contact: '9876543216', value: 1400, status: 'Overdue', icon: User, color: '#111827', cls: '7th - B' },
-  { id: 8, student: 'Sneha Reddy', date: '08/15/23', contact: '9876543217', value: 1600, status: 'Collected', icon: User, color: '#111827', cls: '6th - A' },
-  { id: 9, student: 'Rohan Mehta', date: '08/15/23', contact: '9876543218', value: 2300, status: 'Collected', icon: User, color: '#0EA5E9', cls: '10th - B' },
-  { id: 10, student: 'Pooja Joshi', date: '08/15/23', contact: '9876543219', value: 1510, status: 'Due this month', icon: User, color: '#6B7280', cls: '4th - A' },
-  { id: 11, student: 'Ravi Verma', date: '08/14/23', contact: '9876543220', value: 3100, status: 'Collected', icon: User, color: '#22C55E', cls: '9th - C' },
-  { id: 12, student: 'Sonia Gandhi', date: '08/14/23', contact: '9876543221', value: 1800, status: 'Overdue', icon: User, color: '#EF4444', cls: '11th - Arts' },
+  { id: 1, student: 'Rahul Sharma', date: '08/17/23', contact: '9876543210', value: 2700, status: 'Collected', icon: User, color: '#0F172A', cls: '10th - A' },
+  { id: 2, student: 'Priya Singh', date: '08/17/23', contact: '9876543211', value: 1100, status: 'Overdue', icon: User, color: '#0F766E', cls: '8th - B' },
+  { id: 3, student: 'Amit Kumar', date: '08/16/23', contact: '9876543212', value: 1500, status: 'Due this month', icon: User, color: '#4F46E5', cls: '12th - Sci' },
+  { id: 4, student: 'Neha Gupta', date: '08/16/23', contact: '9876543213', value: 1030, status: 'Overdue', icon: User, color: '#0F766E', cls: '5th - C' },
+  { id: 5, student: 'Vikram Patel', date: '08/16/23', contact: '9876543214', value: 2800, status: 'Collected', icon: User, color: '#0F172A', cls: '11th - Com' },
+  { id: 6, student: 'Anjali Desai', date: '08/16/23', contact: '9876543215', value: 1200, status: 'Due this month', icon: User, color: '#60A5FA', cls: '9th - A' },
+  { id: 7, student: 'Karan Malhotra', date: '08/15/23', contact: '9876543216', value: 1400, status: 'Overdue', icon: User, color: '#0F766E', cls: '7th - B' },
+  { id: 8, student: 'Sneha Reddy', date: '08/15/23', contact: '9876543217', value: 1600, status: 'Collected', icon: User, color: '#0F172A', cls: '6th - A' },
+  { id: 9, student: 'Rohan Mehta', date: '08/15/23', contact: '9876543218', value: 2300, status: 'Collected', icon: User, color: '#4F46E5', cls: '10th - B' },
+  { id: 10, student: 'Pooja Joshi', date: '08/15/23', contact: '9876543219', value: 1510, status: 'Due this month', icon: User, color: '#60A5FA', cls: '4th - A' },
+  { id: 11, student: 'Ravi Verma', date: '08/14/23', contact: '9876543220', value: 3100, status: 'Collected', icon: User, color: '#4F46E5', cls: '9th - C' },
+  { id: 12, student: 'Sonia Gandhi', date: '08/14/23', contact: '9876543221', value: 1800, status: 'Overdue', icon: User, color: '#0F766E', cls: '11th - Arts' },
 ];
 
 const Dashboard = () => {
@@ -91,7 +91,7 @@ const Dashboard = () => {
               <div className="metric-value">95.1%</div>
               <div className="mini-bar-chart">
                 {Array(20).fill(0).map((_, i) => (
-                  <div key={i} className="mini-bar" style={{ height: `${Math.random() * 60 + 40}%`, backgroundColor: i > 17 ? '#E5E7EB' : '#22C55E' }}></div>
+                  <div key={i} className="mini-bar" style={{ height: `${Math.random() * 60 + 40}%`, backgroundColor: i > 17 ? '#E2E8F0' : '#60A5FA' }}></div>
                 ))}
               </div>
             </div>
@@ -110,7 +110,7 @@ const Dashboard = () => {
               <div style={{ height: '40px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={balanceData}>
-                    <Line type="monotone" dataKey="val" stroke="#22C55E" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="val" stroke="#4F46E5" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -129,27 +129,27 @@ const Dashboard = () => {
           <div style={{ height: '250px', marginBottom: '24px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} tickFormatter={(val) => `₹${val/1000}K`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `₹${val/1000}K`} />
                 <Tooltip />
-                <Line type="monotone" dataKey="rev" stroke="#22C55E" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="cost" stroke="#EF4444" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="net" stroke="#111827" strokeWidth={2} dot={{ r: 4, fill: '#111827' }} />
+                <Line type="monotone" dataKey="rev" stroke="#4F46E5" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="cost" stroke="#0F766E" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="net" stroke="#60A5FA" strokeWidth={2} dot={{ r: 4, fill: '#60A5FA' }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
           
           <div className="flex-between">
             <div className="chart-legend">
-              <div className="legend-item"><div className="legend-color" style={{backgroundColor: '#22C55E'}}></div> Fee Collection</div>
-              <div className="legend-item"><div className="legend-color" style={{backgroundColor: '#EF4444'}}></div> Expenses</div>
-              <div className="legend-item"><div className="legend-color" style={{backgroundColor: '#111827'}}></div> Surplus</div>
+              <div className="legend-item"><div className="legend-color" style={{backgroundColor: '#4F46E5'}}></div> Fee Collection</div>
+              <div className="legend-item"><div className="legend-color" style={{backgroundColor: '#0F766E'}}></div> Expenses</div>
+              <div className="legend-item"><div className="legend-color" style={{backgroundColor: '#60A5FA'}}></div> Surplus</div>
             </div>
             <div className="legend-item text-muted" style={{cursor: 'pointer'}} onClick={() => setToggleVsPeriod(!toggleVsPeriod)}>
               <div style={{
                 width: '32px', height: '16px', borderRadius: '8px', position: 'relative', transition: 'all 0.2s',
-                backgroundColor: toggleVsPeriod ? '#22C55E' : '#E5E7EB'
+                backgroundColor: toggleVsPeriod ? '#4F46E5' : '#E2E8F0'
               }}>
                  <div style={{
                    width: '12px', height: '12px', backgroundColor: 'white', borderRadius: '50%', position: 'absolute', top: '2px', transition: 'all 0.2s',
@@ -179,8 +179,8 @@ const Dashboard = () => {
             <div style={{ height: '150px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={balanceData}>
-                   <Bar dataKey="val" fill="#22C55E" radius={[2, 2, 0, 0]} barSize={8} />
-                   <Line type="step" dataKey="val" stroke="#111827" strokeDasharray="3 3" dot={false} strokeWidth={1} />
+                   <Bar dataKey="val" fill="#4F46E5" radius={[2, 2, 0, 0]} barSize={8} />
+                   <Line type="step" dataKey="val" stroke="#60A5FA" strokeDasharray="3 3" dot={false} strokeWidth={1} />
                 </ComposedChart>
               </ResponsiveContainer>
             </div>
@@ -193,22 +193,22 @@ const Dashboard = () => {
             </div>
             
             <div style={{display: 'flex', height: '8px', borderRadius: '4px', overflow: 'hidden', marginBottom: '24px', gap: '2px'}}>
-               <div style={{backgroundColor: '#22C55E', flex: 45}}></div>
-               <div style={{backgroundColor: '#4ADE80', flex: 20}}></div>
-               <div style={{backgroundColor: '#EAB308', flex: 12}}></div>
-               <div style={{backgroundColor: '#FDE047', flex: 10}}></div>
-               <div style={{backgroundColor: '#FBBF24', flex: 8}}></div>
-               <div style={{backgroundColor: '#D97706', flex: 5}}></div>
+               <div style={{backgroundColor: '#4F46E5', flex: 45}}></div>
+               <div style={{backgroundColor: '#6366f1', flex: 20}}></div>
+               <div style={{backgroundColor: '#60A5FA', flex: 12}}></div>
+               <div style={{backgroundColor: '#d946ef', flex: 10}}></div>
+               <div style={{backgroundColor: '#0F766E', flex: 8}}></div>
+               <div style={{backgroundColor: '#f43f5e', flex: 5}}></div>
             </div>
             
             <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
               {[
-                { label: 'Staff Salaries', val: '₹8.9L', pct: '45%', color: '#22C55E' },
-                { label: 'Infrastructure', val: '₹4.3L', pct: '20%', color: '#4ADE80' },
-                { label: 'Transport', val: '₹2.8L', pct: '12%', color: '#EAB308' },
-                { label: 'Events & Activities', val: '₹1.5L', pct: '10%', color: '#FDE047' },
-                { label: 'Tech & Software', val: '₹0.8L', pct: '8%', color: '#FBBF24' },
-                { label: 'Utilities', val: '₹0.5L', pct: '5%', color: '#D97706' },
+                { label: 'Staff Salaries', val: '₹8.9L', pct: '45%', color: '#4F46E5' },
+                { label: 'Infrastructure', val: '₹4.3L', pct: '20%', color: '#6366f1' },
+                { label: 'Transport', val: '₹2.8L', pct: '12%', color: '#60A5FA' },
+                { label: 'Events & Activities', val: '₹1.5L', pct: '10%', color: '#d946ef' },
+                { label: 'Tech & Software', val: '₹0.8L', pct: '8%', color: '#0F766E' },
+                { label: 'Utilities', val: '₹0.5L', pct: '5%', color: '#f43f5e' },
               ].map(item => (
                  <div key={item.label} className="flex-between" style={{fontSize: '0.85rem'}}>
                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -270,7 +270,7 @@ const Dashboard = () => {
             ))}
             
             <div className="table-search">
-              <Search size={16} style={{position: 'absolute', left: '10px', top: '9px', color: '#6B7280'}} />
+              <Search size={16} style={{position: 'absolute', left: '10px', top: '9px', color: '#64748B'}} />
               <input 
                 type="text" 
                 placeholder="Search students..." 

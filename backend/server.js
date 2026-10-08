@@ -1,34 +1,52 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const mongoose = require('mongoose');
+const morgan = require('morgan');
+const connectDB = require('./config/db');
 
+// Load environment variables
 dotenv.config();
+
+// Connect to MongoDB
+connectDB();
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+}));
 app.use(express.json());
+app.use(morgan('dev'));
 
-// Routes
-// TODO: import routes
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'EduPulse API is running' });
+  res.json({ status: 'ok', message: 'Pragati School Management API is running' });
 });
 
-// Database connection
+// Routes
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/students', require('./routes/studentRoutes'));
+app.use('/api/staff', require('./routes/staffRoutes'));
+app.use('/api/academics', require('./routes/academicRoutes'));
+app.use('/api/finance', require('./routes/financeRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ message: `Route ${req.originalUrl} not found` });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.message);
+  res.status(500).json({ message: 'Internal server error', error: err.message });
+});
+
+// Start server
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/edupulse';
-
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('Connected to MongoDB');
-  })
-  .catch((error) => {
-    console.error('MongoDB connection error. Ensure MongoDB is running locally or set a valid MONGO_URI in .env', error.message);
-  });
-
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 API: http://localhost:${PORT}/api/health`);
 });
