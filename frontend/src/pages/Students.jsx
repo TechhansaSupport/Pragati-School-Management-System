@@ -1,181 +1,515 @@
-import React, { useState, useMemo } from 'react';
-import { Search, MoreVertical, User, ChevronLeft, ChevronRight, Plus, X, Mail, Phone, MapPin, Calendar, Activity, BookOpen, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { 
+  Search, MoreVertical, User, ChevronLeft, ChevronRight, Plus, X, 
+  Mail, Phone, MapPin, Calendar, Activity, BookOpen, CreditCard, 
+  Edit, Trash2, CheckCircle2, AlertCircle, RefreshCw, GraduationCap, 
+  Building2, Layers, Filter, Check, ArrowRight
+} from 'lucide-react';
 
-const generateMockData = () => {
-  const indianFirstNames = ['Rahul', 'Priya', 'Amit', 'Neha', 'Vikram', 'Anjali', 'Karan', 'Sneha', 'Rohan', 'Pooja'];
-  const indianLastNames = ['Sharma', 'Singh', 'Kumar', 'Gupta', 'Patel', 'Desai', 'Malhotra', 'Reddy'];
-  const grades = ['5th - A', '6th - B', '7th - A', '8th - C', '9th - A', '10th - B', '11th - Sci', '12th - Com'];
-  const colors = ['var(--color-primary)', 'var(--color-secondary)', 'var(--color-accent)', 'var(--color-green)', 'var(--color-yellow)'];
-  
-  return Array.from({ length: 45 }).map((_, i) => {
-    const fName = indianFirstNames[Math.floor(Math.random() * indianFirstNames.length)];
-    const lName = indianLastNames[Math.floor(Math.random() * indianLastNames.length)];
-    return {
-      id: i + 1,
-      name: `${fName} ${lName}`,
-      grade: grades[Math.floor(Math.random() * grades.length)],
-      rollNo: `2023${String(i + 1).padStart(3, '0')}`,
-      attendance: Math.floor(Math.random() * 20 + 80),
-      status: Math.random() > 0.1 ? 'Active' : 'Inactive',
-      color: colors[Math.floor(Math.random() * colors.length)],
-      email: `${fName.toLowerCase()}.${lName.toLowerCase()}@example.com`,
-      parentName: `Mr. ${indianFirstNames[Math.floor(Math.random() * indianFirstNames.length)]} ${lName}`,
-      parentContact: `+91 98${Math.floor(Math.random() * 10000000 + 10000000)}`,
-      dob: `12/05/20${Math.floor(Math.random() * 5 + 10)}`,
-      bloodGroup: ['A+', 'O+', 'B+', 'AB+'][Math.floor(Math.random() * 4)],
-      address: '123, Rose Villa, Sector 4, New Delhi',
-      fees: { total: 45000, paid: Math.floor(Math.random() * 45000) }
-    };
-  });
-};
+const API_BASE = 'http://localhost:5000/api';
 
-const mockStudents = generateMockData();
+const standardGrades = [
+  'Nursery', 'LKG', 'UKG',
+  'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
+  'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10',
+  'Class 11', 'Class 12'
+];
+
+const standardSections = ['A', 'B', 'C', 'D', 'Science', 'Commerce', 'Arts'];
 
 const Students = () => {
+  // Authentication & Session Context
+  const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+  const token = userInfo.token || sessionStorage.getItem('token') || '';
+  const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || '';
+  const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
+  const isAdmin = ['admin', 'superadmin', 'principal', 'frontdesk'].includes(userRole);
+
+  // Data States
+  const [studentsList, setStudentsList] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeStudents: 0,
+    inactiveStudents: 0,
+    avgAttendance: 95
+  });
+  const [classesList, setClassesList] = useState([]);
+  const [distinctGrades, setDistinctGrades] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Filter & Search States
   const [searchQuery, setSearchQuery] = useState('');
+  const [gradeFilter, setGradeFilter] = useState('All');
+  const [sectionFilter, setSectionFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [activeTab, setActiveTab] = useState('overview');
   const itemsPerPage = 10;
 
-  const filtered = useMemo(() => {
-    return mockStudents.filter(s => 
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      s.rollNo.includes(searchQuery)
-    );
+  // Drawer & Modal States
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [studentToDelete, setStudentToDelete] = useState(null);
+
+  // Form State
+  const initialForm = {
+    name: '',
+    rollNo: '',
+    grade: 'Class 10',
+    section: 'A',
+    gender: 'Male',
+    dateOfBirth: '',
+    parentName: '',
+    parentContact: '',
+    email: '',
+    address: '',
+    attendance: 100,
+    status: 'Active'
+  };
+  const [formData, setFormData] = useState(initialForm);
+  const [formError, setFormError] = useState('');
+
+  const getAuthHeaders = () => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+    return headers;
+  };
+
+  // Fetch Students from live API
+  const fetchStudents = async () => {
+    setIsLoading(true);
+    setErrorMsg('');
+    try {
+      const params = new URLSearchParams({
+        page: currentPage,
+        limit: itemsPerPage,
+        ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
+        ...(gradeFilter !== 'All' ? { grade: gradeFilter } : {}),
+        ...(sectionFilter !== 'All' ? { section: sectionFilter } : {}),
+        ...(statusFilter !== 'All' ? { status: statusFilter } : {})
+      });
+
+      const res = await fetch(`${API_BASE}/students?${params.toString()}`, {
+        headers: getAuthHeaders()
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setStudentsList(data.students || []);
+        setTotalCount(data.total || 0);
+      } else {
+        const err = await res.json();
+        setErrorMsg(err.message || 'Failed to load students');
+      }
+    } catch (err) {
+      setErrorMsg('Network error: ' + err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch Stats & Configured Classes
+  const fetchMetadata = async () => {
+    try {
+      const [statsRes, classesRes] = await Promise.all([
+        fetch(`${API_BASE}/students/stats`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/classes`, { headers: getAuthHeaders() })
+      ]);
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setStats(statsData);
+      }
+
+      if (classesRes.ok) {
+        const classesData = await classesRes.json();
+        setClassesList(classesData.classes || []);
+        if (classesData.distinctGrades?.length) {
+          setDistinctGrades(classesData.distinctGrades);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load students metadata:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, [tenantSlug, currentPage, gradeFilter, sectionFilter, statusFilter]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStudents();
+    }, 300);
+    return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
-  const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  useEffect(() => {
+    fetchMetadata();
+  }, [tenantSlug]);
 
+  // Available grade options: merge configured classes with standard grades
+  const availableGrades = useMemo(() => {
+    const fromConfig = classesList.map(c => c.className);
+    const combined = Array.from(new Set([...fromConfig, ...standardGrades]));
+    return combined;
+  }, [classesList]);
+
+  // Available sections for the selected grade in the form
+  const availableSectionsForGrade = useMemo(() => {
+    const configuredForGrade = classesList
+      .filter(c => c.className.toLowerCase() === formData.grade.toLowerCase())
+      .map(c => c.section);
+    if (configuredForGrade.length > 0) {
+      return Array.from(new Set([...configuredForGrade, 'A', 'B', 'C']));
+    }
+    return standardSections;
+  }, [classesList, formData.grade]);
+
+  // Open Add Student Modal
+  const handleOpenAddModal = () => {
+    const defaultGrade = classesList[0]?.className || 'Class 10';
+    const defaultSection = classesList[0]?.section || 'A';
+    const nextRollNo = `STU-${1000 + totalCount + 1}`;
+
+    setFormData({
+      ...initialForm,
+      grade: defaultGrade,
+      section: defaultSection,
+      rollNo: nextRollNo
+    });
+    setFormError('');
+    setEditingStudent(null);
+    setIsAddModalOpen(true);
+  };
+
+  // Open Edit / Reassign Modal
+  const handleOpenEditModal = (student, e) => {
+    if (e) e.stopPropagation();
+    setEditingStudent(student);
+    setFormData({
+      name: student.name || '',
+      rollNo: student.rollNo || '',
+      grade: student.grade || 'Class 10',
+      section: student.section || 'A',
+      gender: student.gender || 'Male',
+      dateOfBirth: student.dateOfBirth ? student.dateOfBirth.substring(0, 10) : '',
+      parentName: student.parentName || '',
+      parentContact: student.parentContact || '',
+      email: student.email || '',
+      address: student.address || '',
+      attendance: student.attendance !== undefined ? student.attendance : 100,
+      status: student.status || 'Active'
+    });
+    setFormError('');
+    setIsAddModalOpen(true);
+  };
+
+  // Submit Add / Edit Student Form
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.name.trim()) {
+      setFormError('Student full name is required');
+      return;
+    }
+    if (!formData.grade.trim()) {
+      setFormError('Assigned class/grade is required');
+      return;
+    }
+
+    setActionLoading(true);
+    setFormError('');
+
+    try {
+      const url = editingStudent 
+        ? `${API_BASE}/students/${editingStudent._id}` 
+        : `${API_BASE}/students`;
+      const method = editingStudent ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(formData)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setIsAddModalOpen(false);
+        setEditingStudent(null);
+        fetchStudents();
+        fetchMetadata();
+        window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+        if (selectedStudent && editingStudent && selectedStudent._id === editingStudent._id) {
+          setSelectedStudent({ ...selectedStudent, ...formData });
+        }
+      } else {
+        setFormError(data.message || 'Operation failed');
+      }
+    } catch (err) {
+      setFormError('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete Student
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/students/${studentToDelete._id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (res.ok) {
+        setStudentToDelete(null);
+        if (selectedStudent?._id === studentToDelete._id) {
+          setSelectedStudent(null);
+        }
+        fetchStudents();
+        fetchMetadata();
+        window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Failed to delete student');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage) || 1;
+
+  // Student Profile Drawer
   const renderProfileDrawer = () => {
     if (!selectedStudent) return null;
     const s = selectedStudent;
-    const feeDue = s.fees.total - s.fees.paid;
 
     return (
       <>
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', zIndex: 40 }} onClick={() => setSelectedStudent(null)} />
-        <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: '500px', backgroundColor: 'var(--color-surface)', zIndex: 50, boxShadow: '-4px 0 15px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-          
-          <div style={{ padding: '24px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>Student Profile</h2>
-            <button onClick={() => setSelectedStudent(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}><X size={20}/></button>
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(4px)', zIndex: 99990 }} 
+          onClick={() => setSelectedStudent(null)} 
+        />
+        <div style={{
+          position: 'fixed',
+          top: 0, right: 0, bottom: 0,
+          width: '520px',
+          maxWidth: '92vw',
+          backgroundColor: '#ffffff',
+          zIndex: 99995,
+          boxShadow: '-8px 0 25px rgba(0,0,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'slide-left 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          {/* Drawer Header */}
+          <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <GraduationCap size={22} color="#4F46E5" /> Student Profile
+            </h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {isAdmin && (
+                <button
+                  onClick={(e) => handleOpenEditModal(s, e)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '6px 12px', background: '#eff6ff', color: '#1d4ed8',
+                    border: '1px solid #bfdbfe', borderRadius: '8px', fontSize: '0.8rem',
+                    fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  <Edit size={14} /> Edit / Reassign
+                </button>
+              )}
+              <button 
+                onClick={() => setSelectedStudent(null)} 
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
-            {/* Header Info */}
-            <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '32px' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '16px', backgroundColor: s.color + '15', color: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 700 }}>
-                {s.name.charAt(0)}
+            {/* Header Badge */}
+            <div style={{ display: 'flex', gap: '18px', alignItems: 'center', marginBottom: '28px' }}>
+              <div style={{
+                width: '74px', height: '74px', borderRadius: '20px',
+                background: 'linear-gradient(135deg, #4F46E5 0%, #1e3a8a 100%)',
+                color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '1.8rem', fontWeight: 800, boxShadow: '0 8px 16px rgba(79, 70, 229, 0.25)'
+              }}>
+                {s.name ? s.name.charAt(0).toUpperCase() : 'S'}
               </div>
               <div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 4px 0', color: 'var(--color-text-main)' }}>{s.name}</h3>
-                <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-                  <span>{s.rollNo}</span>
-                  <span>•</span>
-                  <span>{s.grade}</span>
-                  <span>•</span>
-                  <span style={{ color: s.status === 'Active' ? 'var(--color-green)' : 'var(--color-red)' }}>{s.status}</span>
+                <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 6px 0', color: '#1e293b' }}>
+                  {s.name}
+                </h3>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <code style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: '6px', color: '#334155', fontWeight: 700, fontSize: '0.8rem' }}>
+                    {s.rollNo}
+                  </code>
+                  <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.78rem' }}>
+                    {s.grade} - Section {s.section || 'A'}
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px',
+                    background: s.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                    color: s.status === 'Active' ? '#15803d' : '#b91c1c'
+                  }}>
+                    ● {s.status || 'Active'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Tabs */}
-            <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid var(--color-border)', marginBottom: '24px' }}>
-              {['overview', 'academic', 'fees'].map(tab => (
+            {/* Navigation Tabs */}
+            <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'academic', label: 'Academic & Class' },
+                { id: 'guardian', label: 'Guardian & Contact' }
+              ].map(tab => (
                 <div 
-                  key={tab} 
-                  onClick={() => setActiveTab(tab)}
+                  key={tab.id} 
+                  onClick={() => setActiveTab(tab.id)}
                   style={{ 
-                    paddingBottom: '12px', 
-                    fontSize: '0.9rem', 
-                    fontWeight: 600, 
+                    paddingBottom: '10px', 
+                    fontSize: '0.88rem', 
+                    fontWeight: 700, 
                     cursor: 'pointer',
-                    textTransform: 'capitalize',
-                    color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    borderBottom: activeTab === tab ? '2px solid var(--color-primary)' : '2px solid transparent'
+                    color: activeTab === tab.id ? '#4F46E5' : '#64748b',
+                    borderBottom: activeTab === tab.id ? '2.5px solid #4F46E5' : '2.5px solid transparent',
+                    transition: 'all 0.15s'
                   }}>
-                  {tab}
+                  {tab.label}
                 </div>
               ))}
             </div>
 
-            {/* Tab Content */}
+            {/* Tab 1: Overview */}
             {activeTab === 'overview' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                  <div className="card" style={{ padding: '16px', boxShadow: 'none', border: '1px solid var(--color-border)' }}>
-                    <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={14}/> Email Address</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{s.email}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Calendar size={14} color="#4F46E5" /> Date of Birth
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>
+                      {s.dateOfBirth ? new Date(s.dateOfBirth).toLocaleDateString() : 'Not Specified'}
+                    </div>
                   </div>
-                  <div className="card" style={{ padding: '16px', boxShadow: 'none', border: '1px solid var(--color-border)' }}>
-                    <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Phone size={14}/> Parent Contact</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{s.parentContact}</div>
-                  </div>
-                  <div className="card" style={{ padding: '16px', boxShadow: 'none', border: '1px solid var(--color-border)' }}>
-                    <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14}/> Date of Birth</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{s.dob}</div>
-                  </div>
-                  <div className="card" style={{ padding: '16px', boxShadow: 'none', border: '1px solid var(--color-border)' }}>
-                    <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14}/> Blood Group</div>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{s.bloodGroup}</div>
+                  <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <User size={14} color="#4F46E5" /> Gender
+                    </div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>
+                      {s.gender || 'Not Specified'}
+                    </div>
                   </div>
                 </div>
-                <div className="card" style={{ padding: '16px', boxShadow: 'none', border: '1px solid var(--color-border)' }}>
-                  <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><User size={14}/> Parent/Guardian Name</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{s.parentName}</div>
+
+                <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Mail size={14} color="#4F46E5" /> Student Email Address
+                  </div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1e293b', marginTop: '4px' }}>
+                    {s.email || `${s.rollNo?.toLowerCase()}@pragati.edu`}
+                  </div>
                 </div>
-                <div className="card" style={{ padding: '16px', boxShadow: 'none', border: '1px solid var(--color-border)' }}>
-                  <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={14}/> Residential Address</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>{s.address}</div>
+
+                <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <MapPin size={14} color="#4F46E5" /> Residential Address
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: '#1e293b', marginTop: '4px', lineHeight: 1.4 }}>
+                    {s.address || 'No residential address recorded on file.'}
+                  </div>
                 </div>
               </div>
             )}
 
+            {/* Tab 2: Academic & Class */}
             {activeTab === 'academic' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="card" style={{ padding: '20px', backgroundColor: 'var(--color-primary)', color: 'white' }}>
-                  <div style={{ fontSize: '0.85rem', opacity: 0.8, marginBottom: '8px' }}>Overall Attendance</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700 }}>{s.attendance}%</div>
-                </div>
-                <h4 style={{ fontSize: '1rem', fontWeight: 600, marginTop: '8px' }}>Recent Performance</h4>
-                {['Mathematics', 'Science', 'English'].map((sub, i) => (
-                  <div key={i} className="flex-between" style={{ padding: '12px 0', borderBottom: '1px solid var(--color-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <BookOpen size={16} className="text-muted" />
-                      <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{sub}</span>
-                    </div>
-                    <div style={{ fontWeight: 600 }}>{Math.floor(Math.random() * 30 + 70)}/100</div>
+                <div style={{
+                  padding: '20px', borderRadius: '16px',
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(15, 118, 110, 0.08) 100%)',
+                  border: '1.5px solid #c7d2fe'
+                }}>
+                  <div style={{ fontSize: '0.78rem', color: '#4F46E5', fontWeight: 700, textTransform: 'uppercase' }}>
+                    Assigned Class Roster
                   </div>
-                ))}
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a8a', marginTop: '4px' }}>
+                    {s.grade} - Section {s.section || 'A'}
+                  </div>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 14px 0' }}>
+                    Enrolled under this campus branch workspace.
+                  </p>
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => handleOpenEditModal(s, e)}
+                      style={{
+                        padding: '8px 16px', background: '#4F46E5', color: 'white',
+                        border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem',
+                        cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      <Layers size={14} /> Reassign to Different Class
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Overall Attendance Rate</div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 800, color: (s.attendance || 100) >= 85 ? '#16a34a' : '#d97706', marginTop: '2px' }}>
+                        {s.attendance !== undefined ? s.attendance : 100}%
+                      </div>
+                    </div>
+                    <span style={{
+                      padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700,
+                      background: (s.attendance || 100) >= 85 ? '#dcfce7' : '#fef3c7',
+                      color: (s.attendance || 100) >= 85 ? '#15803d' : '#b45309'
+                    }}>
+                      {(s.attendance || 100) >= 85 ? 'Excellent Standing' : 'Needs Monitoring'}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 
-            {activeTab === 'fees' && (
+            {/* Tab 3: Guardian & Contact */}
+            {activeTab === 'guardian' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <div className="card" style={{ flex: 1, padding: '16px', border: '1px solid var(--color-border)', boxShadow: 'none' }}>
-                    <div className="metric-label">Total Fee</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700 }}>₹{s.fees.total.toLocaleString()}</div>
+                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <User size={14} color="#4F46E5" /> Parent / Guardian Full Name
                   </div>
-                  <div className="card" style={{ flex: 1, padding: '16px', border: '1px solid var(--color-border)', boxShadow: 'none' }}>
-                    <div className="metric-label">Paid</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-green)' }}>₹{s.fees.paid.toLocaleString()}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>
+                    {s.parentName || 'Guardian not listed'}
                   </div>
                 </div>
-                <div className="card" style={{ padding: '20px', backgroundColor: feeDue > 0 ? '#FEF3C7' : '#DCFCE7', border: 'none' }}>
-                  <div style={{ fontSize: '0.85rem', color: feeDue > 0 ? 'var(--color-yellow)' : 'var(--color-green)', fontWeight: 600, marginBottom: '4px' }}>
-                    {feeDue > 0 ? 'AMOUNT DUE' : 'FULLY PAID'}
+
+                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Phone size={14} color="#4F46E5" /> Primary Emergency Contact Phone
                   </div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, color: feeDue > 0 ? '#92400E' : '#166534' }}>
-                    ₹{feeDue.toLocaleString()}
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', marginTop: '4px' }}>
+                    {s.parentContact || 'Contact not on file'}
                   </div>
-                  {feeDue > 0 && (
-                    <button style={{ marginTop: '16px', width: '100%', padding: '10px', backgroundColor: 'var(--color-primary)', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 600, cursor: 'pointer' }}>
-                      Send Reminder
-                    </button>
-                  )}
                 </div>
               </div>
             )}
@@ -186,88 +520,625 @@ const Students = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%' }}>
       {renderProfileDrawer()}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' }}>
-        {[
-          { label: 'Total Students', value: '3,452', color: 'var(--color-text-main)' },
-          { label: 'Present Today', value: '3,210', color: 'var(--color-green)' },
-          { label: 'Absent Today', value: '185', color: 'var(--color-red)' },
-          { label: 'Late Arrivals', value: '57', color: 'var(--color-yellow)' }
-        ].map((kpi, i) => (
-          <div key={i} className="card">
-            <div className="metric-label">{kpi.label}</div>
-            <div className="metric-value" style={{ color: kpi.color, marginBottom: 0 }}>{kpi.value}</div>
+      {/* KPI Stats Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
+        <div className="card" style={{ padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Total Enrolled Students
           </div>
-        ))}
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1e3a8a', marginTop: '4px' }}>
+            {stats.totalStudents || totalCount}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, marginTop: '2px' }}>
+            ● Active campus roster
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Active Attendance
+          </div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>
+            {stats.activeStudents || totalCount}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginTop: '2px' }}>
+            Students in regular session
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Configured Classes
+          </div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#4F46E5', marginTop: '4px' }}>
+            {classesList.length || '6'}
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#4F46E5', fontWeight: 600, marginTop: '2px' }}>
+            Grade & section groups
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Avg Attendance Rate
+          </div>
+          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f766e', marginTop: '4px' }}>
+            {stats.avgAttendance || 94.5}%
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#0f766e', fontWeight: 600, marginTop: '2px' }}>
+            Campus wide average
+          </div>
+        </div>
       </div>
 
-      <div className="card" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <div className="card-header">
-          <div className="card-title">Student Directory</div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div className="table-search" style={{ margin: 0 }}>
-              <Search size={16} style={{ position: 'absolute', left: '10px', top: '9px', color: '#64748B' }} />
+      {/* Main Student Directory Table Card */}
+      <div className="card" style={{
+        flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+        background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0',
+        padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+      }}>
+        {/* Table Header & Controls */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <GraduationCap size={22} color="#4F46E5" /> Student Directory & Enrollment
+            </h2>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+              Manage student admissions and class/section allocations
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative' }}>
+              <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input 
                 type="text" 
-                placeholder="Search name or roll no..." 
+                placeholder="Search student or roll no..." 
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                style={{ outline: 'none' }}
+                style={{
+                  padding: '9px 12px 9px 34px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  width: '210px'
+                }}
               />
             </div>
-            <button className="btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none' }}>
-              <Plus size={16} /> Add Student
+
+            {/* Filter by Grade / Class */}
+            <select
+              value={gradeFilter}
+              onChange={e => { setGradeFilter(e.target.value); setCurrentPage(1); }}
+              style={{
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                outline: 'none',
+                background: 'white',
+                color: '#334155',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All">All Classes</option>
+              {availableGrades.map(g => (
+                <option key={g} value={g}>{g}</option>
+              ))}
+            </select>
+
+            {/* Filter by Section */}
+            <select
+              value={sectionFilter}
+              onChange={e => { setSectionFilter(e.target.value); setCurrentPage(1); }}
+              style={{
+                padding: '9px 12px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                outline: 'none',
+                background: 'white',
+                color: '#334155',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All">All Sections</option>
+              {standardSections.map(s => (
+                <option key={s} value={s}>Section {s}</option>
+              ))}
+            </select>
+
+            {/* Refresh Button */}
+            <button
+              onClick={() => { fetchStudents(); fetchMetadata(); }}
+              style={{
+                background: '#f8fafc', border: '1px solid #cbd5e1', width: '38px', height: '38px',
+                borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#475569', cursor: 'pointer'
+              }}
+              title="Refresh students"
+            >
+              <RefreshCw size={15} />
+            </button>
+
+            {/* Add Student Button */}
+            {isAdmin && (
+              <button
+                onClick={handleOpenAddModal}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: 'linear-gradient(135deg, #4F46E5 0%, #1e40af 100%)',
+                  color: 'white', border: 'none', padding: '9px 18px',
+                  borderRadius: '10px', fontSize: '0.86rem', fontWeight: 700,
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                }}
+              >
+                <Plus size={16} /> Admit Student
+              </button>
+            )}
+          </div>
+        </div>
+
+        {errorMsg && (
+          <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={16} />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Table Content */}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
+              <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 10px', color: '#4F46E5' }} />
+              <p style={{ margin: 0, fontWeight: 600 }}>Loading campus student directory...</p>
+            </div>
+          ) : studentsList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
+              <GraduationCap size={44} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
+              <h4 style={{ margin: '0 0 6px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>No Students Found</h4>
+              <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#64748b' }}>
+                {searchQuery || gradeFilter !== 'All' ? 'Try adjusting your filters or search terms.' : 'Start by admitting the first student into a class.'}
+              </p>
+              {isAdmin && (
+                <button
+                  onClick={handleOpenAddModal}
+                  style={{ padding: '8px 18px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer' }}
+                >
+                  <Plus size={14} style={{ display: 'inline', marginRight: '4px' }} /> Admit Student
+                </button>
+              )}
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Roll No</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Student Name</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Assigned Class</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Attendance</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Parent / Contact</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                  <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {studentsList.map((st) => (
+                  <tr 
+                    key={st._id} 
+                    onClick={() => setSelectedStudent(st)} 
+                    style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background-color 0.15s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <td style={{ padding: '12px 14px' }}>
+                      <code style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '5px', fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                        {st.rollNo}
+                      </code>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '32px', height: '32px', borderRadius: '50%',
+                          background: '#eff6ff', color: '#3b82f6', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.82rem'
+                        }}>
+                          {st.name?.charAt(0) || 'S'}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.88rem' }}>{st.name}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{st.gender || 'Student'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        background: '#e0e7ff', color: '#4338ca', padding: '3px 9px',
+                        borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700
+                      }}>
+                        <Layers size={11} /> {st.grade} - Section {st.section || 'A'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: (st.attendance || 100) >= 85 ? '#16a34a' : '#d97706' }}>
+                        {st.attendance !== undefined ? st.attendance : 100}%
+                      </div>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ fontSize: '0.84rem', color: '#1e293b', fontWeight: 600 }}>{st.parentName || '—'}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{st.parentContact || st.email || ''}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{
+                        padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
+                        background: st.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                        color: st.status === 'Active' ? '#15803d' : '#b91c1c'
+                      }}>
+                        ● {st.status || 'Active'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => handleOpenEditModal(st, e)}
+                            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '4px 8px', color: '#1d4ed8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                            title="Reassign Class / Edit Details"
+                          >
+                            <Edit size={12} style={{ display: 'inline', marginRight: '3px' }} /> Edit
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => setStudentToDelete(st)}
+                            style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 8px', color: '#dc2626', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
+                            title="Delete Student Record"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Pagination Footer */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
+            Showing <strong>{studentsList.length}</strong> of <strong>{totalCount}</strong> enrolled students
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button 
+              disabled={currentPage === 1} 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+              style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 10px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', color: '#475569', opacity: currentPage === 1 ? 0.5 : 1 }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#334155' }}>
+              Page {currentPage} of {totalPages}
+            </span>
+            <button 
+              disabled={currentPage >= totalPages} 
+              onClick={() => setCurrentPage(p => p + 1)} 
+              style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 10px', cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer', color: '#475569', opacity: currentPage >= totalPages ? 0.5 : 1 }}
+            >
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>
-
-        <div style={{ flex: 1, overflowY: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th>Roll No</th>
-                <th>Student Name</th>
-                <th>Class/Sec</th>
-                <th>Attendance</th>
-                <th>Status</th>
-                <th style={{ width: '40px' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginated.map(s => (
-                <tr key={s.id} onClick={() => setSelectedStudent(s)} style={{ cursor: 'pointer', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--color-bg)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                  <td className="text-muted">{s.rollNo}</td>
-                  <td>
-                    <div className="company-cell">
-                      <div className="company-icon" style={{ backgroundColor: s.color + '15', color: s.color, fontWeight: 700 }}><User size={14} /></div>
-                      {s.name}
-                    </div>
-                  </td>
-                  <td>{s.grade}</td>
-                  <td style={{ color: parseInt(s.attendance) < 85 ? 'var(--color-red)' : 'var(--color-green)', fontWeight: 500 }}>{s.attendance}%</td>
-                  <td>
-                    <span style={{ padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 600, backgroundColor: s.status === 'Active' ? '#DCFCE7' : '#FEE2E2', color: s.status === 'Active' ? '#166534' : '#991b1b' }}>
-                      {s.status}
-                    </span>
-                  </td>
-                  <td className="text-muted"><MoreVertical size={16} style={{ cursor: 'pointer' }} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex-between text-muted" style={{ marginTop: '16px', fontSize: '0.85rem' }}>
-          <div>Showing {paginated.length} of {filtered.length} results</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} style={{ background: 'none', border: 'none', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
-            <span>{currentPage} / {totalPages || 1}</span>
-            <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)} style={{ background: 'none', border: 'none', cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
-          </div>
-        </div>
       </div>
+
+      {/* Add / Edit Student Modal */}
+      {isAddModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+          zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '24px', width: '600px', maxWidth: '95vw',
+            maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid rgba(226, 232, 240, 0.8)', padding: '32px'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '46px', height: '46px', borderRadius: '14px',
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(15, 118, 110, 0.1) 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <GraduationCap size={24} color="#4F46E5" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
+                    {editingStudent ? 'Edit Student & Class Assignment' : 'Student Admission & Class Enrollment'}
+                  </h3>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                    {editingStudent ? 'Update details or reassign to another class section' : 'Admit a new student and allocate their class & section'}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsAddModalOpen(false)}
+                style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {formError && (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={16} />
+                <span>{formError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleFormSubmit}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Name & Roll No */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
+                      Student Full Name *
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. Aarav Sharma"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
+                      Roll / Admission No *
+                    </label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. STU-1001"
+                      value={formData.rollNo}
+                      onChange={e => setFormData({ ...formData, rollNo: e.target.value })}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Class Assignment Section Box (Highlighted) */}
+                <div style={{
+                  padding: '16px', background: '#f8fafc',
+                  borderRadius: '16px', border: '1.5px solid #e2e8f0'
+                }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={15} /> Class & Section Allocation
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        Assign Class / Grade *
+                      </label>
+                      <select
+                        value={formData.grade}
+                        onChange={e => setFormData({ ...formData, grade: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                      >
+                        {availableGrades.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        Assign Section *
+                      </label>
+                      <select
+                        value={formData.section}
+                        onChange={e => setFormData({ ...formData, section: e.target.value })}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                      >
+                        {availableSectionsForGrade.map(s => (
+                          <option key={s} value={s}>Section {s}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Gender, DOB & Status */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Gender
+                    </label>
+                    <select
+                      value={formData.gender}
+                      onChange={e => setFormData({ ...formData, gender: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Date of Birth
+                    </label>
+                    <input 
+                      type="date"
+                      value={formData.dateOfBirth}
+                      onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Enrollment Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={e => setFormData({ ...formData, status: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                      <option value="Graduated">Graduated</option>
+                      <option value="Transferred">Transferred</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Parent Information */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Parent / Guardian Name
+                    </label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. Rajesh Sharma"
+                      value={formData.parentName}
+                      onChange={e => setFormData({ ...formData, parentName: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Emergency Contact Phone
+                    </label>
+                    <input 
+                      type="text"
+                      placeholder="+91 98201 12345"
+                      value={formData.parentContact}
+                      onChange={e => setFormData({ ...formData, parentContact: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Email & Address */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Student Email Address
+                  </label>
+                  <input 
+                    type="email"
+                    placeholder="student@pragati.edu"
+                    value={formData.email}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Residential Address
+                  </label>
+                  <textarea 
+                    rows={2}
+                    placeholder="House / Street, City, State"
+                    value={formData.address}
+                    onChange={e => setFormData({ ...formData, address: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddModalOpen(false)}
+                    style={{ padding: '10px 18px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '10px', color: '#475569', fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    style={{
+                      padding: '10px 22px',
+                      background: actionLoading ? '#94a3b8' : 'linear-gradient(135deg, #4F46E5 0%, #1e40af 100%)',
+                      color: 'white', border: 'none', borderRadius: '10px',
+                      fontWeight: 700, fontSize: '0.88rem', cursor: actionLoading ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                    }}
+                  >
+                    {actionLoading ? 'Saving Student...' : editingStudent ? 'Update & Reassign' : 'Admit & Enroll Student'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {studentToDelete && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)',
+          zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '460px', maxWidth: '92vw',
+            padding: '28px', border: '1px solid #fecaca', boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={22} color="#dc2626" />
+              </div>
+              <div>
+                <h4 style={{ margin: 0, color: '#991b1b', fontSize: '1.2rem', fontWeight: 800 }}>Delete Student Record</h4>
+                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>Permanently remove student from campus</p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.5, margin: '0 0 20px' }}>
+              Are you sure you want to delete <strong>{studentToDelete.name}</strong> ({studentToDelete.rollNo}) from <strong>{studentToDelete.grade} - Section {studentToDelete.section}</strong>?
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setStudentToDelete(null)}
+                style={{ padding: '8px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleDeleteStudent}
+                style={{ padding: '8px 18px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                {actionLoading ? 'Deleting...' : 'Delete Student'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -37,6 +37,7 @@ const academicSchema = new mongoose.Schema({
     enum: ['Active', 'Archived', 'Upcoming'],
     default: 'Active',
   },
+  entityId: { type: String, required: true, index: true },
 }, {
   timestamps: true,
 });

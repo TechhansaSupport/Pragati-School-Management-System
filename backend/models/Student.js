@@ -9,7 +9,6 @@ const studentSchema = new mongoose.Schema({
   rollNo: {
     type: String,
     required: [true, 'Roll number is required'],
-    unique: true,
     trim: true,
   },
   grade: {
@@ -61,8 +60,13 @@ const studentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  schoolSlug: { type: String, trim: true, index: true },
+  entityId: { type: String, required: true, index: true },
 }, {
   timestamps: true,
 });
+
+// Compound unique index per school workspace
+studentSchema.index({ rollNo: 1, entityId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Student', studentSchema);

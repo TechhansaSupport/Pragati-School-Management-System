@@ -48,6 +48,7 @@ const transactionSchema = new mongoose.Schema({
     enum: ['Completed', 'Pending', 'Failed', 'Refunded'],
     default: 'Completed',
   },
+  entityId: { type: String, required: true, index: true },
 }, {
   timestamps: true,
 });

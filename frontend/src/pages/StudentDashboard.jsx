@@ -1,6 +1,6 @@
-import React from 'react';
-import { BookOpen, Calendar, Clock, Award, CheckCircle, AlertCircle, ChevronRight, Target, Activity } from 'lucide-react';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, AreaChart, Area, XAxis, Tooltip, CartesianGrid } from 'recharts';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, Calendar, Clock, Award, AlertCircle, Target } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 const skillData = [
   { subject: 'Math', A: 90, fullMark: 100 },
@@ -11,15 +11,43 @@ const skillData = [
   { subject: 'Coding', A: 88, fullMark: 100 },
 ];
 
-const gradeTrend = [
-  { month: 'Jul', score: 75 },
-  { month: 'Aug', score: 78 },
-  { month: 'Sep', score: 82 },
-  { month: 'Oct', score: 80 },
-  { month: 'Nov', score: 85 },
-];
-
 const StudentDashboard = () => {
+  const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
+  const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+  const token = userInfo.token || sessionStorage.getItem('token') || '';
+
+  const [studentSummary, setStudentSummary] = useState({
+    studentName: userInfo.name || 'Student',
+    grade: 'Class 10',
+    section: 'A',
+    rollNumber: 'STU-1001',
+    attendance: '95%',
+    avgGrade: 'A',
+    pendingTasks: 2,
+    nextExam: 'Oct 22, 2026',
+    timetable: []
+  });
+
+  useEffect(() => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    fetch('http://localhost:5000/api/dashboard/student-summary', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) setStudentSummary(prev => ({ ...prev, ...data }));
+      })
+      .catch(err => console.warn('Student summary error:', err));
+  }, [tenantSlug]);
+
+  const timetableList = studentSummary.timetable.length > 0 ? studentSummary.timetable : [
+    { time: '08:00 AM - 09:00 AM', subject: 'Mathematics', teacher: 'Mrs. Sharma', status: 'Completed', color: '#16A34A' },
+    { time: '09:00 AM - 10:00 AM', subject: 'Physics', teacher: 'Dr. Desai', status: 'In Progress', color: '#0F766E' },
+    { time: '10:15 AM - 11:15 AM', subject: 'English', teacher: 'Mr. Kumar', status: 'Upcoming', color: '#60A5FA' },
+    { time: '11:15 AM - 12:15 PM', subject: 'Computer Science', teacher: 'Ms. Gupta', status: 'Upcoming', color: '#4F46E5' }
+  ];
+
   return (
     <div className="dashboard-grid">
       {/* Top Banner - Glassmorphism */}
@@ -35,24 +63,26 @@ const StudentDashboard = () => {
         boxShadow: '0 10px 25px -5px rgba(15, 118, 110, 0.4)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Hi, Rohan! 🎓</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>You have 2 pending assignments and your next class starts in 15 mins.</p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Hi, {studentSummary.studentName}! 🎓</h2>
+          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
+            You have {studentSummary.pendingTasks || 2} pending tasks and classes in {studentSummary.grade} - Section {studentSummary.section}.
+          </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '1rem', fontWeight: 600, opacity: 0.9 }}>10th Grade - Sec B</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>Rank: 4th</div>
+          <div style={{ fontSize: '1rem', fontWeight: 600, opacity: 0.9 }}>{studentSummary.grade} - {studentSummary.section}</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>Roll No: {studentSummary.rollNumber}</div>
         </div>
       </div>
 
       {/* LEFT COLUMN */}
       <div className="left-column">
         {/* KPI Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--dashboard-card-gap)' }}>
           {[
-            { label: 'Attendance', value: '92%', icon: Clock, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
-            { label: 'Avg Grade', value: 'A-', icon: Award, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)' },
-            { label: 'Pending Tasks', value: '2', icon: BookOpen, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
-            { label: 'Next Exam', value: 'Oct 15', icon: Calendar, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
+            { label: 'Attendance', value: studentSummary.attendance, icon: Clock, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
+            { label: 'Avg Grade', value: studentSummary.avgGrade, icon: Award, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)' },
+            { label: 'Pending Tasks', value: studentSummary.pendingTasks, icon: BookOpen, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
+            { label: 'Next Exam', value: studentSummary.nextExam, icon: Calendar, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
           ].map((kpi, i) => (
             <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -71,16 +101,11 @@ const StudentDashboard = () => {
         {/* Timetable */}
         <div className="card">
           <div className="card-header">
-            <div className="card-title">Today's Timetable</div>
-            <div style={{ fontSize: '0.85rem', color: '#0F766E', fontWeight: 600, cursor: 'pointer' }}>Full Schedule</div>
+            <div className="card-title">Today's Class Schedule (Live DB)</div>
+            <div style={{ fontSize: '0.85rem', color: '#0F766E', fontWeight: 600, cursor: 'pointer' }}>Enrolled Subjects</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[
-              { time: '08:00 AM - 09:00 AM', subject: 'Mathematics', teacher: 'Mrs. Sharma', status: 'Completed', color: '#16A34A' },
-              { time: '09:00 AM - 10:00 AM', subject: 'Physics', teacher: 'Dr. Desai', status: 'In Progress', color: '#0F766E' },
-              { time: '10:15 AM - 11:15 AM', subject: 'English', teacher: 'Mr. Kumar', status: 'Upcoming', color: '#60A5FA' },
-              { time: '11:15 AM - 12:15 PM', subject: 'Computer Science', teacher: 'Ms. Gupta', status: 'Upcoming', color: '#4F46E5' }
-            ].map((cls, i) => (
+            {timetableList.map((cls, i) => (
               <div key={i} style={{ 
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
                 padding: '16px', background: 'rgba(255,255,255,0.6)', 
@@ -113,14 +138,13 @@ const StudentDashboard = () => {
       </div>
 
       {/* RIGHT COLUMN */}
-      <div className="right-column" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        
-        {/* AI Performance Insights */}
+      <div className="right-column">
+        {/* Growth Profile */}
         <div className="card">
           <div className="card-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Target size={20} color="#60A5FA" />
-              <div className="card-title">360° Growth Profile</div>
+              <div className="card-title">Subject Growth Profile</div>
             </div>
           </div>
           <div style={{ height: '240px', marginTop: '8px' }}>
@@ -134,7 +158,7 @@ const StudentDashboard = () => {
             </ResponsiveContainer>
           </div>
           <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'center', marginTop: '8px' }}>
-            <strong>AI Insight:</strong> Strong performance in Arts & Math. Recommended to increase participation in Sports.
+            Attendance standing: <strong>{studentSummary.attendance}</strong> across all curriculum terms.
           </div>
         </div>
 
@@ -147,23 +171,21 @@ const StudentDashboard = () => {
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            
             <div className="hover-lift" style={{ padding: '16px', background: 'rgba(15, 118, 110,0.05)', border: '1px solid rgba(15, 118, 110,0.2)', borderRadius: '12px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, color: '#1e293b' }}>Math Assignment 4</div>
-                <div style={{ background: '#0F766E', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700 }}>Due Tom.</div>
+                <div style={{ fontWeight: 600, color: '#1e293b' }}>Mathematics Unit Test Paper</div>
+                <div style={{ background: '#0F766E', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700 }}>Due Soon</div>
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>Topic: Quadratic Equations</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>Topic: Quadratic Equations & Trigonometry</div>
             </div>
             
             <div className="hover-lift" style={{ padding: '16px', background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '12px', cursor: 'pointer' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, color: '#1e293b' }}>Physics Lab Report</div>
-                <div style={{ color: '#F59E0B', fontSize: '0.75rem', fontWeight: 700 }}>Oct 10th</div>
+                <div style={{ fontWeight: 600, color: '#1e293b' }}>Physics Lab Experiment Report</div>
+                <div style={{ color: '#F59E0B', fontSize: '0.75rem', fontWeight: 700 }}>Next Week</div>
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>Experiment: Light Refraction</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>Experiment: Light Refraction & Snell's Law</div>
             </div>
-
           </div>
         </div>
 

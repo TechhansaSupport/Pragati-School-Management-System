@@ -1,43 +1,164 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PieChart, ShieldCheck, BellRing, MessageCircle, CheckCircle, TrendingUp, Star, Layers, Settings, Fingerprint } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { 
+  PieChart, ShieldCheck, BellRing, MessageCircle, CheckCircle, 
+  TrendingUp, Star, Layers, Settings, Fingerprint, AlertTriangle, 
+  Ban, AlertCircle, Building2, ArrowRight
+} from 'lucide-react';
 
 const Login = () => {
+  const { tenantSlug } = useParams();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const [displaySchoolName, setDisplaySchoolName] = useState('');
+  const [schoolStatus, setSchoolStatus] = useState({
+    isLoading: true,
+    isValid: true,
+    isSuspended: false,
+    isDeleted: false,
+    isUnlicensed: false,
+    isInactive: false,
+    title: '',
+    message: '',
+    schoolName: ''
+  });
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!tenantSlug) {
+      setSchoolStatus({
+        isLoading: false,
+        isValid: false,
+        isSuspended: false,
+        isDeleted: true,
+        isUnlicensed: false,
+        isInactive: false,
+        title: 'School Identifier Missing',
+        message: 'No school workspace slug was specified in the URL. Please access your dedicated school portal link (e.g., /your-school/login).',
+        schoolName: ''
+      });
+      setDisplaySchoolName('');
+      return;
+    }
+
+    setSchoolStatus(prev => ({ ...prev, isLoading: true }));
+
+    fetch(`http://localhost:5000/api/school/public/${tenantSlug}`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.success) {
+          const schoolName = data?.school?.name || 'Pragati School';
+          setDisplaySchoolName(schoolName);
+          document.title = `${schoolName} | Portal Login`;
+          setSchoolStatus({
+            isLoading: false,
+            isValid: true,
+            isSuspended: false,
+            isDeleted: false,
+            isUnlicensed: false,
+            isInactive: false,
+            title: '',
+            message: '',
+            schoolName
+          });
+        } else {
+          // Failure: Suspended, deleted, unlicensed, or inactive
+          setDisplaySchoolName(''); // NEVER show school name as active when license is invalid!
+          
+          if (res.status === 403 && (data?.code === 'TENANT_SUSPENDED' || data?.status === 'suspended')) {
+            document.title = 'Account Suspended | Pragati Portal';
+            setSchoolStatus({
+              isLoading: false,
+              isValid: false,
+              isSuspended: true,
+              isDeleted: false,
+              isUnlicensed: false,
+              isInactive: false,
+              title: 'School Workspace Suspended',
+              message: data.error || 'This school management workspace has been suspended or revoked in the Pragati License Portal. Portal access and logins are currently disabled.',
+              schoolName: data.schoolName || ''
+            });
+          } else if (res.status === 403 && (data?.code === 'NO_SHMS_LICENSE' || data?.code === 'NO_SMS_LICENSE' || data?.status === 'unlicensed')) {
+            document.title = 'License Inactive | Pragati Portal';
+            setSchoolStatus({
+              isLoading: false,
+              isValid: false,
+              isSuspended: false,
+              isDeleted: false,
+              isUnlicensed: true,
+              isInactive: false,
+              title: 'SHMS Subscription Required',
+              message: data.error || 'This organization does not have an active School Management System (SHMS) subscription in the Pragati License Portal.',
+              schoolName: ''
+            });
+          } else if (res.status === 403 && (data?.code === 'TENANT_INACTIVE' || data?.status === 'inactive')) {
+            document.title = 'Campus Inactive | Pragati Portal';
+            setSchoolStatus({
+              isLoading: false,
+              isValid: false,
+              isSuspended: false,
+              isDeleted: false,
+              isUnlicensed: false,
+              isInactive: true,
+              title: 'School Campus Inactive',
+              message: data.error || 'This school campus is currently marked as inactive by administration.',
+              schoolName: ''
+            });
+          } else {
+            // 404 or any other deletion / not found
+            document.title = 'School Not Found | Pragati Portal';
+            setSchoolStatus({
+              isLoading: false,
+              isValid: false,
+              isSuspended: false,
+              isDeleted: true,
+              isUnlicensed: false,
+              isInactive: false,
+              title: 'School Workspace Not Found',
+              message: data.error || `School workspace "${tenantSlug}" does not exist or has been deleted from the Pragati License Portal.`,
+              schoolName: ''
+            });
+          }
+        }
+      })
+      .catch(() => {
+        setDisplaySchoolName('');
+        setSchoolStatus({
+          isLoading: false,
+          isValid: false,
+          isSuspended: false,
+          isDeleted: false,
+          isUnlicensed: false,
+          isInactive: false,
+          title: 'Unable to Connect',
+          message: 'Could not connect to the school verification service. Please verify that the server is online.',
+          schoolName: ''
+        });
+      });
+  }, [tenantSlug]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    
+    if (!tenantSlug) {
+      setError('Invalid school URL. Please use your specific school login link (e.g. /school-name/login)');
+      return;
+    }
+
+    if (!schoolStatus.isValid) {
+      setError('This school workspace is currently restricted or suspended.');
+      return;
+    }
+
     setIsSubmitting(true);
     
     // Add a slight artificial delay to show the nice loading animation
     await new Promise(resolve => setTimeout(resolve, 600));
-    
-    const idStr = userId.toUpperCase();
-    
-    // Demo bypass for test IDs
-    if (['SUP', 'PRIN', 'ADM', 'TCH', 'STU', 'PAR', 'ACC', 'LIB', 'TRN'].some(prefix => idStr.startsWith(prefix))) {
-      let role = 'admin';
-      if (idStr.startsWith('SUP')) { role = 'superadmin'; navigate('/dashboard'); }
-      else if (idStr.startsWith('PRIN')) { role = 'principal'; navigate('/dashboard'); }
-      else if (idStr.startsWith('ADM')) { role = 'admin'; navigate('/dashboard'); }
-      else if (idStr.startsWith('TCH')) { role = 'teacher'; navigate('/teacher-dashboard'); }
-      else if (idStr.startsWith('STU')) { role = 'student'; navigate('/student-dashboard'); }
-      else if (idStr.startsWith('PAR')) { role = 'parent'; navigate('/parent-dashboard'); }
-      else if (idStr.startsWith('ACC')) { role = 'accountant'; navigate('/finance'); }
-      else if (idStr.startsWith('LIB')) { role = 'librarian'; navigate('/library-dashboard'); }
-      else if (idStr.startsWith('TRN')) { role = 'transport'; navigate('/transport-dashboard'); }
-      
-      sessionStorage.setItem('userRole', role);
-      sessionStorage.setItem('userInfo', JSON.stringify({ uniqueId: userId, role }));
-      return;
-    }
     
     try {
       // Connect to the backend
@@ -46,7 +167,7 @@ const Login = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ uniqueId: userId, password }),
+        body: JSON.stringify({ slug: tenantSlug, tenantSlug, username: userId, uniqueId: userId, password }),
       });
 
       const data = await response.json();
@@ -55,27 +176,61 @@ const Login = () => {
         // Store user info and token
         sessionStorage.setItem('userInfo', JSON.stringify(data));
         sessionStorage.setItem('userRole', data.role);
+        sessionStorage.setItem('tenantSlug', tenantSlug);
+        if (data.token) {
+          sessionStorage.setItem('token', data.token);
+        }
+        if (data.schoolName) {
+          sessionStorage.setItem('schoolName', data.schoolName);
+        }
+        // Multi-window synchronization support
+        localStorage.setItem('authSession', JSON.stringify({ userInfo: data, userRole: data.role, token: data.token }));
         
         // Route based on role
         if (data.role === 'principal' || data.role === 'admin' || data.role === 'superadmin') {
-          navigate('/dashboard');
+          navigate(`/${tenantSlug}/dashboard`);
         } else if (data.role === 'teacher') {
-          navigate('/teacher-dashboard');
+          navigate(`/${tenantSlug}/teacher-dashboard`);
         } else if (data.role === 'student') {
-          navigate('/student-dashboard');
+          navigate(`/${tenantSlug}/student-dashboard`);
         } else if (data.role === 'parent') {
-          navigate('/parent-dashboard');
+          navigate(`/${tenantSlug}/parent-dashboard`);
         } else if (data.role === 'accountant') {
-          navigate('/finance');
+          navigate(`/${tenantSlug}/finance`);
         } else if (data.role === 'librarian') {
-          navigate('/library-dashboard');
+          navigate(`/${tenantSlug}/library-dashboard`);
         } else if (data.role === 'transport') {
-          navigate('/transport-dashboard');
+          navigate(`/${tenantSlug}/transport-dashboard`);
         } else {
-          navigate('/dashboard');
+          navigate(`/${tenantSlug}/dashboard`);
         }
       } else {
-        setError(data.message || 'Invalid credentials');
+        if (data.code === 'TENANT_SUSPENDED') {
+          setSchoolStatus(prev => ({
+            ...prev,
+            isValid: false,
+            isSuspended: true,
+            title: 'School Workspace Suspended',
+            message: data.message || data.error
+          }));
+        } else if (data.code === 'TENANT_NOT_FOUND') {
+          setSchoolStatus(prev => ({
+            ...prev,
+            isValid: false,
+            isDeleted: true,
+            title: 'School Workspace Not Found',
+            message: data.message || data.error
+          }));
+        } else if (data.code === 'NO_SHMS_LICENSE' || data.code === 'NO_SMS_LICENSE') {
+          setSchoolStatus(prev => ({
+            ...prev,
+            isValid: false,
+            isUnlicensed: true,
+            title: 'SHMS Subscription Required',
+            message: data.message || data.error
+          }));
+        }
+        setError(data.message || data.error || 'Invalid credentials');
       }
     } catch (err) {
       console.error(err);
@@ -92,10 +247,14 @@ const Login = () => {
       width: '100vw',
       fontFamily: "'Outfit', sans-serif",
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      backgroundImage: 'url("/Modern Indigo Study Workspace.png")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
     }}>
-      {/* Seamless ambient background identical to dashboard */}
-      <div className="ambient-background" style={{ filter: 'blur(4px)' }}></div>
+      {/* Dark overlay for better form readability against the background */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.2)', zIndex: 1 }}></div>
       <style>{`
         @keyframes blob-spin {
           0% { transform: rotate(0deg) scale(1); }
@@ -244,212 +403,363 @@ const Login = () => {
           {/* Glassmorphism Login Box */}
           <div style={{ 
             width: '100%', 
-            maxWidth: '400px', 
+            maxWidth: '420px', 
             display: 'flex', 
             flexDirection: 'column', 
             alignItems: 'center',
-            background: 'rgba(255, 255, 255, 0.85)',
+            background: 'rgba(255, 255, 255, 0.9)',
             backdropFilter: 'blur(30px)',
             WebkitBackdropFilter: 'blur(30px)',
             padding: '40px 32px',
             borderRadius: '24px',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.18)',
             border: '1px solid rgba(255, 255, 255, 0.9)'
           }}>
           
-            <div className="stagger-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', width: '100%' }}>
-            {/* Dedicated space for the logo - You can replace the inner School icon with an <img src="/your-logo.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
-            <div style={{ 
-              width: '70px', 
-              height: '70px', 
-              borderRadius: '50%', 
-              background: 'white', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              boxShadow: '0 10px 25px -5px rgba(79, 70, 229, 0.2), 0 0 0 3px rgba(255, 255, 255, 0.5)',
-              marginBottom: '16px',
-              overflow: 'hidden',
-              padding: '4px',
-              animation: 'pulse-glow 4s infinite ease-in-out'
-            }}>
-               <img src="/logo.png" alt="Pragati Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-            </div>
-            
-            {/* System Branding */}
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', margin: '0 0 2px 0', textAlign: 'center', letterSpacing: '-0.02em' }}>
-              Pragati School
-            </h2>
-            <div style={{ 
-              fontSize: '0.75rem', 
-              textTransform: 'uppercase', 
-              letterSpacing: '0.1em', 
-              fontWeight: 700, 
-              textAlign: 'center', 
-              marginBottom: '20px',
-              background: 'linear-gradient(90deg, #4F46E5 0%, #0F766E 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              opacity: 0.9
-            }}>
-              Management System
-            </div>
-
-            {/* Welcome Message */}
-            <h1 className="stagger-2" style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 800, marginBottom: '6px', color: '#1e3a8a', letterSpacing: '-0.03em' }}>
-              Welcome Back
-            </h1>
-            <p className="stagger-2" style={{ textAlign: 'center', fontSize: '0.85rem', color: '#64748b', margin: 0, fontWeight: 500 }}>
-              Please enter your details to sign in.
-            </p>
-          </div>
-
-          {error && (
-            <div style={{ backgroundColor: '#fef2f2', color: '#DC2626', padding: '14px', borderRadius: '12px', marginBottom: '24px', fontSize: '0.9rem', fontWeight: 500, textAlign: 'center', border: '1px solid #fecaca' }}>
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} style={{ width: '100%' }}>
-            <div 
-              className="stagger-3"
-              style={{ 
-                marginBottom: '12px', 
-                position: 'relative', 
-                borderRadius: '8px', 
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', 
-                border: focusedField === 'userId' ? '2px solid rgba(79, 70, 229, 0.8)' : '2px solid rgba(226, 232, 240, 0.6)', 
-                backgroundColor: focusedField === 'userId' ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.7)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: focusedField === 'userId' ? '0 6px 16px -4px rgba(79, 70, 229, 0.25)' : 'none',
-                transform: focusedField === 'userId' ? 'translateY(-1px)' : 'translateY(0)'
-              }}
-            >
-              <input
-                type="text"
-                required
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                onFocus={() => setFocusedField('userId')}
-                onBlur={() => setFocusedField(null)}
-                placeholder="school ID"
-                style={{
-                  width: '100%',
-                  padding: '10px 40px 10px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  fontSize: '0.9rem',
-                  outline: 'none',
-                  color: '#1e3a8a',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <div style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: focusedField === 'userId' ? '#4F46E5' : '#94a3b8', transition: 'color 0.3s', pointerEvents: 'none' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            {/* Header: Logo and Branding */}
+            <div className="stagger-1" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: schoolStatus.isValid ? '20px' : '16px', width: '100%' }}>
+              <div style={{ 
+                width: '70px', 
+                height: '70px', 
+                borderRadius: '50%', 
+                background: 'white', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                boxShadow: schoolStatus.isSuspended 
+                  ? '0 10px 25px -5px rgba(239, 68, 68, 0.3), 0 0 0 3px rgba(254, 202, 202, 0.6)' 
+                  : '0 10px 25px -5px rgba(79, 70, 229, 0.2), 0 0 0 3px rgba(255, 255, 255, 0.5)',
+                marginBottom: '16px',
+                overflow: 'hidden',
+                padding: '4px',
+                animation: 'pulse-glow 4s infinite ease-in-out'
+              }}>
+                 <img src="/logo.png" alt="Pragati Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
               </div>
-            </div>
+              
+              {/* System Branding */}
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: '0 0 8px 0', textAlign: 'center', letterSpacing: '-0.02em' }}>
+                Pragati School Management System
+              </h2>
 
-            <div 
-              className="stagger-4"
-              style={{ 
-                marginBottom: '10px', 
-                position: 'relative', 
-                borderRadius: '8px', 
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', 
-                border: focusedField === 'password' ? '2px solid rgba(79, 70, 229, 0.8)' : '2px solid rgba(226, 232, 240, 0.6)', 
-                backgroundColor: focusedField === 'password' ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.7)',
-                backdropFilter: 'blur(10px)',
-                boxShadow: focusedField === 'password' ? '0 6px 16px -4px rgba(79, 70, 229, 0.25)' : 'none',
-                transform: focusedField === 'password' ? 'translateY(-1px)' : 'translateY(0)'
-              }}
-            >
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onFocus={() => setFocusedField('password')}
-                onBlur={() => setFocusedField(null)}
-                placeholder="••••••••"
-                style={{
-                  width: '100%',
-                  padding: '10px 40px 10px 14px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  backgroundColor: 'transparent',
-                  fontSize: '0.9rem',
-                  outline: 'none',
-                  color: '#1e3a8a',
-                  boxSizing: 'border-box'
-                }}
-              />
-              <div 
-                onClick={() => setShowPassword(!showPassword)}
-                style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: showPassword ? '#4F46E5' : (focusedField === 'password' ? '#64748b' : '#94a3b8'), cursor: 'pointer', transition: 'all 0.2s' }} 
-                onMouseOver={e => e.currentTarget.style.color = '#4F46E5'} 
-                onMouseOut={e => e.currentTarget.style.color = showPassword ? '#4F46E5' : (focusedField === 'password' ? '#64748b' : '#94a3b8')}
-              >
-                {showPassword ? (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                )}
-              </div>
-            </div>
-
-            <div className="stagger-4" style={{ textAlign: 'right', marginBottom: '16px' }}>
-              <a href="#" style={{ color: '#0F766E', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, transition: 'all 0.3s' }} onMouseOver={e => { e.target.style.color = '#b08b26'; e.target.style.letterSpacing = '0.02em'; }} onMouseOut={e => { e.target.style.color = '#0F766E'; e.target.style.letterSpacing = '0'; }}>Forgot Password?</a>
-            </div>
-
-            <div className="stagger-5" style={{ width: '100%' }}>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-shimmer"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  color: 'white',
-                  border: 'none',
-                  fontWeight: 700,
-                  fontSize: '0.95rem',
-                  cursor: isSubmitting ? 'wait' : 'pointer',
-                  transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                  boxShadow: isSubmitting ? 'none' : '0 4px 12px -3px rgba(15, 118, 110, 0.4)',
-                  display: 'flex',
+              {/* Status Badge */}
+              {schoolStatus.isValid && displaySchoolName ? (
+                <div style={{ 
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: isSubmitting ? 0.8 : 1
-                }}
-                onMouseOver={(e) => {
-                  if(!isSubmitting){
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 12px 24px -8px rgba(15, 118, 110, 0.6)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if(!isSubmitting){
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 8px 20px -6px rgba(15, 118, 110, 0.5)';
-                  }
-                }}
-              >
-                {isSubmitting ? (
-                  <>
-                    <svg className="spinner" viewBox="0 0 50 50" style={{ width: '20px', height: '20px', marginRight: '10px', animation: 'spin 1s linear infinite' }}>
-                      <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeDasharray="31.4 31.4" opacity="0.8"></circle>
-                    </svg>
-                    <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
-                    Signing In...
-                  </>
-                ) : (
-                  'Sign In'
-                )}
-              </button>
+                  gap: '6px',
+                  fontSize: '0.82rem', 
+                  fontWeight: 700, 
+                  color: '#4F46E5',
+                  background: 'rgba(79, 70, 229, 0.08)',
+                  border: '1px solid rgba(79, 70, 229, 0.22)',
+                  padding: '4px 14px',
+                  borderRadius: '999px',
+                  marginBottom: '16px'
+                }}>
+                  <span>🏫</span>
+                  <span>{displaySchoolName}</span>
+                </div>
+              ) : schoolStatus.isSuspended ? (
+                <div style={{ 
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8rem', 
+                  fontWeight: 700, 
+                  color: '#dc2626',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  padding: '4px 14px',
+                  borderRadius: '999px',
+                  marginBottom: '16px'
+                }}>
+                  <Ban size={14} color="#dc2626" />
+                  <span>Workspace Suspended</span>
+                </div>
+              ) : schoolStatus.isDeleted ? (
+                <div style={{ 
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8rem', 
+                  fontWeight: 700, 
+                  color: '#e11d48',
+                  background: 'rgba(225, 29, 72, 0.1)',
+                  border: '1px solid rgba(225, 29, 72, 0.3)',
+                  padding: '4px 14px',
+                  borderRadius: '999px',
+                  marginBottom: '16px'
+                }}>
+                  <AlertCircle size={14} color="#e11d48" />
+                  <span>School Not Found</span>
+                </div>
+              ) : schoolStatus.isUnlicensed ? (
+                <div style={{ 
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8rem', 
+                  fontWeight: 700, 
+                  color: '#d97706',
+                  background: 'rgba(217, 119, 6, 0.1)',
+                  border: '1px solid rgba(217, 119, 6, 0.3)',
+                  padding: '4px 14px',
+                  borderRadius: '999px',
+                  marginBottom: '16px'
+                }}>
+                  <AlertTriangle size={14} color="#d97706" />
+                  <span>No SHMS License</span>
+                </div>
+              ) : null}
             </div>
-          </form>
+
+            {/* Condition 1: Checking License Status */}
+            {schoolStatus.isLoading ? (
+              <div style={{ padding: '24px 0', textAlign: 'center', width: '100%' }}>
+                <div style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  margin: '0 auto 12px', 
+                  borderRadius: '50%', 
+                  border: '3px solid rgba(79, 70, 229, 0.2)', 
+                  borderTopColor: '#4f46e5', 
+                  animation: 'spin 0.8s linear infinite' 
+                }} />
+                <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b', fontWeight: 600 }}>
+                  Verifying school workspace & license...
+                </p>
+              </div>
+            ) : !schoolStatus.isValid ? (
+              /* Condition 2: Restricted / Suspended / Deleted / Unlicensed View */
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <h1 style={{ 
+                  textAlign: 'center', 
+                  fontSize: '1.35rem', 
+                  fontWeight: 800, 
+                  marginBottom: '10px', 
+                  color: schoolStatus.isSuspended ? '#b91c1c' : '#1e293b', 
+                  letterSpacing: '-0.02em' 
+                }}>
+                  {schoolStatus.title}
+                </h1>
+
+                <div style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  backgroundColor: schoolStatus.isSuspended ? '#fef2f2' : (schoolStatus.isUnlicensed ? '#fffbeb' : '#f8fafc'),
+                  color: schoolStatus.isSuspended ? '#991b1b' : (schoolStatus.isUnlicensed ? '#92400e' : '#334155'),
+                  padding: '16px',
+                  borderRadius: '14px',
+                  marginBottom: '24px',
+                  fontSize: '0.88rem',
+                  lineHeight: 1.55,
+                  fontWeight: 500,
+                  textAlign: 'center',
+                  border: schoolStatus.isSuspended ? '1px solid #fecaca' : (schoolStatus.isUnlicensed ? '1px solid #fde68a' : '1px solid #e2e8f0'),
+                  boxShadow: '0 4px 12px -2px rgba(0,0,0,0.04)'
+                }}>
+                  {schoolStatus.message}
+                </div>
+
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      fetch('http://localhost:5000/api/school/public-default')
+                        .then(r => r.ok ? r.json() : null)
+                        .then(d => {
+                          if (d?.slug) navigate(`/${d.slug}/login`);
+                          else navigate('/');
+                        })
+                        .catch(() => navigate('/'));
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      color: 'white',
+                      border: 'none',
+                      fontWeight: 700,
+                      fontSize: '0.92rem',
+                      cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                      boxShadow: '0 4px 12px -2px rgba(79, 70, 229, 0.35)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <span>Switch to Active School</span>
+                    <ArrowRight size={16} />
+                  </button>
+
+                  <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
+                    For licensing inquiries, reach out to <span style={{ color: '#4f46e5', fontWeight: 600 }}>support@pragati.edu</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Condition 3: Active School Login Form */
+              <>
+                <h1 className="stagger-2" style={{ textAlign: 'center', fontSize: '1.45rem', fontWeight: 800, marginBottom: '6px', color: '#1e3a8a', letterSpacing: '-0.03em' }}>
+                  Welcome Back
+                </h1>
+                <p className="stagger-2" style={{ textAlign: 'center', fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px 0', fontWeight: 500 }}>
+                  Please enter your details to sign in.
+                </p>
+
+                {error && (
+                  <div style={{ width: '100%', boxSizing: 'border-box', backgroundColor: '#fef2f2', color: '#DC2626', padding: '12px', borderRadius: '12px', marginBottom: '16px', fontSize: '0.88rem', fontWeight: 500, textAlign: 'center', border: '1px solid #fecaca' }}>
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleLogin} style={{ width: '100%' }}>
+                  <div 
+                    className="stagger-3"
+                    style={{ 
+                      marginBottom: '12px', 
+                      position: 'relative', 
+                      borderRadius: '8px', 
+                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', 
+                      border: focusedField === 'userId' ? '2px solid rgba(79, 70, 229, 0.8)' : '2px solid rgba(226, 232, 240, 0.6)', 
+                      backgroundColor: focusedField === 'userId' ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(10px)',
+                      boxShadow: focusedField === 'userId' ? '0 6px 16px -4px rgba(79, 70, 229, 0.25)' : 'none',
+                      transform: focusedField === 'userId' ? 'translateY(-1px)' : 'translateY(0)'
+                    }}
+                  >
+                    <input
+                      type="text"
+                      required
+                      value={userId}
+                      onChange={(e) => setUserId(e.target.value)}
+                      onFocus={() => setFocusedField('userId')}
+                      onBlur={() => setFocusedField(null)}
+                      placeholder="School ID / Username"
+                      style={{
+                        width: '100%',
+                        padding: '10px 40px 10px 14px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        color: '#1e3a8a',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <div style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: focusedField === 'userId' ? '#4F46E5' : '#94a3b8', transition: 'color 0.3s', pointerEvents: 'none' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    </div>
+                  </div>
+
+                  <div 
+                    className="stagger-4"
+                    style={{ 
+                      marginBottom: '10px', 
+                      position: 'relative', 
+                      borderRadius: '8px', 
+                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)', 
+                      border: focusedField === 'password' ? '2px solid rgba(79, 70, 229, 0.8)' : '2px solid rgba(226, 232, 240, 0.6)', 
+                      backgroundColor: focusedField === 'password' ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(10px)',
+                      boxShadow: focusedField === 'password' ? '0 6px 16px -4px rgba(79, 70, 229, 0.25)' : 'none',
+                      transform: focusedField === 'password' ? 'translateY(-1px)' : 'translateY(0)'
+                    }}
+                  >
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onFocus={() => setFocusedField('password')}
+                      onBlur={() => setFocusedField(null)}
+                      placeholder="••••••••"
+                      style={{
+                        width: '100%',
+                        padding: '10px 40px 10px 14px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        backgroundColor: 'transparent',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                        color: '#1e3a8a',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                    <div 
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)', color: showPassword ? '#4F46E5' : (focusedField === 'password' ? '#64748b' : '#94a3b8'), cursor: 'pointer', transition: 'all 0.2s' }} 
+                      onMouseOver={e => e.currentTarget.style.color = '#4F46E5'} 
+                      onMouseOut={e => e.currentTarget.style.color = showPassword ? '#4F46E5' : (focusedField === 'password' ? '#64748b' : '#94a3b8')}
+                    >
+                      {showPassword ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                      ) : (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="stagger-4" style={{ textAlign: 'right', marginBottom: '16px' }}>
+                    <a href="#" style={{ color: '#0F766E', fontSize: '0.8rem', textDecoration: 'none', fontWeight: 600, transition: 'all 0.3s' }} onMouseOver={e => { e.target.style.color = '#b08b26'; e.target.style.letterSpacing = '0.02em'; }} onMouseOut={e => { e.target.style.color = '#0F766E'; e.target.style.letterSpacing = '0'; }}>Forgot Password?</a>
+                  </div>
+
+                  <div className="stagger-5" style={{ width: '100%' }}>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="btn-shimmer"
+                      style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        color: 'white',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '0.95rem',
+                        cursor: isSubmitting ? 'wait' : 'pointer',
+                        transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                        boxShadow: isSubmitting ? 'none' : '0 4px 12px -3px rgba(15, 118, 110, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: isSubmitting ? 0.8 : 1
+                      }}
+                      onMouseOver={(e) => {
+                        if(!isSubmitting){
+                          e.target.style.transform = 'translateY(-2px)';
+                          e.target.style.boxShadow = '0 12px 24px -8px rgba(15, 118, 110, 0.6)';
+                        }
+                      }}
+                      onMouseOut={(e) => {
+                        if(!isSubmitting){
+                          e.target.style.transform = 'translateY(0)';
+                          e.target.style.boxShadow = '0 8px 20px -6px rgba(15, 118, 110, 0.5)';
+                        }
+                      }}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <svg className="spinner" viewBox="0 0 50 50" style={{ width: '20px', height: '20px', marginRight: '10px', animation: 'spin 1s linear infinite' }}>
+                            <circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeDasharray="31.4 31.4" opacity="0.8"></circle>
+                          </svg>
+                          <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
+                          Signing In...
+                        </>
+                      ) : (
+                        'Sign In'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </div>

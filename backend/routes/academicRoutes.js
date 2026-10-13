@@ -6,7 +6,7 @@ const Academic = require('../models/Academic');
 router.get('/', async (req, res) => {
   try {
     const { search, page = 1, limit = 10, status } = req.query;
-    const query = {};
+    const query = { entityId: req.entityId };
 
     if (search) {
       query.$or = [
@@ -38,10 +38,11 @@ router.get('/', async (req, res) => {
 // GET /api/academics/stats — KPI stats
 router.get('/stats', async (req, res) => {
   try {
-    const totalClasses = await Academic.countDocuments();
-    const activeSubjects = await Academic.countDocuments({ status: 'Active' });
+    const totalClasses = await Academic.countDocuments({ entityId: req.entityId, entityId: req.entityId });
+    const activeSubjects = await Academic.countDocuments({ status: 'Active', entityId: req.entityId });
 
     const avgClassSize = await Academic.aggregate([
+      { $match: { entityId: req.entityId } },
       { $group: { _id: null, avg: { $avg: '$studentsEnrolled' } } },
     ]);
 
@@ -61,7 +62,7 @@ router.get('/stats', async (req, res) => {
 // GET /api/academics/:id
 router.get('/:id', async (req, res) => {
   try {
-    const academic = await Academic.findById(req.params.id);
+    const academic = await Academic.findOne({ _id: req.params.id, entityId: req.entityId });
     if (!academic) {
       return res.status(404).json({ message: 'Class not found' });
     }
@@ -74,6 +75,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/academics
 router.post('/', async (req, res) => {
   try {
+    req.body.entityId = req.entityId;
     const academic = new Academic(req.body);
     await academic.save();
     res.status(201).json(academic);
@@ -85,8 +87,8 @@ router.post('/', async (req, res) => {
 // PUT /api/academics/:id
 router.put('/:id', async (req, res) => {
   try {
-    const academic = await Academic.findByIdAndUpdate(
-      req.params.id,
+    const academic = await Academic.findOneAndUpdate(
+      { _id: req.params.id, entityId: req.entityId },
       req.body,
       { new: true, runValidators: true }
     );
@@ -102,7 +104,7 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/academics/:id
 router.delete('/:id', async (req, res) => {
   try {
-    const academic = await Academic.findByIdAndDelete(req.params.id);
+    const academic = await Academic.findOneAndDelete({ _id: req.params.id, entityId: req.entityId });
     if (!academic) {
       return res.status(404).json({ message: 'Class not found' });
     }

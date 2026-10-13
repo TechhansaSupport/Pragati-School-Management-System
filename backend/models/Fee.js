@@ -32,6 +32,7 @@ const feeSchema = new mongoose.Schema({
     enum: ['Collected', 'Due this month', 'Overdue'],
     default: 'Due this month',
   },
+  entityId: { type: String, required: true, index: true },
 }, {
   timestamps: true,
 });

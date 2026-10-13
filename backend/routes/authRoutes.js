@@ -1,73 +1,600 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 
-// @desc    Auth user & get token
+const Store = require('../models/Store'); // Local Store/Tenant metadata mapping
+const User = require('../models/User');   // Local School Users (Staff, Teachers, Students, Accountants)
+const { PragatiTenant, PragatiUser } = require('../models/PragatiDb');
+const { protect } = require('../middleware/auth');
+
+// @desc    Store / School Admin & Staff Login API
 // @route   POST /api/auth/login
 // @access  Public
 router.post('/login', async (req, res) => {
   try {
-    const { uniqueId, password } = req.body;
-    
-    if (!uniqueId || !password) {
-        return res.status(400).json({ message: 'Please provide both uniqueId and password' });
-    }
+    // 1. Frontend sends slug (or tenantSlug), username (or uniqueId/email), and password
+    const slug = (req.body.slug || req.body.tenantSlug || '').trim();
+    const username = (req.body.username || req.body.uniqueId || req.body.email || '').trim();
+    const password = req.body.password;
 
-    // Find user by uniqueId (case insensitive)
-    const user = await User.findOne({ uniqueId: new RegExp(`^${uniqueId}$`, 'i') });
-
-    if (user && (await user.matchPassword(password))) {
-      // Create token
-      const token = jwt.sign(
-        { id: user._id, role: user.role, uniqueId: user.uniqueId },
-        process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024',
-        { expiresIn: '30d' }
-      );
-
-      res.json({
-        _id: user._id,
-        uniqueId: user.uniqueId,
-        role: user.role,
-        token,
+    if (!slug) {
+      return res.status(400).json({
+        error: 'Please provide workspace slug (e.g. /your-school-name/login)',
+        code: 'MISSING_SLUG',
+        message: 'Please provide slug (workspace identifier)'
       });
-    } else {
-      res.status(401).json({ message: 'Invalid credentials' });
     }
+
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Please provide both username and password',
+        code: 'MISSING_CREDENTIALS',
+        message: 'Please provide both username and password'
+      });
+    }
+
+    // 2. Resolve school/workspace context from User (school_ms) or licensed Store / PragatiTenant
+    let schoolUser = await User.findOne({
+      role: 'school',
+      $or: [
+        { slug: slug },
+        { schoolSlug: slug },
+        { uniqueId: slug }
+      ]
+    });
+
+    let localTenant = null;
+    let pragatiTenant = null;
+
+    if (schoolUser) {
+      // School exists in users collection under licensed tenant entity
+      pragatiTenant = await PragatiTenant.findOne({
+        entity_id: schoolUser.entityId
+      }).catch(() => null);
+    } else {
+      localTenant = await Store.findOne({
+        $or: [
+          { slug: slug },
+          { slug: new RegExp(`^${slug}$`, 'i') },
+          { storeId: slug }
+        ]
+      });
+
+      pragatiTenant = await PragatiTenant.findOne({
+        $or: [
+          { slug: slug },
+          { slug: new RegExp(`^${slug}$`, 'i') }
+        ]
+      }).catch(() => null);
+    }
+
+    if (!schoolUser && !pragatiTenant && !localTenant) {
+      return res.status(404).json({
+        error: `School workspace "${slug}" not found or has been deleted from the Pragati License Portal.`,
+        code: 'TENANT_NOT_FOUND',
+        message: `School workspace "${slug}" not found or has been deleted from the Pragati License Portal.`
+      });
+    }
+
+    // 3. Validate status & SMS product license in Pragati Control Plane
+    if (pragatiTenant) {
+      if (pragatiTenant.status && pragatiTenant.status !== 'active') {
+        return res.status(403).json({
+          error: 'Your organization account or license has been suspended or revoked by Pragati Licensing.',
+          code: 'TENANT_SUSPENDED',
+          message: 'Your organization account or license has been suspended or revoked by Pragati Licensing.'
+        });
+      }
+
+      if (pragatiTenant.subscribed_products && Array.isArray(pragatiTenant.subscribed_products) && pragatiTenant.subscribed_products.length > 0) {
+        const hasShms = pragatiTenant.subscribed_products.some(p => p.toLowerCase() === 'shms');
+        if (!hasShms) {
+          return res.status(403).json({
+            error: 'This organization does not have an active School Management System (SHMS) license in Pragati.',
+            code: 'NO_SHMS_LICENSE',
+            message: 'This organization does not have an active School Management System (SHMS) license in Pragati.'
+          });
+        }
+      }
+    }
+
+    if (schoolUser && schoolUser.status && schoolUser.status !== 'active') {
+      return res.status(403).json({
+        error: 'This school campus is currently inactive.',
+        code: 'TENANT_INACTIVE',
+        message: 'This school campus is currently inactive.'
+      });
+    }
+
+    const resolvedEntityId = schoolUser?.entityId || pragatiTenant?.entity_id || localTenant?.entityId;
+    const resolvedSlug = schoolUser?.slug || pragatiTenant?.slug || localTenant?.slug || slug;
+    const resolvedSchoolName = schoolUser?.name || schoolUser?.schoolName || localTenant?.name || pragatiTenant?.name || resolvedSlug || 'Pragati School';
+
+    let authenticatedUser = null;
+    let isPragatiUser = false;
+
+    // 4. Check PragatiUser first (Control Plane School Admin / Owner - READ ONLY)
+    if (pragatiTenant) {
+      const pragatiUser = await PragatiUser.findOne({
+        entity_id: resolvedEntityId,
+        $or: [
+          { username: username },
+          { username: new RegExp(`^${username}$`, 'i') },
+          { email: new RegExp(`^${username}$`, 'i') },
+          { frontdeskEmail: new RegExp(`^${username}$`, 'i') }
+        ]
+      });
+
+      if (pragatiUser) {
+        const hash = pragatiUser.password_hash || pragatiUser.password;
+        let isMatch = false;
+
+        if (hash) {
+          isMatch = await bcrypt.compare(password, hash);
+        }
+        // Fallback for plain text stored in legacy/test records
+        if (!isMatch && (pragatiUser.frontdeskPassword === password || pragatiUser.password === password)) {
+          isMatch = true;
+        }
+
+        if (isMatch) {
+          authenticatedUser = pragatiUser;
+          isPragatiUser = true;
+        }
+      }
+    }
+
+    // 5. If not authenticated via Pragati control plane user, check local school User (Principals, Staff, Teachers, Accountants, etc.)
+    if (!authenticatedUser) {
+      const localUser = await User.findOne({
+        $or: [
+          { entityId: resolvedEntityId, uniqueId: username },
+          { entityId: resolvedEntityId, uniqueId: new RegExp(`^${username}$`, 'i') },
+          { schoolSlug: resolvedSlug, uniqueId: username },
+          { schoolSlug: resolvedSlug, uniqueId: new RegExp(`^${username}$`, 'i') }
+        ]
+      });
+
+      if (localUser) {
+        let isMatch = false;
+        if (typeof localUser.matchPassword === 'function') {
+          isMatch = await localUser.matchPassword(password);
+        } else if (localUser.password) {
+          isMatch = await bcrypt.compare(password, localUser.password);
+        }
+        if (!isMatch && localUser.password === password) {
+          isMatch = true;
+        }
+
+        if (isMatch) {
+          authenticatedUser = localUser;
+          isPragatiUser = false;
+        }
+      }
+    }
+
+    if (!authenticatedUser) {
+      return res.status(401).json({
+        error: 'Invalid credentials',
+        code: 'INVALID_CREDENTIALS',
+        message: 'Invalid credentials'
+      });
+    }
+
+    let userRole = isPragatiUser
+      ? (authenticatedUser.role || authenticatedUser.frontdeskRole || 'admin').toLowerCase()
+      : (authenticatedUser.role || 'teacher').toLowerCase();
+
+    // Multi-Tier Hierarchy: The central entity owner/admin is Super Admin; local branch admins are Admin
+    if (isPragatiUser && (userRole === 'admin' || userRole === 'superadmin')) {
+      userRole = 'superadmin';
+    }
+
+    const resolvedUsername = isPragatiUser
+      ? (authenticatedUser.username || username)
+      : (authenticatedUser.uniqueId || username);
+
+    const token = jwt.sign(
+      {
+        id: authenticatedUser._id,
+        userId: authenticatedUser._id,
+        username: resolvedUsername,
+        role: userRole,
+        entityId: resolvedEntityId,
+        slug: resolvedSlug,
+        storeId: resolvedSlug,
+        tenantSlug: resolvedSlug,
+        schoolSlug: resolvedSlug,
+      },
+      process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024',
+      { expiresIn: '30d' }
+    );
+
+    return res.json({
+      _id: authenticatedUser._id,
+      userId: authenticatedUser._id,
+      username: resolvedUsername,
+      uniqueId: resolvedUsername,
+      name: authenticatedUser.name || '',
+      email: authenticatedUser.email || '',
+      profileImage: authenticatedUser.profileImage || authenticatedUser.avatar || '',
+      role: userRole,
+      tenantSlug: resolvedSlug,
+      slug: resolvedSlug,
+      storeId: resolvedSlug,
+      schoolSlug: resolvedSlug,
+      entityId: resolvedEntityId,
+      schoolName: resolvedSchoolName,
+      token,
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Login error:', error);
+    return res.status(500).json({ error: 'Server error', message: error.message });
   }
 });
 
-// @desc    Register a new user
-// @route   POST /api/auth/register
-// @access  Public
-router.post('/register', async (req, res) => {
+// @desc    Verify current token and return tenant/user info
+// @route   GET /api/auth/me
+// @access  Protected
+router.get('/me', protect, async (req, res) => {
+  const schoolName = req.tenant?.name || req.pragatiTenant?.name || req.tenant?.slug || 'Pragati School';
+  
+  let fullUser = null;
+  const userId = req.user?.id || req.user?.userId;
+  const currentUsername = req.user?.username;
+  const entityId = req.entityId;
+
+  if (userId) {
+    fullUser = await User.findById(userId).catch(() => null);
+    if (!fullUser) fullUser = await PragatiUser.findById(userId).catch(() => null);
+  }
+  if (!fullUser && currentUsername && entityId) {
+    fullUser = await User.findOne({
+      entityId,
+      $or: [{ uniqueId: currentUsername }, { uniqueId: new RegExp(`^${currentUsername}$`, 'i') }]
+    }).catch(() => null);
+    if (!fullUser) {
+      fullUser = await PragatiUser.findOne({
+        entity_id: entityId,
+        $or: [{ username: currentUsername }, { email: new RegExp(`^${currentUsername}$`, 'i') }]
+      }).catch(() => null);
+    }
+  }
+
+  let effectiveRole = req.user?.role;
+  // If the user belongs to Pragati control plane (or fullUser is PragatiUser), promote to superadmin
+  const isPragatiRecord = fullUser && (fullUser.entity_id || fullUser.username || fullUser.password_hash);
+  if (isPragatiRecord && (effectiveRole === 'admin' || !effectiveRole)) {
+    effectiveRole = 'superadmin';
+  }
+
+  res.json({
+    user: {
+      ...req.user,
+      role: effectiveRole || req.user?.role,
+      name: fullUser?.name || '',
+      email: fullUser?.email || '',
+      profileImage: fullUser?.profileImage || fullUser?.avatar || ''
+    },
+    tenant: req.tenant,
+    pragatiTenant: req.pragatiTenant,
+    entityId: req.entityId,
+    schoolName
+  });
+});
+
+// @desc    Update User Profile (Profile Image, Display Name, Email)
+// @route   PUT /api/auth/profile
+// @access  Protected
+router.put('/profile', protect, async (req, res) => {
   try {
-    const { uniqueId, password, role } = req.body;
+    const { profileImage, name, email } = req.body;
+    const userId = req.user?.id || req.user?.userId;
+    const currentUsername = req.user?.username;
+    const entityId = req.entityId;
 
-    const userExists = await User.findOne({ uniqueId: new RegExp(`^${uniqueId}$`, 'i') });
-    if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+    let localUser = null;
+    let pragatiUser = null;
+
+    if (userId) {
+      localUser = await User.findById(userId).catch(() => null);
+      pragatiUser = await PragatiUser.findById(userId).catch(() => null);
     }
 
-    const user = await User.create({
-      uniqueId,
-      password,
-      role
-    });
+    if (!localUser && currentUsername && entityId) {
+      localUser = await User.findOne({
+        entityId: entityId,
+        $or: [
+          { uniqueId: currentUsername },
+          { uniqueId: new RegExp(`^${currentUsername}$`, 'i') }
+        ]
+      }).catch(() => null);
+    }
 
-    if (user) {
-      res.status(201).json({
-        _id: user._id,
-        uniqueId: user.uniqueId,
-        role: user.role
+    if (!pragatiUser && currentUsername && entityId) {
+      pragatiUser = await PragatiUser.findOne({
+        entity_id: entityId,
+        $or: [
+          { username: currentUsername },
+          { email: new RegExp(`^${currentUsername}$`, 'i') }
+        ]
+      }).catch(() => null);
+    }
+
+    if (!localUser && !pragatiUser) {
+      return res.status(404).json({
+        error: 'User account not found.',
+        code: 'USER_NOT_FOUND'
       });
-    } else {
-      res.status(400).json({ message: 'Invalid user data' });
     }
+
+    if (!localUser && pragatiUser) {
+      localUser = new User({
+        uniqueId: currentUsername,
+        role: req.user?.role || 'admin',
+        entityId: entityId,
+        name: pragatiUser.name || name || '',
+        email: pragatiUser.email || email || '',
+        profileImage: profileImage || ''
+      });
+    }
+
+    if (localUser) {
+      if (profileImage !== undefined) localUser.profileImage = profileImage;
+      if (name !== undefined) localUser.name = name;
+      if (email !== undefined) localUser.email = email;
+      await localUser.save();
+    }
+
+    const updatedUserDoc = localUser || pragatiUser;
+    const resolvedUsername = updatedUserDoc.uniqueId || updatedUserDoc.username || currentUsername;
+    const updatedUser = {
+      ...req.user,
+      uniqueId: resolvedUsername,
+      username: resolvedUsername,
+      name: updatedUserDoc.name || name || '',
+      email: updatedUserDoc.email || email || '',
+      profileImage: updatedUserDoc.profileImage !== undefined ? updatedUserDoc.profileImage : (profileImage || ''),
+    };
+
+    return res.json({
+      success: true,
+      message: 'Profile updated successfully!',
+      user: updatedUser
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Error updating profile:', error);
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// @desc    Change User Login Credentials (Username and/or Password)
+// @route   PUT /api/auth/change-credentials
+// @access  Protected (Any logged-in user: Admin, Teacher, Staff, Student, etc.)
+router.put('/change-credentials', protect, async (req, res) => {
+  try {
+    const { currentPassword, newUsername, newPassword } = req.body;
+
+    // 1. Current password is required for security verification
+    if (!currentPassword) {
+      return res.status(400).json({
+        error: 'Current password is required to verify your identity.',
+        code: 'MISSING_CURRENT_PASSWORD'
+      });
+    }
+
+    if (!newUsername && !newPassword) {
+      return res.status(400).json({
+        error: 'Please provide a new username or a new password to update.',
+        code: 'NO_CHANGES_SPECIFIED'
+      });
+    }
+
+    const userId = req.user?.id || req.user?.userId;
+    const currentUsername = req.user?.username;
+    const entityId = req.entityId;
+
+    // 2. Locate user in local User or PragatiUser
+    let localUser = null;
+    let pragatiUser = null;
+
+    if (userId) {
+      localUser = await User.findById(userId);
+      pragatiUser = await PragatiUser.findById(userId);
+    }
+
+    if (!localUser && currentUsername && entityId) {
+      localUser = await User.findOne({
+        entityId: entityId,
+        $or: [
+          { uniqueId: currentUsername },
+          { uniqueId: new RegExp(`^${currentUsername}$`, 'i') }
+        ]
+      });
+    }
+
+    if (!pragatiUser && currentUsername && entityId) {
+      pragatiUser = await PragatiUser.findOne({
+        entity_id: entityId,
+        $or: [
+          { username: currentUsername },
+          { email: new RegExp(`^${currentUsername}$`, 'i') }
+        ]
+      });
+    }
+
+    if (!localUser && !pragatiUser) {
+      return res.status(404).json({
+        error: 'User account not found.',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
+    // 3. Verify Current Password
+    let isPasswordCorrect = false;
+
+    if (localUser) {
+      if (typeof localUser.matchPassword === 'function') {
+        isPasswordCorrect = await localUser.matchPassword(currentPassword);
+      } else if (localUser.password) {
+        isPasswordCorrect = await bcrypt.compare(currentPassword, localUser.password);
+      }
+      if (!isPasswordCorrect && localUser.password === currentPassword) {
+        isPasswordCorrect = true;
+      }
+    }
+
+    if (!isPasswordCorrect && pragatiUser) {
+      const pHash = pragatiUser.password_hash || pragatiUser.password;
+      if (pHash) {
+        isPasswordCorrect = await bcrypt.compare(currentPassword, pHash);
+      }
+      if (!isPasswordCorrect && (pragatiUser.password === currentPassword || pragatiUser.frontdeskPassword === currentPassword)) {
+        isPasswordCorrect = true;
+      }
+    }
+
+    if (!isPasswordCorrect) {
+      return res.status(401).json({
+        error: 'Incorrect current password. Please verify and try again.',
+        code: 'INVALID_PASSWORD'
+      });
+    }
+
+    const updates = [];
+
+    // 4. Validate and Apply Username Update
+    let updatedUsername = currentUsername;
+    if (newUsername && newUsername.trim() && newUsername.trim() !== currentUsername) {
+      const trimmedUser = newUsername.trim();
+
+      if (trimmedUser.length < 3) {
+        return res.status(400).json({
+          error: 'Username must be at least 3 characters long.',
+          code: 'USERNAME_TOO_SHORT'
+        });
+      }
+
+      if (trimmedUser.length > 50) {
+        return res.status(400).json({
+          error: 'Username cannot exceed 50 characters.',
+          code: 'USERNAME_TOO_LONG'
+        });
+      }
+
+      // Check if username already exists in this school entity
+      const existingLocal = await User.findOne({
+        entityId: entityId,
+        uniqueId: new RegExp(`^${trimmedUser}$`, 'i'),
+        ...(localUser ? { _id: { $ne: localUser._id } } : {})
+      });
+
+      if (existingLocal) {
+        return res.status(400).json({
+          error: `Username "${trimmedUser}" is already taken in this school. Please choose a different username.`,
+          code: 'USERNAME_TAKEN'
+        });
+      }
+
+      const existingPragati = await PragatiUser.findOne({
+        entity_id: entityId,
+        username: new RegExp(`^${trimmedUser}$`, 'i'),
+        ...(pragatiUser ? { _id: { $ne: pragatiUser._id } } : {})
+      });
+
+      if (existingPragati) {
+        return res.status(400).json({
+          error: `Username "${trimmedUser}" is already taken in this school. Please choose a different username.`,
+          code: 'USERNAME_TAKEN'
+        });
+      }
+
+      if (localUser) {
+        localUser.uniqueId = trimmedUser;
+        // If linked to a Staff member, also update portalUsername
+        if (localUser.onModel === 'Staff' && localUser.referenceId) {
+          const Staff = require('../models/Staff');
+          await Staff.findByIdAndUpdate(localUser.referenceId, { portalUsername: trimmedUser }).catch(() => {});
+        }
+      }
+
+      if (pragatiUser) {
+        pragatiUser.username = trimmedUser;
+      }
+
+      updatedUsername = trimmedUser;
+      updates.push('username');
+    }
+
+    // 5. Validate and Apply Password Update
+    if (newPassword) {
+      if (typeof newPassword !== 'string' || newPassword.length < 6) {
+        return res.status(400).json({
+          error: 'New password must be at least 6 characters long.',
+          code: 'WEAK_PASSWORD'
+        });
+      }
+
+      if (!localUser && pragatiUser) {
+        localUser = new User({
+          uniqueId: currentUsername,
+          role: req.user?.role || 'admin',
+          entityId: entityId,
+          name: pragatiUser.name || '',
+          email: pragatiUser.email || ''
+        });
+      }
+
+      if (localUser) {
+        localUser.password = newPassword;
+      }
+
+      updates.push('password');
+    }
+
+    // 6. Save the record in school_ms (Zero writes to pragati DB)
+    if (localUser) {
+      await localUser.save();
+    }
+
+    // 7. Issue a fresh JWT token with the updated credentials
+    const targetId = (localUser?._id || pragatiUser?._id);
+    const token = jwt.sign(
+      {
+        id: targetId,
+        userId: targetId,
+        username: updatedUsername,
+        role: req.user.role,
+        entityId: entityId,
+        slug: req.user.slug || req.user.tenantSlug,
+        storeId: req.user.storeId || req.user.tenantSlug,
+        tenantSlug: req.user.tenantSlug || req.user.slug,
+      },
+      process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024',
+      { expiresIn: '30d' }
+    );
+
+    return res.json({
+      success: true,
+      message: updates.length === 2 
+        ? 'Username and password updated successfully!'
+        : updates.includes('password')
+          ? 'Password updated successfully!'
+          : 'Username updated successfully!',
+      user: {
+        _id: targetId,
+        userId: targetId,
+        username: updatedUsername,
+        uniqueId: updatedUsername,
+        role: req.user.role,
+        tenantSlug: req.user.tenantSlug || req.user.slug,
+        token
+      }
+    });
+  } catch (error) {
+    console.error('Error changing credentials:', error);
+    return res.status(500).json({ error: 'Server error', message: error.message });
   }
 });
 

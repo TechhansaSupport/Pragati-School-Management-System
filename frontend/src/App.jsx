@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { Calendar, Clock } from 'lucide-react';
 import Header from './components/Header';
+import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import PrincipalDashboard from './pages/PrincipalDashboard';
-import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import LibraryDashboard from './pages/LibraryDashboard';
 import LibraryBooks from './pages/LibraryBooks';
 import TransportDashboard from './pages/TransportDashboard';
@@ -21,15 +22,14 @@ import TransportRoutes from './pages/TransportRoutes';
 import './index.css';
 
 const MainLayout = ({ children }) => {
-  const [dateRange, setDateRange] = useState('Last month');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLayoutManagerOpen, setIsLayoutManagerOpen] = useState(false);
   
-  // Theme preferences
-  const [isCompactMode, setIsCompactMode] = useState(false);
+  // Theme preferences - Compact Mode enabled by default
+  const [isCompactMode, setIsCompactMode] = useState(() => {
+    const saved = localStorage.getItem('compactMode');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [isDarkMode, setIsDarkMode] = useState(false);
-  
-  const dropdownRef = useRef(null);
 
   useEffect(() => {
     if (isDarkMode) document.body.classList.add('dark-mode');
@@ -39,27 +39,32 @@ const MainLayout = ({ children }) => {
   useEffect(() => {
     if (isCompactMode) document.body.classList.add('compact-view');
     else document.body.classList.remove('compact-view');
+    localStorage.setItem('compactMode', isCompactMode);
   }, [isCompactMode]);
 
-  // Close dropdown when clicking outside
+  // Live date & time
+  const [currentDateTime, setCurrentDateTime] = useState(new Date());
+
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    const timer = setInterval(() => {
+      setCurrentDateTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const dateOptions = [
-    { id: 'today', label: 'Today', suffix: '(Just now)' },
-    { id: 'week', label: 'This week', suffix: '(Last 7 days)' },
-    { id: 'month', label: 'Last month', suffix: '(Previous 30 days)' },
-    { id: 'year', label: 'This year', suffix: '(Year to date)' }
-  ];
+  const formattedDate = currentDateTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
-  const selectedOption = dateOptions.find(opt => opt.label === dateRange);
+  const formattedTime = currentDateTime.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
 
   return (
     <div className="app-shell">
@@ -68,69 +73,48 @@ const MainLayout = ({ children }) => {
       
       <div className="sub-header">
         <div className="sub-header-left">
-          <div 
-            className="sub-header-item" 
-            style={{ position: 'relative', cursor: 'pointer', userSelect: 'none' }}
-            ref={dropdownRef}
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
-            <span className="text-muted">Changes:</span> 
-            <span style={{ fontWeight: 600, color: 'var(--color-text-main)' }}>{dateRange}</span> 
-            <span className="text-muted" style={{ fontSize: '0.8rem' }}>{selectedOption?.suffix}</span>
-            <span style={{ fontSize: '10px', transition: 'transform 0.2s', transform: isDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', marginLeft: '4px' }}>▼</span>
-            
-            {/* Dropdown Menu */}
-            {isDropdownOpen && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: '0',
-                marginTop: '8px',
-                background: 'rgba(255, 255, 255, 0.95)',
-                backdropFilter: 'blur(16px)',
-                border: '1px solid rgba(226, 232, 240, 0.8)',
-                borderRadius: '12px',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
-                zIndex: 100,
-                minWidth: '220px',
-                overflow: 'hidden'
-              }}>
-                {dateOptions.map((opt) => (
-                  <div 
-                    key={opt.id}
-                    style={{
-                      padding: '12px 16px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      cursor: 'pointer',
-                      background: dateRange === opt.label ? 'rgba(79, 70, 229, 0.05)' : 'transparent',
-                      borderLeft: dateRange === opt.label ? '3px solid #4F46E5' : '3px solid transparent',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseOver={(e) => {
-                      if (dateRange !== opt.label) e.currentTarget.style.background = 'rgba(241, 245, 249, 0.8)';
-                    }}
-                    onMouseOut={(e) => {
-                      if (dateRange !== opt.label) e.currentTarget.style.background = 'transparent';
-                    }}
-                    onClick={() => {
-                      setDateRange(opt.label);
-                      setIsDropdownOpen(false);
-                    }}
-                  >
-                    <span style={{ fontWeight: dateRange === opt.label ? 600 : 500, color: dateRange === opt.label ? '#4F46E5' : 'var(--color-text-main)', fontSize: '0.9rem' }}>
-                      {opt.label}
-                    </span>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{opt.suffix}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="sub-header-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={15} style={{ color: '#4F46E5' }} />
+            <span style={{ fontWeight: 600, color: 'var(--color-text-main)' }}>
+              {formattedDate}
+            </span>
           </div>
-          <div className="sub-header-item" style={{marginLeft: '16px'}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span className="text-muted">Last update:</span> 3 min ago
+          <span style={{ color: 'var(--color-border)', margin: '0 4px', userSelect: 'none' }}>•</span>
+          <div className="sub-header-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={15} style={{ color: '#0F766E' }} />
+            <span style={{ 
+              fontWeight: 600, 
+              color: 'var(--color-text-main)', 
+              fontVariantNumeric: 'tabular-nums',
+              letterSpacing: '0.4px'
+            }}>
+              {formattedTime}
+            </span>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              marginLeft: '4px',
+              padding: '2px 8px',
+              borderRadius: '999px',
+              background: 'rgba(22, 163, 74, 0.1)',
+              border: '1px solid rgba(22, 163, 74, 0.2)',
+              color: '#16a34a',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em'
+            }}>
+              <span style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: '#16a34a',
+                boxShadow: '0 0 6px #16a34a',
+                animation: 'pulse-dot 2s infinite ease-in-out'
+              }} />
+              LIVE
+            </span>
           </div>
         </div>
         <div className="sub-header-right">
@@ -148,7 +132,8 @@ const MainLayout = ({ children }) => {
       </div>
 
       <div className="main-wrapper">
-        <div className="content-layer">
+        <Sidebar />
+        <div className="content-layer hide-scrollbar">
           {children}
         </div>
       </div>
@@ -260,6 +245,10 @@ const MainLayout = ({ children }) => {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.85); }
+        }
       `}</style>
     </div>
   );
@@ -267,27 +256,56 @@ const MainLayout = ({ children }) => {
 
 const AppRoutes = () => {
   const location = useLocation();
-  const isLoginPage = location.pathname === '/login';
+
+  // Multi-window session synchronization:
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const pathSlug = pathParts[0];
+
+  // If this window does not have active sessionStorage (e.g. opened in a new window/tab),
+  // recover the admin session from localStorage
+  if (!sessionStorage.getItem('userInfo')) {
+    const cached = localStorage.getItem('authSession');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.userInfo) sessionStorage.setItem('userInfo', JSON.stringify(parsed.userInfo));
+        if (parsed.userRole) sessionStorage.setItem('userRole', parsed.userRole);
+        if (parsed.token) sessionStorage.setItem('token', parsed.token);
+      } catch (e) {}
+    }
+  }
+
+  // Ensure this window operates strictly in the URL's school context
+  if (pathSlug && pathSlug !== 'login') {
+    sessionStorage.setItem('tenantSlug', pathSlug);
+  }
 
   const role = sessionStorage.getItem('userRole');
+  const tenantSlug = sessionStorage.getItem('tenantSlug') || (pathSlug !== 'login' ? pathSlug : '');
 
-  if (isLoginPage) {
+  // Handle global /login redirect -> smart redirect to tenant login
+  if (location.pathname === '/login') {
+    const fallbackSlug = tenantSlug || 'test-school';
+    return <Navigate to={`/${fallbackSlug}/login`} replace />;
+  }
+
+  // Handle specific school login
+  if (location.pathname.endsWith('/login')) {
     return (
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/:tenantSlug/login" element={<Login />} />
       </Routes>
     );
   }
 
-  // Auth Guard: If no role is set, redirect to login page
-  if (!role) {
-    return <Navigate to="/login" replace />;
+  // Auth Guard: If no role or tenant is set, redirect to specific school login
+  if (!role || !tenantSlug) {
+    const redirectSlug = pathSlug && pathSlug !== 'login' ? pathSlug : (tenantSlug || 'test-school');
+    return <Navigate to={`/${redirectSlug}/login`} replace />;
   }
 
-  // Dynamically serve the correct dashboard based on the user's role
   const getDashboardForRole = () => {
     switch(role) {
-      case 'superadmin': return <SuperAdminDashboard />;
       case 'principal': return <PrincipalDashboard />;
       case 'teacher': return <TeacherDashboard />;
       case 'student': return <StudentDashboard />;
@@ -295,6 +313,7 @@ const AppRoutes = () => {
       case 'librarian': return <LibraryDashboard />;
       case 'transport': return <TransportDashboard />;
       case 'accountant': return <Finance />;
+      case 'superadmin':
       case 'admin':
       default: return <Dashboard />;
     }
@@ -303,21 +322,25 @@ const AppRoutes = () => {
   return (
     <MainLayout>
       <Routes>
-        <Route path="/" element={getDashboardForRole()} />
-        <Route path="/dashboard" element={getDashboardForRole()} />
-        <Route path="/library-dashboard" element={<LibraryDashboard />} />
-        <Route path="/books" element={<LibraryBooks />} />
-        <Route path="/transport-dashboard" element={<TransportDashboard />} />
-        <Route path="/routes" element={<TransportRoutes />} />
-        <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/parent-dashboard" element={<ParentDashboard />} />
-        <Route path="/students" element={<Students />} />
-        <Route path="/staff" element={<Staff />} />
-        <Route path="/academics" element={<Academics />} />
-        <Route path="/finance" element={<Finance />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/communication" element={<Communication />} />
+        <Route path="/:tenantSlug" element={getDashboardForRole()} />
+        <Route path="/:tenantSlug/dashboard" element={getDashboardForRole()} />
+        <Route path="/:tenantSlug/schools" element={<Dashboard />} />
+        <Route path="/:tenantSlug/library-dashboard" element={<LibraryDashboard />} />
+        <Route path="/:tenantSlug/books" element={<LibraryBooks />} />
+        <Route path="/:tenantSlug/transport-dashboard" element={<TransportDashboard />} />
+
+
+        <Route path="/:tenantSlug/routes" element={<TransportRoutes />} />
+        <Route path="/:tenantSlug/teacher-dashboard" element={<TeacherDashboard />} />
+        <Route path="/:tenantSlug/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/:tenantSlug/parent-dashboard" element={<ParentDashboard />} />
+        <Route path="/:tenantSlug/students" element={<Students />} />
+        <Route path="/:tenantSlug/staff" element={<Staff />} />
+        <Route path="/:tenantSlug/teachers" element={<Staff />} />
+        <Route path="/:tenantSlug/academics" element={<Academics />} />
+        <Route path="/:tenantSlug/finance" element={<Finance />} />
+        <Route path="/:tenantSlug/reports" element={<Reports />} />
+        <Route path="/:tenantSlug/communication" element={<Communication />} />
         <Route path="*" element={getDashboardForRole()} />
       </Routes>
     </MainLayout>
