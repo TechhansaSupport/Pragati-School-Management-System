@@ -8,28 +8,32 @@ const ClassSection = require('../models/ClassSection');
 const Book = require('../models/Book');
 const TransportRoute = require('../models/TransportRoute');
 
-// Seed helper if school has 0 fee records
-const seedInitialFeesIfEmpty = async (entityId) => {
-  if (!entityId) return;
-  const count = await Fee.countDocuments({ entityId });
-  if (count === 0) {
+// Seed helper on-demand if school has 0 fee records
+const seedInitialFeesIfEmpty = async (entityId, force = false) => {
+  if (!entityId && !force) return;
+  const count = await Fee.countDocuments(entityId ? { entityId } : {});
+  if (count === 0 || force) {
     const sampleFees = [
-      { studentName: 'Aarav Sharma', classSection: 'Class 10 - A', parentContact: '+91 98201 12345', amount: 45000, dueDate: new Date('2026-10-15'), status: 'Collected', entityId },
-      { studentName: 'Diya Patel', classSection: 'Class 10 - A', parentContact: '+91 98201 12346', amount: 45000, dueDate: new Date('2026-10-15'), status: 'Collected', entityId },
-      { studentName: 'Kabir Mehta', classSection: 'Class 9 - B', parentContact: '+91 98201 12349', amount: 38000, dueDate: new Date('2026-10-25'), status: 'Due this month', entityId },
-      { studentName: 'Rohan Gupta', classSection: 'Class 12 - Science', parentContact: '+91 98201 12351', amount: 48000, dueDate: new Date('2026-10-05'), status: 'Overdue', entityId },
-      { studentName: 'Vihaan Verma', classSection: 'Class 10 - B', parentContact: '+91 98201 12347', amount: 42000, dueDate: new Date('2026-09-28'), status: 'Overdue', entityId },
-      { studentName: 'Ananya Iyer', classSection: 'Class 9 - A', parentContact: '+91 98201 12348', amount: 38000, dueDate: new Date('2026-10-28'), status: 'Due this month', entityId },
+      { studentName: 'Aarav Sharma', classSection: 'Class 10 - A', parentContact: '+91 98201 12345', amount: 45000, dueDate: new Date('2026-10-15'), status: 'Collected', entityId: entityId || 'default-school' },
+      { studentName: 'Diya Patel', classSection: 'Class 10 - A', parentContact: '+91 98201 12346', amount: 45000, dueDate: new Date('2026-10-15'), status: 'Collected', entityId: entityId || 'default-school' },
+      { studentName: 'Kabir Mehta', classSection: 'Class 9 - B', parentContact: '+91 98201 12349', amount: 38000, dueDate: new Date('2026-10-25'), status: 'Due this month', entityId: entityId || 'default-school' },
+      { studentName: 'Rohan Gupta', classSection: 'Class 12 - Science', parentContact: '+91 98201 12351', amount: 48000, dueDate: new Date('2026-10-05'), status: 'Overdue', entityId: entityId || 'default-school' },
+      { studentName: 'Vihaan Verma', classSection: 'Class 10 - B', parentContact: '+91 98201 12347', amount: 42000, dueDate: new Date('2026-09-28'), status: 'Overdue', entityId: entityId || 'default-school' },
+      { studentName: 'Ananya Iyer', classSection: 'Class 9 - A', parentContact: '+91 98201 12348', amount: 38000, dueDate: new Date('2026-10-28'), status: 'Due this month', entityId: entityId || 'default-school' },
     ];
-    await Fee.insertMany(sampleFees).catch(() => {});
+    for (const f of sampleFees) {
+      try {
+        await Fee.create(f);
+      } catch (e) {
+        // ignore duplicate
+      }
+    }
   }
 };
 
 // GET /api/dashboard/overview — Main dashboard KPIs from live MongoDB collections
 router.get('/overview', async (req, res) => {
   try {
-    await seedInitialFeesIfEmpty(req.entityId);
-
     const totalStudents = await Student.countDocuments({ entityId: req.entityId });
     const totalStaff = await Staff.countDocuments({ entityId: req.entityId });
     const totalTeachers = await Staff.countDocuments({ entityId: req.entityId, role: 'Teacher' });
@@ -41,14 +45,14 @@ router.get('/overview', async (req, res) => {
     ]);
     const avgAttendance = attendanceResult.length > 0
       ? Math.round(attendanceResult[0].avgAttendance * 10) / 10
-      : 96.5;
+      : (totalStudents > 0 ? 96.5 : 0);
 
     // Real Capacity from ClassSection
     const capacityAgg = await ClassSection.aggregate([
       { $match: { entityId: req.entityId, status: 'Active' } },
       { $group: { _id: null, totalCapacity: { $sum: '$capacity' } } }
     ]);
-    const totalCapacity = capacityAgg.length > 0 && capacityAgg[0].totalCapacity > 0 ? capacityAgg[0].totalCapacity : 240;
+    const totalCapacity = capacityAgg.length > 0 && capacityAgg[0].totalCapacity > 0 ? capacityAgg[0].totalCapacity : 0;
 
     const seatUtilization = totalCapacity > 0 && totalStudents > 0
       ? Math.min(100, Math.round((totalStudents / totalCapacity) * 100))
@@ -59,7 +63,7 @@ router.get('/overview', async (req, res) => {
       { $match: { entityId: req.entityId, type: 'Fee Collection', status: 'Completed' } },
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
-    const totalCollected = collectionsResult.length > 0 ? collectionsResult[0].total : 90000;
+    const totalCollected = collectionsResult.length > 0 ? collectionsResult[0].total : 0;
 
     // Pending fee count & approvals
     const pendingFeesCount = await Fee.countDocuments({ entityId: req.entityId, status: { $in: ['Overdue', 'Due this month'] } });
@@ -81,21 +85,21 @@ router.get('/overview', async (req, res) => {
     res.json({
       totalStudents,
       totalStaff,
-      totalTeachers: totalTeachers || Math.max(1, Math.round(totalStaff * 0.7)),
+      totalTeachers,
       avgAttendance,
       seatUtilization,
       totalCapacity,
       totalCollected,
-      pendingFeesCount: pendingFeesCount || 4,
-      activeClassesCount: activeClassesCount || 6,
-      totalFleetCount: totalFleetCount || 5,
-      totalBooksCount: totalBooksCount || 7,
+      pendingFeesCount: pendingFeesCount,
+      activeClassesCount: activeClassesCount,
+      totalFleetCount: totalFleetCount,
+      totalBooksCount: totalBooksCount,
       revenueData,
       roleDistribution: [
-        { name: 'Students', value: totalStudents || 6, color: '#4F46E5' },
-        { name: 'Parents', value: totalStudents || 6, color: '#60A5FA' },
-        { name: 'Teachers', value: totalTeachers || 4, color: '#0F766E' },
-        { name: 'Admin/Staff', value: Math.max(1, totalStaff - totalTeachers) || 2, color: '#F59E0B' },
+        { name: 'Students', value: totalStudents, color: '#4F46E5' },
+        { name: 'Parents', value: totalStudents, color: '#60A5FA' },
+        { name: 'Teachers', value: totalTeachers, color: '#0F766E' },
+        { name: 'Admin/Staff', value: Math.max(0, totalStaff - totalTeachers), color: '#F59E0B' },
       ],
     });
   } catch (error) {
@@ -106,8 +110,6 @@ router.get('/overview', async (req, res) => {
 // GET /api/dashboard/pending-fees — Pending fees table
 router.get('/pending-fees', async (req, res) => {
   try {
-    await seedInitialFeesIfEmpty(req.entityId);
-
     const { search, page = 1, limit = 10, status } = req.query;
     const query = { entityId: req.entityId };
 
@@ -148,9 +150,9 @@ router.get('/pending-fees', async (req, res) => {
       page: Number(page),
       totalPages: Math.ceil(total / Number(limit)),
       stats: {
-        collected: collected.length > 0 ? collected[0].total : 90000,
-        dueThisMonth: dueThisMonth.length > 0 ? dueThisMonth[0].total : 76000,
-        overdue: overdue.length > 0 ? overdue[0].total : 90000,
+        collected: collected.length > 0 ? collected[0].total : 0,
+        dueThisMonth: dueThisMonth.length > 0 ? dueThisMonth[0].total : 0,
+        overdue: overdue.length > 0 ? overdue[0].total : 0,
       },
     });
   } catch (error) {
@@ -222,12 +224,7 @@ router.get('/principal-summary', async (req, res) => {
           present: Math.round(g.avgAtt || 95),
           absent: Math.max(1, 100 - Math.round(g.avgAtt || 95)),
         }))
-      : [
-          { grade: 'Grade 9', present: 94, absent: 6 },
-          { grade: 'Grade 10', present: 97, absent: 3 },
-          { grade: 'Grade 11', present: 92, absent: 8 },
-          { grade: 'Grade 12', present: 95, absent: 5 },
-        ];
+      : [];
 
     // Real At-Risk students from MongoDB (lowest attendance or fee overdue)
     const atRiskStudents = await Student.find({ entityId: req.entityId })
@@ -243,13 +240,11 @@ router.get('/principal-summary', async (req, res) => {
     }));
 
     res.json({
-      schoolAverage: '79.2%',
-      overallAttendance: `${schoolAvgAtt}%`,
+      schoolAverage: totalStudents > 0 ? '79.2%' : 'N/A',
+      overallAttendance: totalStudents > 0 ? `${schoolAvgAtt}%` : 'N/A',
       totalStudents,
       attendanceData,
-      riskStudents: riskStudents.length > 0 ? riskStudents : [
-        { id: '1', name: 'Kabir Mehta', grade: 'Class 9 - B', issue: 'Attendance Monitoring (88%)', risk: 'Medium' }
-      ],
+      riskStudents,
       academicTrend: [
         { term: 'Term 1', avg: 74 },
         { term: 'Term 2', avg: 76 },

@@ -44,7 +44,7 @@ const ParentDashboard = () => {
       <div style={{
         gridColumn: '1 / -1',
         background: 'linear-gradient(135deg, rgba(22, 163, 74,0.9) 0%, rgba(79,70,229,0.9) 100%)',
-        borderRadius: '16px',
+        borderRadius: '20px',
         padding: '24px 32px',
         color: 'white',
         display: 'flex',
@@ -72,14 +72,14 @@ const ParentDashboard = () => {
       {/* LEFT COLUMN */}
       <div className="left-column">
         {/* KPI Row */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--dashboard-card-gap)' }}>
+        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
           {[
             { label: 'Attendance', value: parentSummary.attendance, icon: Activity, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
             { label: 'Avg Grade', value: parentSummary.avgGrade, icon: CheckCircle, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)' },
             { label: 'Upcoming Event', value: 'Sports Meet', icon: Calendar, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)' },
             { label: 'Fee Outstanding', value: parentSummary.feeDue, icon: CreditCard, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' }
           ].map((kpi, i) => (
-            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', transition: 'all 0.3s' }}>
+            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <kpi.icon size={20} color={kpi.color} />

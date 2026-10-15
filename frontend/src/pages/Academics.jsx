@@ -6,6 +6,7 @@ import {
   Edit, Trash2, RefreshCw, LayoutGrid, List, CheckCircle2, 
   GraduationCap, Building, AlertCircle, ArrowRight
 } from 'lucide-react';
+import CreateSchoolModal from '../components/CreateSchoolModal';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -18,6 +19,23 @@ const standardGrades = [
 
 const standardSections = ['A', 'B', 'C', 'D', 'Science', 'Commerce', 'Arts'];
 
+const institutionalSubjects = [
+  { name: 'Mathematics', code: 'MATH-101', dept: 'Science & Math', grades: 'All Grades', icon: Award, color: '#2563eb' },
+  { name: 'General Science', code: 'SCI-102', dept: 'Science', grades: 'Class 1 to 10', icon: BookOpen, color: '#059669' },
+  { name: 'Physics', code: 'PHY-201', dept: 'Science', grades: 'Class 11 & 12', icon: Award, color: '#7c3aed' },
+  { name: 'Chemistry', code: 'CHEM-202', dept: 'Science', grades: 'Class 11 & 12', icon: Award, color: '#d97706' },
+  { name: 'English Literature', code: 'ENG-101', dept: 'Languages', grades: 'All Grades', icon: BookOpen, color: '#2563eb' },
+  { name: 'Social Studies', code: 'SST-103', dept: 'Humanities', grades: 'Class 1 to 10', icon: BookOpen, color: '#dc2626' },
+  { name: 'Computer Science', code: 'CS-301', dept: 'Technology', grades: 'Class 6 to 12', icon: Award, color: '#0284c7' },
+  { name: 'Accountancy & Commerce', code: 'COMM-401', dept: 'Commerce', grades: 'Class 11 & 12', icon: Award, color: '#16a34a' },
+];
+
+const standardAssessmentSchedules = [
+  { title: 'Mid-Term Examinations 2026', date: 'October 25 - November 5, 2026', status: 'Published', grades: 'Class 6th to 12th' },
+  { title: 'Unit Assessment 3 (Primary)', date: 'November 12 - November 18, 2026', status: 'Scheduled', grades: 'Class 1st to 5th' },
+  { title: 'Pre-Board Mock Examinations', date: 'December 10 - December 22, 2026', status: 'Draft', grades: 'Class 10th & 12th' },
+];
+
 const Academics = () => {
   // Authentication & Session Context
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
@@ -29,6 +47,8 @@ const Academics = () => {
 
   // Data States
   const [classesList, setClassesList] = useState([]);
+  const [schoolsList, setSchoolsList] = useState([]);
+  const [isCreateSchoolOpen, setIsCreateSchoolOpen] = useState(false);
   const [distinctGrades, setDistinctGrades] = useState([]);
   const [teachersList, setTeachersList] = useState([]);
   const [stats, setStats] = useState({
@@ -58,6 +78,7 @@ const Academics = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState(null);
   const [classToDelete, setClassToDelete] = useState(null);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
   const [selectedClassForRoster, setSelectedClassForRoster] = useState(null);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterDetails, setRosterDetails] = useState(null);
@@ -83,6 +104,7 @@ const Academics = () => {
     subjects: 'Mathematics, Science, English, Social Studies',
     schedule: 'Mon - Fri | 08:30 AM - 02:30 PM',
     status: 'Active',
+    schoolSlug: '',
   };
   const [formData, setFormData] = useState(initialForm);
 
@@ -94,16 +116,22 @@ const Academics = () => {
     return headers;
   };
 
-  // Fetch Classes and Stats from Backend
+  // Fetch Classes, Stats and Registered Schools from Backend
   const fetchClassesData = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [classesRes, statsRes, teachersRes] = await Promise.all([
+      const [classesRes, statsRes, teachersRes, schoolsRes] = await Promise.all([
         fetch(`${API_BASE}/classes`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/classes/stats`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/staff/teachers`, { headers: getAuthHeaders() })
+        fetch(`${API_BASE}/staff/teachers`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/school/list`, { headers: getAuthHeaders() })
       ]);
+
+      if (schoolsRes.ok) {
+        const schoolsData = await schoolsRes.json();
+        setSchoolsList(schoolsData.schools || []);
+      }
 
       if (!classesRes.ok) throw new Error('Failed to load classes and sections');
       const classesData = await classesRes.json();
@@ -129,6 +157,9 @@ const Academics = () => {
 
   useEffect(() => {
     fetchClassesData();
+    const handleSchoolUpdate = () => fetchClassesData();
+    window.addEventListener('schoolListUpdated', handleSchoolUpdate);
+    return () => window.removeEventListener('schoolListUpdated', handleSchoolUpdate);
   }, [tenantSlug]);
 
   // Open Roster Drawer
@@ -200,12 +231,27 @@ const Academics = () => {
       return;
     }
 
+    if (schoolsList.length === 0) {
+      alert('Cannot create class: No school campus registered. Please create a school campus first.');
+      setIsCreateSchoolOpen(true);
+      return;
+    }
+
+    const targetSchoolSlug = formData.schoolSlug || (schoolsList.find(s => s.slug === tenantSlug)?.slug) || schoolsList[0]?.slug;
+    if (!targetSchoolSlug) {
+      alert('Please select a school campus for this class.');
+      return;
+    }
+
     setActionLoading(true);
     try {
       const res = await fetch(`${API_BASE}/classes`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          schoolSlug: targetSchoolSlug
+        }),
       });
 
       const data = await res.json();
@@ -276,6 +322,52 @@ const Academics = () => {
     }
   };
 
+  // Delete ALL Classes & Sections
+  const handleDeleteAllClasses = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/classes`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.message || 'Failed to delete all classes');
+      }
+
+      setIsDeleteAllModalOpen(false);
+      setSelectedClassForRoster(null);
+      await fetchClassesData();
+    } catch (err) {
+      alert(`Error deleting all classes: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Generate Default Starter Classes on Demand
+  const handleSeedDefaultClasses = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/classes/seed`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.message || 'Failed to generate default starter classes');
+      }
+
+      await fetchClassesData();
+    } catch (err) {
+      alert(`Error generating classes: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Filter Classes
   const filteredClasses = useMemo(() => {
     return classesList.filter(c => {
@@ -297,7 +389,7 @@ const Academics = () => {
   const paginatedClasses = filteredClasses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--dashboard-card-gap)', width: '100%', minHeight: '100%', paddingBottom: '40px', fontFamily: "'Outfit', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', fontFamily: "'Outfit', sans-serif" }}>
       
       {/* TOP BANNER WITH ADMIN AUTHORITY */}
       <div style={{ 
@@ -338,31 +430,88 @@ const Academics = () => {
         </div>
 
         {isAdmin ? (
-          <button 
-            onClick={() => {
-              setFormData(initialForm);
-              setIsCreateModalOpen(true);
-            }}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '10px', 
-              backgroundColor: '#ffffff', 
-              color: '#1e3a8a', 
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
-              transition: 'transform 0.2s',
-            }}
-            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <Plus size={18} color="#2563eb" /> Create Class & Section
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {schoolsList.length === 0 ? (
+              <button 
+                onClick={() => setIsCreateSchoolOpen(true)}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  backgroundColor: '#f59e0b', 
+                  color: '#ffffff', 
+                  border: 'none',
+                  padding: '11px 20px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 16px rgba(245, 158, 11, 0.3)',
+                  transition: 'transform 0.2s',
+                }}
+                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                title="School Campus Required: Create a school first before creating classes"
+              >
+                <Building size={18} color="#ffffff" /> Create School Campus First
+              </button>
+            ) : (
+              <button 
+                onClick={() => {
+                  setFormData({
+                    ...initialForm,
+                    schoolSlug: tenantSlug && schoolsList.some(s => s.slug === tenantSlug) ? tenantSlug : (schoolsList[0]?.slug || '')
+                  });
+                  setIsCreateModalOpen(true);
+                }}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  backgroundColor: '#ffffff', 
+                  color: '#1e3a8a', 
+                  border: 'none',
+                  padding: '11px 20px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
+                  transition: 'transform 0.2s',
+                }}
+                onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <Plus size={18} color="#2563eb" /> Create Class & Section
+              </button>
+            )}
+
+            {classesList.length > 0 && (
+              <button
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                  color: '#fee2e2',
+                  border: '1px solid rgba(254, 202, 202, 0.4)',
+                  padding: '11px 18px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.86rem',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.35)'; }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)'; }}
+                title="Delete all classes and sections at once"
+              >
+                <Trash2 size={16} color="#fca5a5" /> Delete All Classes
+              </button>
+            )}
+          </div>
         ) : (
           <div style={{ background: 'rgba(255,255,255,0.15)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem' }}>
             View-Only Access (Administrator permissions required to create classes)
@@ -370,22 +519,71 @@ const Academics = () => {
         )}
       </div>
 
+      {/* WARNING BANNER: NO SCHOOL CAMPUS REGISTERED */}
+      {schoolsList.length === 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1.5px solid #fde68a',
+          borderRadius: '16px',
+          padding: '16px 22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          boxShadow: '0 4px 12px rgba(217, 119, 6, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Building size={22} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#92400e' }}>
+                No School Campus Registered
+              </div>
+              <div style={{ fontSize: '0.82rem', color: '#b45309', marginTop: '2px' }}>
+                Classes cannot be created or configured without an active School Campus. Please create a School Campus first.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsCreateSchoolOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: '#d97706',
+              color: 'white',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '10px 18px',
+              fontWeight: 700,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Plus size={16} /> Create School Campus
+          </button>
+        </div>
+      )}
+
       {/* KPI METRIC CARDS */}
-      <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--dashboard-card-gap)' }}>
+      <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
         {[
           { label: 'Total Grade Levels', value: stats.totalClasses, color: '#1e3a8a', bg: '#eff6ff', icon: GraduationCap },
           { label: 'Active Class Sections', value: stats.totalSections, color: '#2563eb', bg: '#dbeafe', icon: BookOpen },
           { label: 'Assigned Class Teachers', value: stats.assignedTeachers, color: '#0f766e', bg: '#ccfbf1', icon: User },
           { label: 'Total Student Capacity', value: stats.totalCapacity, color: '#d97706', bg: '#fef3c7', icon: Users, sub: `${stats.overallOccupancy}% Enrolled` }
         ].map((kpi, i) => (
-          <div key={i} className="card" style={{ padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white' }}>
+          <div key={i} className="card" style={{ padding: '18px 22px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div className="flex-between" style={{ marginBottom: '8px' }}>
               <span className="metric-label" style={{ fontWeight: 600 }}>{kpi.label}</span>
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: kpi.color }}>
                 <kpi.icon size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: kpi.color, margin: '4px 0 0 0' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 800, color: kpi.color, margin: '4px 0 0 0' }}>
               {isLoading ? '...' : kpi.value}
             </div>
             {kpi.sub && (
@@ -398,38 +596,31 @@ const Academics = () => {
       </div>
 
       {/* NAVIGATION TABS */}
-      <div style={{ display: 'flex', gap: '24px', borderBottom: '2px solid #e2e8f0' }}>
-        {[
-          { id: 'classes', label: 'Classes & Sections Directory', count: classesList.length },
-          { id: 'subjects', label: 'Subjects Catalog', count: 18 },
-          { id: 'examinations', label: 'Assessment Schedules', count: 4 }
-        ].map(tab => (
-          <div 
-            key={tab.id} 
-            onClick={() => setMainTab(tab.id)}
-            style={{ 
-              paddingBottom: '14px', 
-              fontSize: '0.95rem', 
-              fontWeight: 700, 
-              cursor: 'pointer',
-              color: mainTab === tab.id ? '#2563eb' : '#64748b',
-              borderBottom: mainTab === tab.id ? '3px solid #2563eb' : '3px solid transparent',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-            {tab.label}
-            <span style={{ 
-              fontSize: '0.75rem', 
-              padding: '2px 8px', 
-              borderRadius: '12px', 
-              background: mainTab === tab.id ? '#eff6ff' : '#f1f5f9', 
-              color: mainTab === tab.id ? '#2563eb' : '#64748b' 
-            }}>
-              {tab.count}
-            </span>
-          </div>
-        ))}
+      <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0 14px 0' }}>
+        <div className="system-tabs-container">
+          {[
+            { id: 'classes', label: 'Classes & Sections Directory', count: classesList.length, icon: LayoutGrid },
+            { id: 'subjects', label: 'Subjects Catalog', count: institutionalSubjects.length, icon: BookOpen },
+            { id: 'examinations', label: 'Assessment Schedules', count: standardAssessmentSchedules.length, icon: Calendar }
+          ].map(tab => {
+            const isActive = mainTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMainTab(tab.id)}
+                className={`system-tab-btn ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={16} />
+                <span>{tab.label}</span>
+                <span className="system-tab-badge">
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* MAIN CONTENT AREA */}
@@ -545,9 +736,73 @@ const Academics = () => {
             </div>
           ) : filteredClasses.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
-              <BookOpen size={48} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
-              <h3 style={{ fontSize: '1.1rem', color: '#1e3a8a', marginBottom: '6px' }}>No Classes Found</h3>
-              <p style={{ fontSize: '0.85rem', margin: 0 }}>No classes match your current search or grade filter.</p>
+              {schoolsList.length === 0 ? (
+                <>
+                  <Building size={52} style={{ margin: '0 auto 14px', color: '#f59e0b' }} />
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#92400e', marginBottom: '8px' }}>
+                    No School Campus Registered
+                  </h3>
+                  <p style={{ fontSize: '0.88rem', margin: '0 0 20px 0', maxWidth: '460px', marginLeft: 'auto', marginRight: 'auto', color: '#78350f', lineHeight: 1.5 }}>
+                    You cannot create or configure classes because no school campus has been registered yet. Please create a school campus first to establish grade levels and sections.
+                  </p>
+                  {isAdmin && (
+                    <button
+                      onClick={() => setIsCreateSchoolOpen(true)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '8px',
+                        padding: '11px 22px', background: '#d97706', color: 'white',
+                        border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)'
+                      }}
+                    >
+                      <Plus size={18} /> Create School Campus
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <BookOpen size={48} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '6px' }}>
+                    {classesList.length === 0 ? 'All Classes Deleted / None Configured' : 'No Classes Found'}
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', margin: '0 0 18px 0', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
+                    {classesList.length === 0 
+                      ? 'Your campus currently has 0 class sections configured. You can create a new class or generate starter default classes.'
+                      : 'No classes match your current search or grade filter.'}
+                  </p>
+                  {classesList.length === 0 && isAdmin && (
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        onClick={() => {
+                          setFormData({
+                            ...initialForm,
+                            schoolSlug: tenantSlug && schoolsList.some(s => s.slug === tenantSlug) ? tenantSlug : (schoolsList[0]?.slug || '')
+                          });
+                          setIsCreateModalOpen(true);
+                        }}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '9px 18px', background: '#2563eb', color: 'white',
+                          border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer'
+                        }}
+                      >
+                        <Plus size={16} /> Create Class & Section
+                      </button>
+                      <button
+                        onClick={handleSeedDefaultClasses}
+                        disabled={actionLoading}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '9px 18px', background: '#f8fafc', color: '#334155',
+                          border: '1px solid #cbd5e1', borderRadius: '10px', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
+                        }}
+                      >
+                        <RefreshCw size={14} className={actionLoading ? 'spin' : ''} /> Generate Starter Classes
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           ) : viewMode === 'grid' ? (
             
@@ -864,16 +1119,7 @@ const Academics = () => {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
-            {[
-              { name: 'Mathematics', code: 'MATH-101', dept: 'Science & Math', grades: 'All Grades', icon: Award, color: '#2563eb' },
-              { name: 'General Science', code: 'SCI-102', dept: 'Science', grades: 'Class 1 to 10', icon: BookOpen, color: '#059669' },
-              { name: 'Physics', code: 'PHY-201', dept: 'Science', grades: 'Class 11 & 12', icon: Award, color: '#7c3aed' },
-              { name: 'Chemistry', code: 'CHEM-202', dept: 'Science', grades: 'Class 11 & 12', icon: Award, color: '#d97706' },
-              { name: 'English Literature', code: 'ENG-101', dept: 'Languages', grades: 'All Grades', icon: BookOpen, color: '#2563eb' },
-              { name: 'Social Studies', code: 'SST-103', dept: 'Humanities', grades: 'Class 1 to 10', icon: BookOpen, color: '#dc2626' },
-              { name: 'Computer Science', code: 'CS-301', dept: 'Technology', grades: 'Class 6 to 12', icon: Award, color: '#0284c7' },
-              { name: 'Accountancy & Commerce', code: 'COMM-401', dept: 'Commerce', grades: 'Class 11 & 12', icon: Award, color: '#16a34a' },
-            ].map((sub, i) => (
+            {institutionalSubjects.map((sub, i) => (
               <div key={i} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: sub.color, background: 'white', padding: '2px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>{sub.code}</span>
@@ -902,11 +1148,7 @@ const Academics = () => {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {[
-              { title: 'Mid-Term Examinations 2026', date: 'October 25 - November 5, 2026', status: 'Published', grades: 'Class 6th to 12th' },
-              { title: 'Unit Assessment 3 (Primary)', date: 'November 12 - November 18, 2026', status: 'Scheduled', grades: 'Class 1st to 5th' },
-              { title: 'Pre-Board Mock Examinations', date: 'December 10 - December 22, 2026', status: 'Draft', grades: 'Class 10th & 12th' },
-            ].map((ex, i) => (
+            {standardAssessmentSchedules.map((ex, i) => (
               <div key={i} style={{ padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', fontWeight: 700, color: '#1e3a8a' }}>{ex.title}</h3>
@@ -989,10 +1231,74 @@ const Academics = () => {
               {/* SCROLLABLE FORM BODY */}
               <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
                 
-                {/* 1. Class / Grade Selection */}
+                {/* School Campus Status Check */}
+                {schoolsList.length === 0 ? (
+                  <div style={{
+                    background: '#fef2f2',
+                    border: '1.5px solid #fecaca',
+                    borderRadius: '12px',
+                    padding: '16px',
+                    marginBottom: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '14px'
+                  }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <AlertCircle size={22} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 800, color: '#991b1b', fontSize: '0.9rem' }}>
+                        School Campus Required
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#b91c1c', marginTop: '2px' }}>
+                        No registered school campus exists. Classes cannot be created without creating a school first.
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCreateModalOpen(false);
+                        setIsCreateSchoolOpen(true);
+                      }}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        background: '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        fontWeight: 700,
+                        fontSize: '0.82rem',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      + Create School Campus
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '20px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>
+                      1. School Campus *
+                    </label>
+                    <select
+                      required
+                      value={formData.schoolSlug}
+                      onChange={e => setFormData({ ...formData, schoolSlug: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.85rem', background: 'white' }}
+                    >
+                      {schoolsList.map(s => (
+                        <option key={s.slug} value={s.slug}>
+                          {s.name} ({s.slug}){s.isBranch ? ' - Branch Campus' : ' - Main Campus'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Class / Grade Selection */}
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>
-                    1. Class / Grade Level *
+                    {schoolsList.length > 0 ? '2. Class / Grade Level *' : 'Class / Grade Level *'}
                   </label>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
                     {standardGrades.map(g => (
@@ -1025,10 +1331,10 @@ const Academics = () => {
                   />
                 </div>
 
-                {/* 2. Section Selection */}
+                {/* Section Selection */}
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>
-                    2. Section Identifier *
+                    {schoolsList.length > 0 ? '3. Section Identifier *' : 'Section Identifier *'}
                   </label>
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
                     {standardSections.map(s => (
@@ -1168,10 +1474,20 @@ const Academics = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={actionLoading}
-                  style={{ padding: '10px 24px', borderRadius: '8px', background: '#2563eb', border: 'none', color: 'white', fontWeight: 700, fontSize: '0.9rem', cursor: actionLoading ? 'wait' : 'pointer', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)' }}
+                  disabled={actionLoading || schoolsList.length === 0}
+                  style={{ 
+                    padding: '10px 24px', 
+                    borderRadius: '8px', 
+                    background: schoolsList.length === 0 ? '#94a3b8' : '#2563eb', 
+                    border: 'none', 
+                    color: 'white', 
+                    fontWeight: 700, 
+                    fontSize: '0.9rem', 
+                    cursor: (schoolsList.length === 0 || actionLoading) ? 'not-allowed' : 'pointer', 
+                    boxShadow: schoolsList.length === 0 ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.3)' 
+                  }}
                 >
-                  {actionLoading ? 'Creating Class...' : 'Confirm & Create Class'}
+                  {actionLoading ? 'Creating Class...' : (schoolsList.length === 0 ? 'School Required (Create School First)' : 'Confirm & Create Class')}
                 </button>
               </div>
             </form>
@@ -1363,6 +1679,37 @@ const Academics = () => {
                 style={{ padding: '10px 20px', borderRadius: '8px', background: '#dc2626', border: 'none', color: 'white', fontWeight: 700, cursor: actionLoading ? 'wait' : 'pointer' }}
               >
                 {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* MODAL: DELETE ALL CLASSES CONFIRMATION */}
+      {isDeleteAllModalOpen && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(6px)' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '20px', maxWidth: '440px', width: '90%', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #fee2e2' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <Trash2 size={28} color="#dc2626" />
+            </div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#991b1b', margin: '0 0 8px 0' }}>Delete All Classes?</h3>
+            <p style={{ fontSize: '0.86rem', color: '#64748b', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+              Are you sure you want to permanently delete <strong>all {classesList.length} classes and sections</strong>? This will remove all class schedules and section architectures.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                style={{ padding: '10px 18px', borderRadius: '10px', background: 'white', border: '1px solid #cbd5e1', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteAllClasses}
+                disabled={actionLoading}
+                style={{ padding: '10px 20px', borderRadius: '10px', background: '#dc2626', border: 'none', color: 'white', fontWeight: 700, cursor: actionLoading ? 'wait' : 'pointer' }}
+              >
+                {actionLoading ? 'Deleting...' : 'Yes, Delete All Classes'}
               </button>
             </div>
           </div>
@@ -1576,6 +1923,18 @@ const Academics = () => {
         </>,
         document.body
       )}
+
+      {/* MODAL 5: CREATE SCHOOL MODAL */}
+      <CreateSchoolModal
+        isOpen={isCreateSchoolOpen}
+        onClose={() => setIsCreateSchoolOpen(false)}
+        onSchoolCreated={async (newSchool) => {
+          setIsCreateSchoolOpen(false);
+          await fetchClassesData();
+          window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+        }}
+        schoolsList={schoolsList}
+      />
 
     </div>
   );

@@ -2,41 +2,75 @@ const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
 
-// Seed helper if school has 0 students
-const seedInitialStudentsIfEmpty = async (entityId) => {
-  if (!entityId) return;
-  const count = await Student.countDocuments({ entityId });
-  if (count === 0) {
+// Helper to verify admin authority
+const checkAdminAuthority = (req, res) => {
+  const allowedRoles = ['admin', 'superadmin', 'principal', 'frontdesk'];
+  const userRole = (req.user && req.user.role) ? req.user.role.toLowerCase() : '';
+  
+  if (userRole && !allowedRoles.includes(userRole)) {
+    res.status(403).json({
+      error: 'Access Denied: Only School Administrators have authority to manage students',
+      code: 'FORBIDDEN_ADMIN_ONLY',
+      message: 'Access Denied: Only School Administrators have authority to manage students'
+    });
+    return false;
+  }
+  return true;
+};
+
+// Seed helper on demand if a school workspace has 0 students
+const seedInitialStudentsIfEmpty = async (entityId, force = false, schoolSlug = null) => {
+  if (!entityId && !force) return;
+  const count = await Student.countDocuments(entityId ? { entityId } : {});
+  if (count === 0 || force) {
     const sampleStudents = [
-      { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 96, status: 'Active', entityId },
-      { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 92, status: 'Active', entityId },
-      { name: 'Vihaan Verma', rollNo: 'STU-1003', grade: 'Class 10', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 88, status: 'Active', entityId },
-      { name: 'Ananya Iyer', rollNo: 'STU-1004', grade: 'Class 9', section: 'A', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 98, status: 'Active', entityId },
-      { name: 'Kabir Mehta', rollNo: 'STU-1005', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 91, status: 'Active', entityId },
-      { name: 'Riya Sen', rollNo: 'STU-1006', grade: 'Class 11', section: 'Science', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId },
-      { name: 'Rohan Gupta', rollNo: 'STU-1007', grade: 'Class 12', section: 'Science', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 89, status: 'Active', entityId },
-      { name: 'Sneha Reddy', rollNo: 'STU-1008', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 95, status: 'Active', entityId },
+      { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 96, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 92, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Vihaan Verma', rollNo: 'STU-1003', grade: 'Class 10', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 88, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Ananya Iyer', rollNo: 'STU-1004', grade: 'Class 9', section: 'A', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 98, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Kabir Mehta', rollNo: 'STU-1005', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 91, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Riya Sen', rollNo: 'STU-1006', grade: 'Class 11', section: 'Science', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Rohan Gupta', rollNo: 'STU-1007', grade: 'Class 12', section: 'Science', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 89, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Sneha Reddy', rollNo: 'STU-1008', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 95, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
     ];
-    await Student.insertMany(sampleStudents).catch(() => {});
+    for (const s of sampleStudents) {
+      const exists = await Student.findOne({ rollNo: s.rollNo, entityId: s.entityId });
+      if (!exists) {
+        try {
+          await Student.create(s);
+        } catch (e) {
+          // ignore duplicate in race
+        }
+      }
+    }
   }
 };
 
 // GET /api/students — List all students with class & section filters, search, pagination
 router.get('/', async (req, res) => {
   try {
-    await seedInitialStudentsIfEmpty(req.entityId);
-
-    const { search, page = 1, limit = 50, status, grade, section } = req.query;
+    const { search, page = 1, limit = 50, grade, section, status, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
+    const effectiveSchoolSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    if (effectiveSchoolSlug && effectiveSchoolSlug !== 'all' && effectiveSchoolSlug !== 'central') {
+      query.schoolSlug = effectiveSchoolSlug;
+    }
+
     if (search) {
-      query.$or = [
+      const searchOr = [
         { name: { $regex: search, $options: 'i' } },
         { rollNo: { $regex: search, $options: 'i' } },
         { grade: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
         { parentName: { $regex: search, $options: 'i' } },
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     if (status && status !== 'All') {
@@ -52,16 +86,19 @@ router.get('/', async (req, res) => {
     }
 
     const total = await Student.countDocuments(query);
-    const students = await Student.find(query)
-      .sort({ createdAt: -1 })
-      .skip((Number(page) - 1) * Number(limit))
-      .limit(Number(limit));
+    let queryBuilder = Student.find(query).sort({ createdAt: -1 });
+
+    if (all !== 'true') {
+      queryBuilder = queryBuilder.skip((Number(page) - 1) * Number(limit)).limit(Number(limit));
+    }
+
+    const students = await queryBuilder;
 
     res.json({
       students,
       total,
       page: Number(page),
-      totalPages: Math.ceil(total / Number(limit)),
+      totalPages: Math.ceil(total / Number(limit)) || 1,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -71,20 +108,26 @@ router.get('/', async (req, res) => {
 // GET /api/students/stats — KPI stats
 router.get('/stats', async (req, res) => {
   try {
-    await seedInitialStudentsIfEmpty(req.entityId);
+    const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    
+    let scopeFilter = { entityId: req.entityId };
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      scopeFilter.schoolSlug = targetSlug;
+    }
 
-    const totalStudents = await Student.countDocuments({ entityId: req.entityId });
-    const activeStudents = await Student.countDocuments({ status: 'Active', entityId: req.entityId });
-    const inactiveStudents = await Student.countDocuments({ status: { $ne: 'Active' }, entityId: req.entityId });
+    const totalStudents = await Student.countDocuments(scopeFilter);
+    const activeStudents = await Student.countDocuments({ status: 'Active', ...scopeFilter });
+    const inactiveStudents = await Student.countDocuments({ status: { $ne: 'Active' }, ...scopeFilter });
 
     // Calculate average attendance
+    const attendanceMatch = Object.keys(scopeFilter).length > 0 ? { $match: scopeFilter } : { $match: {} };
     const attendanceResult = await Student.aggregate([
-      { $match: { entityId: req.entityId } },
+      attendanceMatch,
       { $group: { _id: null, avgAttendance: { $avg: '$attendance' } } },
     ]);
-    const avgAttendance = attendanceResult.length > 0
+    const avgAttendance = (attendanceResult.length > 0 && attendanceResult[0].avgAttendance !== null)
       ? Math.round(attendanceResult[0].avgAttendance * 10) / 10
-      : 94.5;
+      : 0;
 
     res.json({
       totalStudents,
@@ -112,6 +155,8 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/students — Create new student & assign to class/section
 router.post('/', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
   try {
     const { name, rollNo, grade, section } = req.body;
     if (!name || !name.trim()) {
@@ -124,7 +169,7 @@ router.post('/', async (req, res) => {
     // Auto-generate roll number if not provided
     let finalRollNo = rollNo && rollNo.trim();
     if (!finalRollNo) {
-      const count = await Student.countDocuments({ entityId: req.entityId });
+      const count = await Student.countDocuments(req.entityId ? { entityId: req.entityId } : {});
       finalRollNo = `STU-${1000 + count + 1}`;
     }
 
@@ -135,6 +180,7 @@ router.post('/', async (req, res) => {
       grade: grade.trim(),
       section: (section || 'A').trim().toUpperCase(),
       entityId: req.entityId,
+      schoolSlug: req.schoolSlug || req.headers['x-school-slug'],
     });
 
     await newStudent.save();
@@ -153,15 +199,19 @@ router.post('/', async (req, res) => {
 
 // PUT /api/students/:id — Update student & reassign class/section
 router.put('/:id', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
   try {
     const student = await Student.findOneAndUpdate(
       { _id: req.params.id, entityId: req.entityId },
       req.body,
       { new: true, runValidators: true }
     );
+
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
+
     res.json({
       success: true,
       message: 'Student record updated successfully',
@@ -175,14 +225,67 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/students/:id — Delete student
+// DELETE /api/students/:id — Delete student (Admin Authority Only)
 router.delete('/:id', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
   try {
     const student = await Student.findOneAndDelete({ _id: req.params.id, entityId: req.entityId });
+
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
-    res.json({ success: true, message: `Student "${student.name}" deleted successfully` });
+
+    res.json({
+      success: true,
+      message: `Student "${student.name}" deleted successfully`,
+      id: req.params.id
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE /api/students — Delete ALL students (Admin Authority Only)
+router.delete('/', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const filter = { entityId: req.entityId };
+    const result = await Student.deleteMany(filter);
+
+    res.json({
+      success: true,
+      message: `Successfully deleted all ${result.deletedCount} student records`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/students/seed — Explicitly generate starter students (Admin Authority Only)
+router.post('/seed', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const Store = require('../models/Store');
+    const User = require('../models/User');
+    const schoolUsers = await User.find({ role: 'school' });
+    const localStores = await Store.find({});
+    if (schoolUsers.length === 0 && localStores.length === 0) {
+      return res.status(400).json({
+        error: 'School Required',
+        message: 'Cannot generate starter students without a registered school campus. Please create a school campus first.',
+        code: 'SCHOOL_REQUIRED'
+      });
+    }
+
+    await seedInitialStudentsIfEmpty(req.entityId, true, req.schoolSlug);
+    res.json({
+      success: true,
+      message: 'Default starter students enrolled successfully'
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

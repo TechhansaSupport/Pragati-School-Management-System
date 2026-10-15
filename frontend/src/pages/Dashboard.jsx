@@ -750,7 +750,7 @@ const Dashboard = () => {
     const totalStudentCount = schoolsList.reduce((acc, s) => acc + (s.studentCount || 0), 0);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
         {/* Executive Banner */}
         <div style={{
           background: 'linear-gradient(135deg, #1e3a8a 0%, #4338ca 50%, #4F46E5 100%)',
@@ -859,7 +859,7 @@ const Dashboard = () => {
             { label: 'Active Faculty & Staff', value: totalStaffCount, icon: Users, color: '#2563eb', bg: '#dbeafe' },
             { label: 'Student Enrollments', value: totalStudentCount, icon: GraduationCap, color: '#d97706', bg: '#fef3c7' }
           ].map((kpi, idx) => (
-            <div key={idx} className="card" style={{ padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+            <div key={idx} className="card" style={{ padding: '18px 22px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>{kpi.label}</span>
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: kpi.bg, color: kpi.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -1082,13 +1082,23 @@ const Dashboard = () => {
                       ⚙ Settings & Branding
                     </button>
 
-                    {schoolsList.length > 1 && (
+                    {schoolsList.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => setTargetSchoolForDelete(school)}
                         style={{ padding: '8px 12px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                        title="Permanently delete this campus branch"
                       >
                         <Trash2 size={13} /> Delete
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        style={{ padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1', color: '#94a3b8', fontWeight: 500, fontSize: '0.74rem', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                        title="Cannot delete the only remaining school campus in your organization"
+                      >
+                        <Trash2 size={13} /> Only Campus (Protected)
                       </button>
                     )}
                   </div>
@@ -1105,7 +1115,7 @@ const Dashboard = () => {
     <div className="dashboard-grid">
       <div className="left-column">
         {/* KPI Row with Quick Nav */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--dashboard-card-gap)' }}>
+        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <div 
             className="card" 
             style={{ padding: '20px', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}

@@ -55,12 +55,18 @@ const DeleteSchoolModal = ({ isOpen, onClose, targetSchool, onSchoolDeleted }) =
         }
 
         // If user deleted the active school they are currently viewing, switch to fallback
-        if (targetSchool.slug === currentSlug && data.fallbackSlug) {
-          sessionStorage.setItem('tenantSlug', data.fallbackSlug);
+        if (targetSchool.slug === currentSlug) {
+          const fallbackSlug = data.fallbackSlug || 'central';
+          sessionStorage.setItem('tenantSlug', fallbackSlug);
           if (data.fallbackName) {
             sessionStorage.setItem('schoolName', data.fallbackName);
           }
-          window.location.href = `/${data.fallbackSlug}/dashboard`;
+          const userRole = sessionStorage.getItem('userRole') || '';
+          if (userRole === 'superadmin' || fallbackSlug === 'central' || fallbackSlug === 'superadmin') {
+            window.location.href = `/${fallbackSlug}/superadmin`;
+          } else {
+            window.location.href = `/${fallbackSlug}/dashboard`;
+          }
         } else {
           onClose();
         }

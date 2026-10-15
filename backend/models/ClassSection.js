@@ -57,11 +57,17 @@ const classSectionSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  schoolSlug: {
+    type: String,
+    trim: true,
+    index: true,
+  },
 }, {
   timestamps: true,
 });
 
 // Compound unique index per school workspace: Each school can have only one unique Class + Section pair
 classSectionSchema.index({ className: 1, section: 1, entityId: 1 }, { unique: true });
+classSectionSchema.index({ className: 1, section: 1, schoolSlug: 1 });
 
 module.exports = mongoose.models.ClassSection || mongoose.model('ClassSection', classSectionSchema);

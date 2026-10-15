@@ -32,16 +32,17 @@ const Login = () => {
     if (!tenantSlug) {
       setSchoolStatus({
         isLoading: false,
-        isValid: false,
+        isValid: true,
         isSuspended: false,
-        isDeleted: true,
+        isDeleted: false,
         isUnlicensed: false,
         isInactive: false,
-        title: 'School Identifier Missing',
-        message: 'No school workspace slug was specified in the URL. Please access your dedicated school portal link (e.g., /your-school/login).',
-        schoolName: ''
+        title: '',
+        message: '',
+        schoolName: 'Pragati Central Portal'
       });
-      setDisplaySchoolName('');
+      setDisplaySchoolName('Pragati Central Portal');
+      document.title = 'Pragati Multi-School Portal | Universal Login';
       return;
     }
 
@@ -145,12 +146,7 @@ const Login = () => {
     e.preventDefault();
     setError('');
     
-    if (!tenantSlug) {
-      setError('Invalid school URL. Please use your specific school login link (e.g. /school-name/login)');
-      return;
-    }
-
-    if (!schoolStatus.isValid) {
+    if (tenantSlug && !schoolStatus.isValid) {
       setError('This school workspace is currently restricted or suspended.');
       return;
     }
@@ -161,22 +157,24 @@ const Login = () => {
     await new Promise(resolve => setTimeout(resolve, 600));
     
     try {
+      const loginSlug = tenantSlug || 'universal';
       // Connect to the backend
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ slug: tenantSlug, tenantSlug, username: userId, uniqueId: userId, password }),
+        body: JSON.stringify({ slug: loginSlug, tenantSlug: loginSlug, username: userId, uniqueId: userId, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
+        const effectiveSlug = data.tenantSlug || data.slug || tenantSlug || 'greenwood-main';
         // Store user info and token
         sessionStorage.setItem('userInfo', JSON.stringify(data));
         sessionStorage.setItem('userRole', data.role);
-        sessionStorage.setItem('tenantSlug', tenantSlug);
+        sessionStorage.setItem('tenantSlug', effectiveSlug);
         if (data.token) {
           sessionStorage.setItem('token', data.token);
         }
@@ -187,22 +185,24 @@ const Login = () => {
         localStorage.setItem('authSession', JSON.stringify({ userInfo: data, userRole: data.role, token: data.token }));
         
         // Route based on role
-        if (data.role === 'principal' || data.role === 'admin' || data.role === 'superadmin') {
-          navigate(`/${tenantSlug}/dashboard`);
+        if (data.role === 'superadmin') {
+          navigate(`/${effectiveSlug}/superadmin`);
+        } else if (data.role === 'principal' || data.role === 'admin') {
+          navigate(`/${effectiveSlug}/dashboard`);
         } else if (data.role === 'teacher') {
-          navigate(`/${tenantSlug}/teacher-dashboard`);
+          navigate(`/${effectiveSlug}/teacher-dashboard`);
         } else if (data.role === 'student') {
-          navigate(`/${tenantSlug}/student-dashboard`);
+          navigate(`/${effectiveSlug}/student-dashboard`);
         } else if (data.role === 'parent') {
-          navigate(`/${tenantSlug}/parent-dashboard`);
+          navigate(`/${effectiveSlug}/parent-dashboard`);
         } else if (data.role === 'accountant') {
-          navigate(`/${tenantSlug}/finance`);
+          navigate(`/${effectiveSlug}/finance`);
         } else if (data.role === 'librarian') {
-          navigate(`/${tenantSlug}/library-dashboard`);
+          navigate(`/${effectiveSlug}/library-dashboard`);
         } else if (data.role === 'transport') {
-          navigate(`/${tenantSlug}/transport-dashboard`);
+          navigate(`/${effectiveSlug}/transport-dashboard`);
         } else {
-          navigate(`/${tenantSlug}/dashboard`);
+          navigate(`/${effectiveSlug}/dashboard`);
         }
       } else {
         if (data.code === 'TENANT_SUSPENDED') {

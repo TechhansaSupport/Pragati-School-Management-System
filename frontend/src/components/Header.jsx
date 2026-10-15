@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LogOut, User, Settings, HelpCircle, ChevronDown, Search, X, 
-  ArrowRight, Key, Building2, ExternalLink, Plus, UserCheck, Layers, Trash2, MapPin
+  ArrowRight, Key, Building2, ExternalLink, Plus, UserCheck, Layers, Trash2, MapPin,
+  ShieldCheck, Edit3
 } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import CreateSchoolModal from './CreateSchoolModal';
+import EditSchoolModal from './EditSchoolModal';
 import AppointPrincipalModal from './AppointPrincipalModal';
 import DeleteSchoolModal from './DeleteSchoolModal';
 
@@ -27,6 +29,7 @@ const Header = () => {
   const [isCreateSchoolOpen, setIsCreateSchoolOpen] = useState(false);
   const [targetSchoolForPrincipal, setTargetSchoolForPrincipal] = useState(null);
   const [targetSchoolForDelete, setTargetSchoolForDelete] = useState(null);
+  const [targetSchoolForEdit, setTargetSchoolForEdit] = useState(null);
   const schoolDropdownRef = useRef(null);
 
   // Reactively track credential and user profile updates
@@ -39,6 +42,30 @@ const Header = () => {
     return () => window.removeEventListener('userProfileUpdated', handleProfileUpdate);
   }, []);
 
+  // Fetch full user profile to ensure Display Name is populated
+  useEffect(() => {
+    const token = userInfo.token || sessionStorage.getItem('token') || '';
+    if (!token) return;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    fetch('http://localhost:5000/api/auth/me', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.user) {
+          setUserInfo(prev => {
+            const updated = { ...prev, ...data.user };
+            sessionStorage.setItem('userInfo', JSON.stringify(updated));
+            return updated;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [tenantSlug]);
+
+  // Computed Display Name
+  const userDisplayName = userInfo.name || userInfo.displayName || (role === 'superadmin' ? 'Super Admin' : (userInfo.uniqueId || role));
+
   // Fetch list of all managed schools for Admin
   const fetchSchoolsList = async () => {
     try {
@@ -50,7 +77,16 @@ const Header = () => {
       const res = await fetch('http://localhost:5000/api/school/list', { headers });
       if (res.ok) {
         const data = await res.json();
-        setSchoolsList(data.schools || []);
+        const list = data.schools || [];
+        setSchoolsList(list);
+
+        // If current tenantSlug is not in this user's authorized schools list, switch to primary school
+        if (list.length > 0 && tenantSlug && !list.some(s => s.slug === tenantSlug)) {
+          const target = list[0];
+          sessionStorage.setItem('tenantSlug', target.slug);
+          sessionStorage.setItem('schoolName', target.name);
+          navigate(`/${target.slug}/dashboard`, { replace: true });
+        }
       }
     } catch (err) {
       console.warn('Failed to fetch multi-school directory:', err);
@@ -242,9 +278,9 @@ const Header = () => {
                 }}
                 title="Click to switch school or open separate window"
               >
-                <span>🏫</span>
-                <span style={{ maxWidth: '170px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {schoolName || 'Main Campus'}
+                <span>{role === 'superadmin' && location.pathname.includes('/superadmin') ? '🛡️' : '🏫'}</span>
+                <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {role === 'superadmin' && location.pathname.includes('/superadmin') ? 'Super Admin Console' : (schoolName || 'Main Campus')}
                 </span>
                 {schoolsList.length > 1 && (
                   <span style={{ 
@@ -326,6 +362,41 @@ const Header = () => {
 
                   {/* School Items List */}
                   <div style={{ maxHeight: '310px', overflowY: 'auto', padding: '6px' }}>
+                    {role === 'superadmin' && (
+                      <div 
+                        onClick={() => {
+                          navigate(`/${tenantSlug}/superadmin`);
+                          setIsSchoolDropdownOpen(false);
+                        }}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          marginBottom: '8px',
+                          background: location.pathname.includes('/superadmin') ? 'rgba(79, 70, 229, 0.1)' : '#f8fafc',
+                          border: location.pathname.includes('/superadmin') ? '1.5px solid #4F46E5' : '1px solid #e2e8f0',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <ShieldCheck size={16} color="#4F46E5" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a' }}>
+                              Central Super Admin Console
+                            </span>
+                          </div>
+                          {location.pathname.includes('/superadmin') && (
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, background: '#dcfce7', color: '#15803d', padding: '2px 6px', borderRadius: '6px' }}>
+                              ● Active
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px', marginLeft: '24px' }}>
+                          Organization overview • Not tied to any single branch
+                        </div>
+                      </div>
+                    )}
+
                     {schoolsList.length === 0 ? (
                       <div style={{ padding: '16px', textAlign: 'center', color: '#64748b', fontSize: '0.8rem' }}>
                         No schools found. Register a new school below.
@@ -484,31 +555,81 @@ const Header = () => {
                                 </button>
                               )}
 
-                              {/* Delete School Trigger */}
-                              {(role === 'admin' || role === 'superadmin') && schoolsList.length > 1 && (
+                              {/* Edit School Details Trigger */}
+                              {(role === 'admin' || role === 'superadmin') && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setTargetSchoolForDelete(s);
+                                    setTargetSchoolForEdit(s);
                                     setIsSchoolDropdownOpen(false);
                                   }}
                                   style={{
                                     fontSize: '0.72rem',
                                     fontWeight: 600,
-                                    background: '#fef2f2',
-                                    color: '#dc2626',
-                                    border: '1px solid #fecaca',
+                                    background: 'rgba(79, 70, 229, 0.08)',
+                                    color: '#4F46E5',
+                                    border: '1px solid rgba(79, 70, 229, 0.25)',
                                     padding: '4px 8px',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: '4px'
+                                    gap: '3px'
                                   }}
-                                  title="Permanently delete this campus branch"
+                                  title="Edit school name, address, and info"
                                 >
-                                  <Trash2 size={11} /> Delete
+                                  <Edit3 size={11} /> Edit Info
                                 </button>
+                              )}
+
+                              {/* Delete School Trigger */}
+                              {(role === 'admin' || role === 'superadmin') && (
+                                (schoolsList.length > 1 || role === 'superadmin') ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTargetSchoolForDelete(s);
+                                      setIsSchoolDropdownOpen(false);
+                                    }}
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      fontWeight: 600,
+                                      background: '#fef2f2',
+                                      color: '#dc2626',
+                                      border: '1px solid #fecaca',
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    title="Permanently delete this campus branch"
+                                  >
+                                    <Trash2 size={11} /> Delete
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      fontWeight: 500,
+                                      background: '#f8fafc',
+                                      color: '#94a3b8',
+                                      border: '1px dashed #cbd5e1',
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      cursor: 'not-allowed',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    title="Cannot delete the only remaining school campus in your organization"
+                                  >
+                                    <Trash2 size={11} /> Only Campus (Protected)
+                                  </button>
+                                )
                               )}
                             </div>
                           </div>
@@ -742,11 +863,18 @@ const Header = () => {
           onMouseOut={e => { if(!isProfileOpen) e.currentTarget.style.background = 'transparent' }}
         >
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-main)', textTransform: 'capitalize' }}>
-              {userInfo.uniqueId || role}
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: role === 'superadmin' ? '#7c3aed' : (role === 'admin' ? '#4f46e5' : 'var(--color-text-muted)'), marginTop: '-2px' }}>
-              {role === 'superadmin' ? '👑 Super Admin' : (role === 'admin' ? 'Branch Admin' : (role === 'principal' ? 'Principal' : `${role} Account`))}
+            <div style={{ 
+              fontSize: '0.88rem', 
+              fontWeight: 700, 
+              color: 'var(--color-text-main)',
+              letterSpacing: '-0.01em',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              {role === 'superadmin' && <span style={{ fontSize: '0.92rem' }} role="img" aria-label="crown">👑</span>}
+              <span>{userDisplayName}</span>
             </div>
           </div>
           
@@ -764,7 +892,7 @@ const Header = () => {
             flexShrink: 0
           }}>
             <img 
-              src={userInfo.profileImage || `https://ui-avatars.com/api/?name=${userInfo.uniqueId || role}&background=e0e7ff&color=3730a3&bold=true`} 
+              src={userInfo.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=e0e7ff&color=3730a3&bold=true`} 
               alt="User Avatar" 
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
@@ -793,13 +921,16 @@ const Header = () => {
             <div style={{ padding: '16px', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(15, 118, 110, 0.05) 100%)', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', border: '2px solid white', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', flexShrink: 0, background: '#e0e7ff' }}>
                 <img 
-                  src={userInfo.profileImage || `https://ui-avatars.com/api/?name=${userInfo.uniqueId || role}&background=e0e7ff&color=3730a3&bold=true`} 
+                  src={userInfo.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=e0e7ff&color=3730a3&bold=true`} 
                   alt="Avatar" 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8a', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{userInfo.name || userInfo.uniqueId || 'User Profile'}</div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8a', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  {role === 'superadmin' && <span>👑</span>}
+                  <span>{userDisplayName}</span>
+                </div>
                 <div style={{ fontSize: '0.78rem', color: '#64748b' }}>@{userInfo.uniqueId || role}</div>
               </div>
             </div>
@@ -890,6 +1021,22 @@ const Header = () => {
         onSchoolDeleted={() => {
           fetchSchoolsList();
           window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+        }}
+      />
+
+      {/* Edit School Details Modal */}
+      <EditSchoolModal
+        isOpen={!!targetSchoolForEdit}
+        school={targetSchoolForEdit}
+        onClose={() => setTargetSchoolForEdit(null)}
+        onSchoolUpdated={(updated) => {
+          fetchSchoolsList();
+          window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+          if (updated?.slug === tenantSlug) {
+            setSchoolName(updated.name);
+            sessionStorage.setItem('schoolName', updated.name);
+            document.title = `${updated.name} | Pragati SMS`;
+          }
         }}
       />
     </div>

@@ -6,6 +6,7 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUser, setCurrentUser] = useState(() => userInfo || JSON.parse(sessionStorage.getItem('userInfo') || '{}'));
   const [modalSchoolName, setModalSchoolName] = useState(() => sessionStorage.getItem('schoolName') || '');
+  const [modalSchoolAddress, setModalSchoolAddress] = useState(() => sessionStorage.getItem('schoolAddress') || '');
   const [isSavingModalSchool, setIsSavingModalSchool] = useState(false);
   const [modalSaveMsg, setModalSaveMsg] = useState('');
 
@@ -369,17 +370,23 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
       const res = await fetch('http://localhost:5000/api/school/name', {
         method: 'PUT',
         headers,
-        body: JSON.stringify({ name: modalSchoolName.trim() })
+        body: JSON.stringify({ 
+          name: modalSchoolName.trim(),
+          address: modalSchoolAddress.trim()
+        })
       });
 
       const data = await res.json();
       if (res.ok) {
         const assignedName = data?.school?.name || modalSchoolName.trim();
+        const assignedAddress = data?.school?.address || modalSchoolAddress.trim();
         sessionStorage.setItem('schoolName', assignedName);
+        if (assignedAddress) sessionStorage.setItem('schoolAddress', assignedAddress);
         window.dispatchEvent(new CustomEvent('schoolNameChanged', { detail: assignedName }));
-        setModalSaveMsg(`✓ School name assigned to "${assignedName}"!`);
+        window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+        setModalSaveMsg(`✓ School details updated successfully!`);
       } else {
-        setModalSaveMsg(data?.error || 'Failed to update school name.');
+        setModalSaveMsg(data?.error || 'Failed to update school details.');
       }
     } catch (err) {
       setModalSaveMsg('Error: ' + err.message);
@@ -844,7 +851,7 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                   </div>
                 </div>
 
-                <form onSubmit={handleUpdateUsername}>
+                <form onSubmit={handleUpdateUsername} autoComplete="off">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
@@ -852,6 +859,11 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                       </label>
                       <input 
                         type="text"
+                        name="sms_new_username_field"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck="false"
                         value={newUsername}
                         onChange={e => setNewUsername(e.target.value)}
                         placeholder="e.g. principal_sharma or john_doe"
@@ -880,6 +892,8 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                       <div style={{ position: 'relative' }}>
                         <input 
                           type={showUsernameCurrentPw ? 'text' : 'password'}
+                          name="sms_verify_identity_pwd"
+                          autoComplete="new-password"
                           value={usernameCurrentPassword}
                           onChange={e => setUsernameCurrentPassword(e.target.value)}
                           placeholder="Verify with current password"
@@ -985,7 +999,7 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                   </div>
                 </div>
 
-                <form onSubmit={handleUpdatePassword}>
+                <form onSubmit={handleUpdatePassword} autoComplete="off">
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '14px' }}>
                     {/* Current Password */}
                     <div>
@@ -995,6 +1009,8 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                       <div style={{ position: 'relative' }}>
                         <input 
                           type={showCurrentPw ? 'text' : 'password'}
+                          name="sms_change_pwd_curr"
+                          autoComplete="new-password"
                           value={passwordCurrentPassword}
                           onChange={e => setPasswordCurrentPassword(e.target.value)}
                           placeholder="Enter current password"
@@ -1041,6 +1057,8 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                         <div style={{ position: 'relative' }}>
                           <input 
                             type={showNewPw ? 'text' : 'password'}
+                            name="sms_change_pwd_new"
+                            autoComplete="new-password"
                             value={newPassword}
                             onChange={e => setNewPassword(e.target.value)}
                             placeholder="Min 6 characters"
@@ -1104,6 +1122,8 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                         <div style={{ position: 'relative' }}>
                           <input 
                             type={showConfirmPw ? 'text' : 'password'}
+                            name="sms_change_pwd_confirm"
+                            autoComplete="new-password"
                             value={confirmPassword}
                             onChange={e => setConfirmPassword(e.target.value)}
                             placeholder="Re-enter new password"
@@ -1218,30 +1238,45 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
                 {(role === 'admin' || role === 'superadmin' || role === 'principal') && (
                   <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1.5px solid rgba(79, 70, 229, 0.2)' }}>
                     <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '4px' }}>
-                      🏫 Official School / Institution Name
+                      🏫 Official School / Campus Profile
                     </label>
                     <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '14px' }}>
-                      Administrator Privilege: Assign or update the official school name for this workspace.
+                      Administrator Privilege: Assign or update the official school name and campus address for this workspace.
                     </p>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <input 
-                        type="text" 
-                        value={modalSchoolName} 
-                        onChange={(e) => setModalSchoolName(e.target.value)} 
-                        placeholder="e.g. St. Xavier's High School"
-                        style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.95rem', fontWeight: 600 }} 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={handleSaveModalSchoolName}
-                        disabled={isSavingModalSchool}
-                        style={{ padding: '10px 18px', background: '#4F46E5', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: isSavingModalSchool ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
-                      >
-                        {isSavingModalSchool ? 'Saving...' : 'Assign Name'}
-                      </button>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>School Name</label>
+                        <input 
+                          type="text" 
+                          value={modalSchoolName} 
+                          onChange={(e) => setModalSchoolName(e.target.value)} 
+                          placeholder="e.g. Neel Public School"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.95rem', fontWeight: 600, boxSizing: 'border-box' }} 
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Campus Address</label>
+                        <textarea 
+                          rows={2}
+                          value={modalSchoolAddress} 
+                          onChange={(e) => setModalSchoolAddress(e.target.value)} 
+                          placeholder="e.g. Sector 4, Educational Knowledge Hub, Greater Noida"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.9rem', boxSizing: 'border-box', fontFamily: 'inherit' }} 
+                        />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                        <button 
+                          type="button" 
+                          onClick={handleSaveModalSchoolName}
+                          disabled={isSavingModalSchool}
+                          style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #1e3a8a 0%, #4F46E5 100%)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: isSavingModalSchool ? 'not-allowed' : 'pointer' }}
+                        >
+                          {isSavingModalSchool ? 'Saving Details...' : 'Save School Details'}
+                        </button>
+                      </div>
                     </div>
                     {modalSaveMsg && (
-                      <div style={{ marginTop: '8px', fontSize: '0.82rem', color: modalSaveMsg.startsWith('✓') ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                      <div style={{ marginTop: '10px', fontSize: '0.82rem', color: modalSaveMsg.startsWith('✓') ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
                         {modalSaveMsg}
                       </div>
                     )}

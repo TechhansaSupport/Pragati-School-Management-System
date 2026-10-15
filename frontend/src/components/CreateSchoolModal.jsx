@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Building2, CheckCircle2, AlertCircle, ExternalLink, MapPin, UserCog, UserCheck, ChevronDown, ChevronUp, Lock } from 'lucide-react';
 
-const CreateSchoolModal = ({ isOpen, onClose, onSchoolCreated }) => {
+const CreateSchoolModal = ({ 
+  isOpen, 
+  onClose, 
+  onSchoolCreated, 
+  schoolsList = [], 
+  initialType = 'school', 
+  initialParentSlug = '' 
+}) => {
+  const [entityType, setEntityType] = useState(initialType || 'school'); // 'school' | 'branch'
+  const [parentSchoolSlug, setParentSchoolSlug] = useState(initialParentSlug || '');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [slug, setSlug] = useState('');
@@ -26,6 +35,18 @@ const CreateSchoolModal = ({ isOpen, onClose, onSchoolCreated }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [createdSchool, setCreatedSchool] = useState(null);
 
+  // Sync initial type when opened
+  useEffect(() => {
+    if (isOpen) {
+      setEntityType(initialType || 'school');
+      if (initialParentSlug) {
+        setParentSchoolSlug(initialParentSlug);
+      } else if (schoolsList.length > 0) {
+        setParentSchoolSlug(schoolsList[0].slug);
+      }
+    }
+  }, [isOpen, initialType, initialParentSlug, schoolsList]);
+
   const handleNameChange = (val) => {
     setName(val);
     const derived = val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -45,6 +66,8 @@ const CreateSchoolModal = ({ isOpen, onClose, onSchoolCreated }) => {
   };
 
   const resetForm = () => {
+    setEntityType('school');
+    setParentSchoolSlug('');
     setName('');
     setAddress('');
     setSlug('');
@@ -82,7 +105,10 @@ const CreateSchoolModal = ({ isOpen, onClose, onSchoolCreated }) => {
         name: name.trim(),
         address: address.trim(),
         slug: slug.trim(),
-        academicYear
+        academicYear,
+        isBranch: entityType === 'branch',
+        parentSchoolSlug: entityType === 'branch' ? parentSchoolSlug : '',
+        branchName: entityType === 'branch' ? name.trim() : ''
       };
 
       if (adminName.trim()) {
@@ -295,17 +321,99 @@ const CreateSchoolModal = ({ isOpen, onClose, onSchoolCreated }) => {
           /* FORM VIEW */
           <form onSubmit={handleSubmit}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* School Name */}
+              {/* Registration Type: School vs Branch */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                  Branch Campus Name *
+                  What are you registering? *
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEntityType('school')}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '10px',
+                      border: entityType === 'school' ? '2px solid #4F46E5' : '1px solid #cbd5e1',
+                      background: entityType === 'school' ? 'rgba(79, 70, 229, 0.08)' : '#ffffff',
+                      color: entityType === 'school' ? '#4F46E5' : '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Building2 size={16} /> New School / Institution
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEntityType('branch')}
+                    style={{
+                      padding: '10px',
+                      borderRadius: '10px',
+                      border: entityType === 'branch' ? '2px solid #4F46E5' : '1px solid #cbd5e1',
+                      background: entityType === 'branch' ? 'rgba(79, 70, 229, 0.08)' : '#ffffff',
+                      color: entityType === 'branch' ? '#4F46E5' : '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Building2 size={16} /> Branch Campus under School
+                  </button>
+                </div>
+              </div>
+
+              {/* If Branch, Parent School Selector */}
+              {entityType === 'branch' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                    Select Parent School *
+                  </label>
+                  <select
+                    value={parentSchoolSlug}
+                    onChange={(e) => setParentSchoolSlug(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: '#1e293b',
+                      outline: 'none',
+                      background: '#f8fafc',
+                      boxSizing: 'border-box'
+                    }}
+                    required
+                  >
+                    <option value="">-- Choose Parent School --</option>
+                    {schoolsList.filter(s => !s.isBranch).concat(schoolsList.filter(s => s.isBranch)).map((s) => (
+                      <option key={s.slug} value={s.slug}>
+                        {s.name} ({s.slug})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* School / Branch Name */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                  {entityType === 'branch' ? 'Branch Campus Name *' : 'School Name *'}
                 </label>
                 <input 
                   type="text"
                   required
                   value={name}
                   onChange={e => handleNameChange(e.target.value)}
-                  placeholder="e.g. North Delhi Campus or Gurugram Branch"
+                  placeholder={entityType === 'branch' ? "e.g. North Delhi Campus or Gurugram Branch" : "e.g. Delhi World Public School"}
                   style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }}
                 />
               </div>

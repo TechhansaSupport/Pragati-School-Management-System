@@ -20,10 +20,10 @@ const checkAdminAuthority = (req, res) => {
   return true;
 };
 
-// Seed helper if a school workspace has fewer than 5 staff
-const seedInitialStaffIfEmpty = async (entityId) => {
-  const count = await Staff.countDocuments({ entityId });
-  if (count < 5) {
+// Seed helper on demand if a school workspace has 0 staff
+const seedInitialStaffIfEmpty = async (entityId, force = false) => {
+  const count = await Staff.countDocuments(entityId ? { entityId } : {});
+  if (count === 0 || force) {
     const defaultStaff = [
       {
         name: 'Dr. Anita Desai',
@@ -36,7 +36,7 @@ const seedInitialStaffIfEmpty = async (entityId) => {
         salary: 95000,
         workload: 'Medium',
         status: 'Active',
-        entityId
+        entityId: entityId || 'default-school'
       },
       {
         name: 'R. K. Sharma',
@@ -51,7 +51,7 @@ const seedInitialStaffIfEmpty = async (entityId) => {
         salary: 62000,
         workload: 'High',
         status: 'Active',
-        entityId
+        entityId: entityId || 'default-school'
       },
       {
         name: 'Pooja Iyer',
@@ -66,7 +66,7 @@ const seedInitialStaffIfEmpty = async (entityId) => {
         salary: 58000,
         workload: 'Medium',
         status: 'Active',
-        entityId
+        entityId: entityId || 'default-school'
       },
       {
         name: 'Sunil Verma',
@@ -79,7 +79,7 @@ const seedInitialStaffIfEmpty = async (entityId) => {
         salary: 50000,
         workload: 'Medium',
         status: 'Active',
-        entityId
+        entityId: entityId || 'default-school'
       },
       {
         name: 'Kavita Singh',
@@ -92,11 +92,11 @@ const seedInitialStaffIfEmpty = async (entityId) => {
         salary: 42000,
         workload: 'Low',
         status: 'Active',
-        entityId
+        entityId: entityId || 'default-school'
       }
     ];
     for (const s of defaultStaff) {
-      const exists = await Staff.findOne({ employeeId: s.employeeId, entityId });
+      const exists = await Staff.findOne({ employeeId: s.employeeId, entityId: s.entityId });
       if (!exists) {
         try {
           await Staff.create(s);
@@ -111,13 +111,16 @@ const seedInitialStaffIfEmpty = async (entityId) => {
 // GET /api/staff — List all staff (with search, filtering, pagination)
 router.get('/', async (req, res) => {
   try {
-    await seedInitialStaffIfEmpty(req.entityId);
-
-    const { search, page = 1, limit = 50, role, department, status, all } = req.query;
+    const { search, page = 1, limit = 50, role, department, status, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
+    const effectiveSchoolSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    if (effectiveSchoolSlug && effectiveSchoolSlug !== 'all' && effectiveSchoolSlug !== 'central') {
+      query.schoolSlug = effectiveSchoolSlug;
+    }
+
     if (search) {
-      query.$or = [
+      const searchOr = [
         { name: { $regex: search, $options: 'i' } },
         { employeeId: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } },
@@ -125,6 +128,12 @@ router.get('/', async (req, res) => {
         { role: { $regex: search, $options: 'i' } },
         { subjects: { $elemMatch: { $regex: search, $options: 'i' } } },
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     if (role && role !== 'All') query.role = role;
@@ -155,15 +164,20 @@ router.get('/', async (req, res) => {
 // GET /api/staff/stats — KPI stats
 router.get('/stats', async (req, res) => {
   try {
-    await seedInitialStaffIfEmpty(req.entityId);
+    const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    
+    let scopeFilter = { entityId: req.entityId };
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      scopeFilter.schoolSlug = targetSlug;
+    }
 
-    const totalStaff = await Staff.countDocuments({ entityId: req.entityId });
-    const teachingStaff = await Staff.countDocuments({ role: 'Teacher', entityId: req.entityId });
+    const totalStaff = await Staff.countDocuments(scopeFilter);
+    const teachingStaff = await Staff.countDocuments({ role: 'Teacher', ...scopeFilter });
     const adminSupport = await Staff.countDocuments({ 
       role: { $in: ['Principal', 'Administrator', 'Support Staff', 'Librarian', 'Accountant', 'Transport Incharge'] }, 
-      entityId: req.entityId 
+      ...scopeFilter 
     });
-    const onLeave = await Staff.countDocuments({ status: 'On Leave', entityId: req.entityId });
+    const onLeave = await Staff.countDocuments({ status: 'On Leave', ...scopeFilter });
 
     res.json({
       totalStaff,
@@ -232,11 +246,14 @@ router.post('/', async (req, res) => {
       createPortalAccess,
       portalPassword,
       portalUsername,
+      schoolSlug,
     } = req.body;
 
     if (!name || !role || !department) {
       return res.status(400).json({ message: 'Name, Role, and Department are required' });
     }
+
+    const assignedSchoolSlug = (schoolSlug || req.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || '').trim();
 
     // Auto-generate employeeId if not supplied
     let empId = employeeId;
@@ -285,6 +302,7 @@ router.post('/', async (req, res) => {
       status: status || 'Active',
       joiningDate: joiningDate ? new Date(joiningDate) : new Date(),
       portalUsername: createPortalAccess ? usernameForPortal : undefined,
+      schoolSlug: assignedSchoolSlug,
       entityId: req.entityId,
     };
 
@@ -314,11 +332,19 @@ router.post('/', async (req, res) => {
             password: portalPassword,
             role: systemRole,
             entityId: req.entityId,
+            schoolSlug: assignedSchoolSlug,
             referenceId: member._id,
             onModel: 'Staff',
+            name: member.name,
+            email: member.email,
+            phone: member.phone
           });
           await user.save();
           portalCreated = true;
+        } else {
+          user.schoolSlug = assignedSchoolSlug;
+          user.role = systemRole;
+          await user.save();
         }
       } catch (userErr) {
         console.error('Portal account creation notice:', userErr.message);
@@ -396,6 +422,7 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const member = await Staff.findOneAndDelete({ _id: req.params.id, entityId: req.entityId });
+
     if (!member) {
       return res.status(404).json({ message: 'Staff member not found' });
     }
@@ -406,6 +433,58 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.json({ message: 'Staff member deleted successfully', id: req.params.id });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE /api/staff — Delete ALL staff members (Admin Authority Only)
+router.delete('/', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const filter = { entityId: req.entityId };
+
+    const staffList = await Staff.find(filter).select('portalUsername');
+    const usernames = staffList.map(s => s.portalUsername).filter(Boolean);
+
+    const result = await Staff.deleteMany(filter);
+
+    if (usernames.length > 0) {
+      await User.deleteMany({ uniqueId: { $in: usernames }, entityId: req.entityId, role: { $ne: 'superadmin' } });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully deleted all ${result.deletedCount} staff records`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/staff/seed — Explicitly generate starter staff (Admin Authority Only)
+router.post('/seed', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const Store = require('../models/Store');
+    const schoolUsers = await User.find({ role: 'school' });
+    const localStores = await Store.find({});
+    if (schoolUsers.length === 0 && localStores.length === 0) {
+      return res.status(400).json({
+        error: 'School Required',
+        message: 'Cannot generate starter staff without a registered school campus. Please create a school campus first.',
+        code: 'SCHOOL_REQUIRED'
+      });
+    }
+
+    await seedInitialStaffIfEmpty(req.entityId, true);
+    res.json({
+      success: true,
+      message: 'Default starter faculty and staff created successfully'
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -14,7 +14,10 @@ const tenantSchema = new mongoose.Schema({
   academicYear: { type: String, default: '2026-2027' },
   currency: { type: String, default: 'INR (₹)' },
   timezone: { type: String, default: 'Asia/Kolkata (IST)' },
-  maintenanceMode: { type: Boolean, default: false }
+  maintenanceMode: { type: Boolean, default: false },
+  phone: { type: String, default: '' },
+  email: { type: String, default: '' },
+  affiliationNo: { type: String, default: '' }
 }, { timestamps: true });
 
 tenantSchema.pre('save', function (next) {

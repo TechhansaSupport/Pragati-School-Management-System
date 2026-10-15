@@ -14,23 +14,67 @@ const { protect } = require('../middleware/auth');
 router.post('/login', async (req, res) => {
   try {
     // 1. Frontend sends slug (or tenantSlug), username (or uniqueId/email), and password
-    const slug = (req.body.slug || req.body.tenantSlug || '').trim();
+    let slug = (req.body.slug || req.body.tenantSlug || '').trim();
     const username = (req.body.username || req.body.uniqueId || req.body.email || '').trim();
     const password = req.body.password;
-
-    if (!slug) {
-      return res.status(400).json({
-        error: 'Please provide workspace slug (e.g. /your-school-name/login)',
-        code: 'MISSING_SLUG',
-        message: 'Please provide slug (workspace identifier)'
-      });
-    }
 
     if (!username || !password) {
       return res.status(400).json({
         error: 'Please provide both username and password',
         code: 'MISSING_CREDENTIALS',
         message: 'Please provide both username and password'
+      });
+    }
+
+    // Auto-resolve workspace slug by looking up authentic PragatiUser or local User
+    const pragatiUserMatch = await PragatiUser.findOne({
+      $or: [
+        { username: username },
+        { username: new RegExp(`^${username}$`, 'i') },
+        { email: new RegExp(`^${username}$`, 'i') },
+        { frontdeskEmail: new RegExp(`^${username}$`, 'i') }
+      ]
+    });
+
+    if (pragatiUserMatch && pragatiUserMatch.entity_id) {
+      const pt = await PragatiTenant.findOne({ entity_id: pragatiUserMatch.entity_id });
+      if (pt && pt.slug) {
+        slug = pt.slug;
+      }
+    } else if (!slug || slug === 'universal' || slug === 'superadmin' || slug === 'central') {
+      const localUser = await User.findOne({
+        $or: [
+          { uniqueId: username },
+          { uniqueId: new RegExp(`^${username}$`, 'i') },
+          { email: new RegExp(`^${username}$`, 'i') }
+        ]
+      });
+      if (localUser) {
+        if (localUser.schoolSlug) {
+          slug = localUser.schoolSlug;
+        } else if (localUser.slug) {
+          slug = localUser.slug;
+        } else if (localUser.entityId) {
+          const sch = await User.findOne({ role: 'school', entityId: localUser.entityId });
+          const st = sch ? null : await Store.findOne({ entityId: localUser.entityId });
+          const pt = (sch || st) ? null : await PragatiTenant.findOne({ entity_id: localUser.entityId });
+          slug = sch?.slug || st?.slug || pt?.slug;
+        }
+
+        if (!slug) {
+          const defaultSchool = await User.findOne({ role: 'school', status: 'active' })
+            || await User.findOne({ role: 'school' })
+            || await Store.findOne({});
+          slug = defaultSchool?.slug || 'greenwood-main';
+        }
+      }
+    }
+
+    if (!slug) {
+      return res.status(400).json({
+        error: 'Please provide workspace slug (e.g. /your-school-name/login)',
+        code: 'MISSING_SLUG',
+        message: 'Please provide slug (workspace identifier)'
       });
     }
 
@@ -108,8 +152,42 @@ router.post('/login', async (req, res) => {
     }
 
     const resolvedEntityId = schoolUser?.entityId || pragatiTenant?.entity_id || localTenant?.entityId;
-    const resolvedSlug = schoolUser?.slug || pragatiTenant?.slug || localTenant?.slug || slug;
-    const resolvedSchoolName = schoolUser?.name || schoolUser?.schoolName || localTenant?.name || pragatiTenant?.name || resolvedSlug || 'Pragati School';
+
+    // Auto-provision primary school in school_ms for new entity from License Team if missing
+    let primarySchool = schoolUser;
+    if (!primarySchool && resolvedEntityId && pragatiTenant && (pragatiTenant.status === 'active' || !pragatiTenant.status)) {
+      primarySchool = await User.findOne({ role: 'school', entityId: resolvedEntityId });
+      if (!primarySchool) {
+        const rootSlug = pragatiTenant.slug || (pragatiTenant.name ? pragatiTenant.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') : `school-${resolvedEntityId.slice(-6)}`);
+        try {
+          primarySchool = await User.create({
+            uniqueId: rootSlug,
+            slug: rootSlug,
+            schoolSlug: rootSlug,
+            name: pragatiTenant.name || 'New School Campus',
+            schoolName: pragatiTenant.name || 'New School Campus',
+            address: pragatiTenant.address || '',
+            academicYear: '2026-2027',
+            currency: 'INR (₹)',
+            timezone: 'Asia/Kolkata (IST)',
+            role: 'school',
+            entityId: resolvedEntityId,
+            status: 'active',
+            branches: [],
+            city: pragatiTenant.address || 'Central',
+            state: 'Main',
+            board: 'CBSE',
+            email: pragatiTenant.contact_email || `${rootSlug}@pragati.edu`,
+            phone: pragatiTenant.contact_phone || 'N/A',
+          });
+        } catch (e) {
+          primarySchool = await User.findOne({ role: 'school', entityId: resolvedEntityId });
+        }
+      }
+    }
+
+    const resolvedSlug = primarySchool?.slug || schoolUser?.slug || pragatiTenant?.slug || localTenant?.slug || slug;
+    const resolvedSchoolName = primarySchool?.name || schoolUser?.name || schoolUser?.schoolName || localTenant?.name || pragatiTenant?.name || resolvedSlug || 'Pragati School';
 
     let authenticatedUser = null;
     let isPragatiUser = false;
@@ -220,6 +298,7 @@ router.post('/login', async (req, res) => {
       email: authenticatedUser.email || '',
       profileImage: authenticatedUser.profileImage || authenticatedUser.avatar || '',
       role: userRole,
+      isSuperAdmin: userRole === 'superadmin',
       tenantSlug: resolvedSlug,
       slug: resolvedSlug,
       storeId: resolvedSlug,

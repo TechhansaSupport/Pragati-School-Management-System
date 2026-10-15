@@ -93,7 +93,7 @@ const LibraryBooks = () => {
       <div style={{
         gridColumn: '1 / -1',
         background: 'linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)',
-        borderRadius: '16px',
+        borderRadius: '20px',
         padding: '24px 32px',
         color: 'white',
         display: 'flex',
@@ -133,14 +133,14 @@ const LibraryBooks = () => {
 
       <div className="left-column" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* KPI Metrics */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--dashboard-card-gap)' }}>
+        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
           {[
             { label: 'Unique Titles', value: (stats.totalTitles || books.length).toLocaleString(), icon: Book, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
             { label: 'Total Volume Copies', value: (stats.totalCopies || 120).toLocaleString(), icon: BookOpen, color: '#10B981', bg: 'rgba(16, 185, 129,0.1)' },
             { label: 'Available on Shelf', value: (stats.availableCopies || 102).toLocaleString(), icon: CheckCircle, color: '#0EA5E9', bg: 'rgba(14, 165, 233,0.1)' },
             { label: 'Currently Issued', value: (stats.issuedCopies || 18).toLocaleString(), icon: AlertTriangle, color: '#F43F5E', bg: 'rgba(244, 63, 94,0.1)' }
           ].map((kpi, i) => (
-            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', transition: 'all 0.3s' }}>
+            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <kpi.icon size={20} color={kpi.color} />

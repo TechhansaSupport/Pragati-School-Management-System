@@ -52,29 +52,29 @@ const PrincipalDashboard = () => {
       {/* LEFT COLUMN */}
       <div className="left-column">
         {/* KPI Row */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--dashboard-card-gap)' }}>
+        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>School Average</div>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-primary)' }}>{principalSummary.schoolAverage}</div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-primary)' }}>{principalSummary.schoolAverage}</div>
               </div>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(79,70,229,0.1), rgba(15, 118, 110,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <TrendingUp size={24} color="#4F46E5" />
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(79,70,229,0.1), rgba(15, 118, 110,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={22} color="#4F46E5" />
               </div>
             </div>
             <div style={{ fontSize: '0.85rem', color: '#16A34A', fontWeight: 500 }}>Live term evaluation metric</div>
           </div>
 
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Overall Attendance</div>
-                <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-secondary)' }}>{principalSummary.overallAttendance}</div>
+                <div style={{ fontSize: '1.85rem', fontWeight: 800, color: 'var(--color-secondary)' }}>{principalSummary.overallAttendance}</div>
               </div>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(96,165,250,0.1), rgba(15, 118, 110,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Users size={24} color="#60A5FA" />
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'linear-gradient(135deg, rgba(96,165,250,0.1), rgba(15, 118, 110,0.1))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={22} color="#60A5FA" />
               </div>
             </div>
             <div style={{ fontSize: '0.85rem', color: '#16A34A', fontWeight: 500 }}>Target: 90% threshold</div>

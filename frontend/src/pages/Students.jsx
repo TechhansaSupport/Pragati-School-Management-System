@@ -55,6 +55,7 @@ const Students = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [studentToDelete, setStudentToDelete] = useState(null);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
 
   // Form State
   const initialForm = {
@@ -288,6 +289,55 @@ const Students = () => {
     }
   };
 
+  // Delete All Students
+  const handleDeleteAllStudents = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/students`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+
+      if (res.ok) {
+        setIsDeleteAllModalOpen(false);
+        setSelectedStudent(null);
+        fetchStudents();
+        fetchMetadata();
+        window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+      } else {
+        const err = await res.json();
+        alert(err.message || 'Failed to delete all students');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Generate Starter Students on Demand
+  const handleSeedDefaultStudents = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/students/seed`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchStudents();
+        fetchMetadata();
+        window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+      } else {
+        alert(data.message || 'Failed to generate starter students');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / itemsPerPage) || 1;
 
   // Student Profile Drawer
@@ -437,6 +487,31 @@ const Students = () => {
                     {s.address || 'No residential address recorded on file.'}
                   </div>
                 </div>
+
+                {isAdmin && (
+                  <div style={{ marginTop: '8px' }}>
+                    <button 
+                      onClick={() => setStudentToDelete(s)}
+                      style={{
+                        width: '100%',
+                        padding: '11px',
+                        borderRadius: '10px',
+                        background: '#fee2e2',
+                        color: '#b91c1c',
+                        border: '1px solid #fecaca',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Trash2 size={16}/> Remove Student Record
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -530,7 +605,7 @@ const Students = () => {
             Total Enrolled Students
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#1e3a8a', marginTop: '4px' }}>
-            {stats.totalStudents || totalCount}
+            {stats.totalStudents ?? totalCount ?? 0}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600, marginTop: '2px' }}>
             ● Active campus roster
@@ -542,7 +617,7 @@ const Students = () => {
             Active Attendance
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>
-            {stats.activeStudents || totalCount}
+            {stats.activeStudents ?? totalCount ?? 0}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginTop: '2px' }}>
             Students in regular session
@@ -554,7 +629,7 @@ const Students = () => {
             Configured Classes
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#4F46E5', marginTop: '4px' }}>
-            {classesList.length || '6'}
+            {classesList.length}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#4F46E5', fontWeight: 600, marginTop: '2px' }}>
             Grade & section groups
@@ -566,7 +641,7 @@ const Students = () => {
             Avg Attendance Rate
           </div>
           <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#0f766e', marginTop: '4px' }}>
-            {stats.avgAttendance || 94.5}%
+            {stats.avgAttendance !== undefined && stats.avgAttendance !== null ? stats.avgAttendance : 0}%
           </div>
           <div style={{ fontSize: '0.75rem', color: '#0f766e', fontWeight: 600, marginTop: '2px' }}>
             Campus wide average
@@ -668,6 +743,23 @@ const Students = () => {
               <RefreshCw size={15} />
             </button>
 
+            {/* Delete All Students Button */}
+            {isAdmin && studentsList.length > 0 && (
+              <button
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca',
+                  padding: '9px 16px', borderRadius: '10px', fontSize: '0.86rem',
+                  fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#dc2626'; e.currentTarget.style.color = 'white'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
+              >
+                <Trash2 size={15} /> Delete All Students
+              </button>
+            )}
+
             {/* Add Student Button */}
             {isAdmin && (
               <button
@@ -703,17 +795,30 @@ const Students = () => {
           ) : studentsList.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
               <GraduationCap size={44} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
-              <h4 style={{ margin: '0 0 6px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>No Students Found</h4>
+              <h4 style={{ margin: '0 0 6px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>
+                {searchQuery || gradeFilter !== 'All' ? 'No Matching Students' : 'No Students Registered'}
+              </h4>
               <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#64748b' }}>
-                {searchQuery || gradeFilter !== 'All' ? 'Try adjusting your filters or search terms.' : 'Start by admitting the first student into a class.'}
+                {searchQuery || gradeFilter !== 'All' 
+                  ? 'Try adjusting your filters or search terms.' 
+                  : 'Your student directory is currently empty. You can admit students individually or generate starter students.'}
               </p>
               {isAdmin && (
-                <button
-                  onClick={handleOpenAddModal}
-                  style={{ padding: '8px 18px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer' }}
-                >
-                  <Plus size={14} style={{ display: 'inline', marginRight: '4px' }} /> Admit Student
-                </button>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <button
+                    onClick={handleOpenAddModal}
+                    style={{ padding: '8px 18px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Plus size={14} /> Admit Student
+                  </button>
+                  <button
+                    onClick={handleSeedDefaultStudents}
+                    disabled={actionLoading}
+                    style={{ padding: '8px 18px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: actionLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <RefreshCw size={14} /> {actionLoading ? 'Enrolling...' : 'Generate Starter Students'}
+                  </button>
+                </div>
               )}
             </div>
           ) : (
@@ -1133,6 +1238,53 @@ const Students = () => {
                 style={{ padding: '8px 18px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
               >
                 {actionLoading ? 'Deleting...' : 'Delete Student'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Delete All Students Confirmation Modal */}
+      {isDeleteAllModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)',
+          zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '460px', maxWidth: '92vw',
+            padding: '28px', border: '1px solid #fecaca', boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={22} color="#dc2626" />
+              </div>
+              <div>
+                <h4 style={{ margin: 0, color: '#991b1b', fontSize: '1.2rem', fontWeight: 800 }}>Delete All Student Records?</h4>
+                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>Permanently remove all students from campus</p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.9rem', color: '#334155', lineHeight: 1.5, margin: '0 0 20px' }}>
+              Are you sure you want to delete all <strong>{totalCount || studentsList.length}</strong> student records? This action is permanent and cannot be undone.
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                style={{ padding: '8px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleDeleteAllStudents}
+                style={{ padding: '8px 18px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}
+              >
+                {actionLoading ? 'Deleting...' : 'Delete All Students'}
               </button>
             </div>
           </div>

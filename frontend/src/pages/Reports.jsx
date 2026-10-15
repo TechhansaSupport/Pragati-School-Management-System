@@ -144,14 +144,14 @@ const Reports = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--dashboard-card-gap)', width: '100%', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%' }}>
       {renderConfigurationDrawer()}
 
       {/* Top Banner */}
       <div style={{
         background: 'linear-gradient(135deg, #4338ca 0%, #3b82f6 100%)',
-        borderRadius: '16px',
-        padding: '24px 32px',
+        borderRadius: '20px',
+        padding: '24px 28px',
         color: 'white',
         display: 'flex',
         justifyContent: 'space-between',
@@ -172,29 +172,29 @@ const Reports = () => {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header">
+      <div className="card" style={{ borderRadius: '20px', padding: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+        <div className="card-header" style={{ marginBottom: '16px' }}>
           <div className="card-title">Live Data Reports Categories</div>
         </div>
-        <p className="text-muted" style={{ marginBottom: '24px' }}>Select any report category below to configure parameters and download live MongoDB records.</p>
+        <p className="text-muted" style={{ marginBottom: '20px' }}>Select any report category below to configure parameters and download live MongoDB records.</p>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
           {reportTypes.map((report) => (
-            <div key={report.id} onClick={() => setSelectedReport(report)} style={{ border: '1px solid var(--color-border)', borderRadius: '12px', padding: '24px', transition: 'all 0.2s', cursor: 'pointer' }} className="report-card hover-shadow">
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: report.color + '15', color: report.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-                <report.icon size={24} />
+            <div key={report.id} onClick={() => setSelectedReport(report)} style={{ border: '1px solid var(--color-border)', borderRadius: '16px', padding: '20px', transition: 'all 0.2s', cursor: 'pointer', background: 'white' }} className="report-card hover-shadow">
+              <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: report.color + '15', color: report.color, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '14px' }}>
+                <report.icon size={22} />
               </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '8px' }}>{report.title}</h3>
-              <p className="text-muted" style={{ fontSize: '0.85rem', lineHeight: 1.5, marginBottom: '20px' }}>{report.desc}</p>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: '6px', color: '#1e293b' }}>{report.title}</h3>
+              <p className="text-muted" style={{ fontSize: '0.82rem', lineHeight: 1.5, marginBottom: '16px' }}>{report.desc}</p>
               <button className="btn-outline" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--color-text-main)' }}>
-                <FileText size={16} /> Configure & Export
+                <FileText size={15} /> Configure & Export
               </button>
             </div>
           ))}
         </div>
       </div>
       
-      <div className="card" style={{ flex: 1 }}>
+      <div className="card" style={{ flex: 1, borderRadius: '20px', padding: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
         <div className="card-header">
           <div className="card-title">Quick Download Recent Export Datasets</div>
         </div>

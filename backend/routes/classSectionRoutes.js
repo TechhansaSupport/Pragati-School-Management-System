@@ -3,6 +3,8 @@ const router = express.Router();
 const ClassSection = require('../models/ClassSection');
 const Staff = require('../models/Staff');
 const Student = require('../models/Student');
+const User = require('../models/User');
+const Store = require('../models/Store');
 
 // Helper to check administrator authority
 const checkAdminAuthority = (req, res) => {
@@ -20,12 +22,63 @@ const checkAdminAuthority = (req, res) => {
   return true;
 };
 
+// Helper to retrieve all valid registered school campuses strictly for an entity
+const getRegisteredSchools = async (entityId = null) => {
+  const query = entityId ? { entityId } : {};
+  const schoolUsers = await User.find({ role: 'school', ...query }).sort({ createdAt: 1 });
+  const localStores = await Store.find(query).sort({ createdAt: 1 });
+  const list = [];
+  const slugs = new Set();
+
+  for (const u of schoolUsers) {
+    const s = u.slug || u.schoolSlug || u.uniqueId;
+    if (s && !slugs.has(s)) {
+      slugs.add(s);
+      list.push({
+        id: u._id,
+        name: u.name || u.schoolName || s,
+        slug: s,
+        entityId: u.entityId || s,
+        address: u.address || ''
+      });
+    }
+  }
+
+  for (const st of localStores) {
+    if (st.slug && !slugs.has(st.slug)) {
+      slugs.add(st.slug);
+      list.push({
+        id: st._id,
+        name: st.name || st.slug,
+        slug: st.slug,
+        entityId: st.entityId || st.slug,
+        address: st.address || ''
+      });
+    }
+  }
+
+  return list;
+};
+
 // Seed helper if a school has 0 classes configured
-const seedInitialClassesIfEmpty = async (entityId) => {
-  const count = await ClassSection.countDocuments({ entityId });
+const seedInitialClassesIfEmpty = async (entityId, schoolSlug = null) => {
+  if (!entityId) return;
+  const registeredSchools = await getRegisteredSchools(entityId);
+  if (registeredSchools.length === 0) {
+    return; // Strictly DO NOT seed if no school campus exists
+  }
+
+  const targetSchool = registeredSchools.find(s => s.slug === schoolSlug || s.entityId === entityId) || registeredSchools[0];
+  const targetEntityId = entityId;
+  const targetSchoolSlug = targetSchool.slug;
+
+  const count = await ClassSection.countDocuments({
+    entityId: targetEntityId
+  });
+
   if (count === 0) {
     // Look up any available teachers to assign as class teachers
-    const teachers = await Staff.find({ entityId, role: 'Teacher' }).limit(5);
+    const teachers = await Staff.find({ entityId: targetEntityId, role: 'Teacher' }).limit(5);
 
     const defaultClasses = [
       {
@@ -39,7 +92,8 @@ const seedInitialClassesIfEmpty = async (entityId) => {
         subjects: ['Mathematics', 'Physics', 'Chemistry', 'English', 'Social Science'],
         schedule: 'Mon - Fri | 08:30 AM - 02:30 PM',
         status: 'Active',
-        entityId
+        entityId: targetEntityId,
+        schoolSlug: targetSchoolSlug
       },
       {
         className: 'Class 10',
@@ -52,7 +106,8 @@ const seedInitialClassesIfEmpty = async (entityId) => {
         subjects: ['Mathematics', 'Physics', 'Chemistry', 'English', 'Social Science'],
         schedule: 'Mon - Fri | 08:30 AM - 02:30 PM',
         status: 'Active',
-        entityId
+        entityId: targetEntityId,
+        schoolSlug: targetSchoolSlug
       },
       {
         className: 'Class 9',
@@ -65,7 +120,8 @@ const seedInitialClassesIfEmpty = async (entityId) => {
         subjects: ['Mathematics', 'General Science', 'English', 'Hindi', 'History'],
         schedule: 'Mon - Fri | 08:30 AM - 02:30 PM',
         status: 'Active',
-        entityId
+        entityId: targetEntityId,
+        schoolSlug: targetSchoolSlug
       },
       {
         className: 'Class 9',
@@ -78,7 +134,8 @@ const seedInitialClassesIfEmpty = async (entityId) => {
         subjects: ['Mathematics', 'General Science', 'English', 'Hindi', 'Geography'],
         schedule: 'Mon - Fri | 08:30 AM - 02:30 PM',
         status: 'Active',
-        entityId
+        entityId: targetEntityId,
+        schoolSlug: targetSchoolSlug
       },
       {
         className: 'Class 11',
@@ -91,7 +148,8 @@ const seedInitialClassesIfEmpty = async (entityId) => {
         subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'],
         schedule: 'Mon - Fri | 08:00 AM - 02:00 PM',
         status: 'Active',
-        entityId
+        entityId: targetEntityId,
+        schoolSlug: targetSchoolSlug
       },
       {
         className: 'Class 12',
@@ -104,7 +162,8 @@ const seedInitialClassesIfEmpty = async (entityId) => {
         subjects: ['Advanced Physics', 'Chemistry', 'Mathematics', 'Computer Science', 'English'],
         schedule: 'Mon - Fri | 08:00 AM - 02:00 PM',
         status: 'Active',
-        entityId
+        entityId: targetEntityId,
+        schoolSlug: targetSchoolSlug
       }
     ];
 
@@ -121,19 +180,41 @@ const seedInitialClassesIfEmpty = async (entityId) => {
 // GET /api/classes — List all classes and sections
 router.get('/', async (req, res) => {
   try {
-    await seedInitialClassesIfEmpty(req.entityId);
+    const { search, grade, status, schoolSlug } = req.query;
+    const registeredSchools = await getRegisteredSchools(req.entityId);
+    const schoolsCount = registeredSchools.length;
 
-    const { search, grade, status, all } = req.query;
+    // If 0 schools exist in the system, no valid school classes exist
+    if (schoolsCount === 0) {
+      return res.json({
+        classes: [],
+        total: 0,
+        distinctGrades: [],
+        schoolsCount: 0,
+        schools: []
+      });
+    }
+
     const query = { entityId: req.entityId };
 
+    if (schoolSlug && schoolSlug !== 'All' && schoolSlug !== 'all') {
+      query.schoolSlug = schoolSlug;
+    }
+
     if (search) {
-      query.$or = [
+      const searchOr = [
         { className: { $regex: search, $options: 'i' } },
         { section: { $regex: search, $options: 'i' } },
         { classTeacherName: { $regex: search, $options: 'i' } },
         { roomNumber: { $regex: search, $options: 'i' } },
         { subjects: { $elemMatch: { $regex: search, $options: 'i' } } },
       ];
+      if (query.$or) {
+        query.$and = [{ $or: query.$or }, { $or: searchOr }];
+        delete query.$or;
+      } else {
+        query.$or = searchOr;
+      }
     }
 
     if (grade && grade !== 'All') {
@@ -149,28 +230,36 @@ router.get('/', async (req, res) => {
     // Attach real-time enrolled student count for each class section
     const classesWithCounts = await Promise.all(
       classes.map(async (cls) => {
-        const studentCount = await Student.countDocuments({
+        const studentQuery = {
           entityId: req.entityId,
           $or: [
             { grade: cls.className, section: cls.section },
             { grade: new RegExp(`^${cls.className}$`, 'i'), section: new RegExp(`^${cls.section}$`, 'i') }
           ]
-        });
+        };
+
+        const studentCount = await Student.countDocuments(studentQuery);
+        const schoolMatch = registeredSchools.find(s => s.slug === cls.schoolSlug || s.entityId === cls.entityId);
 
         const clsObj = cls.toObject();
         clsObj.enrolledStudents = studentCount;
         clsObj.occupancyPercent = cls.capacity > 0 ? Math.round((studentCount / cls.capacity) * 100) : 0;
+        clsObj.schoolName = schoolMatch ? schoolMatch.name : (cls.schoolSlug || 'Main Campus');
+        clsObj.schoolSlug = cls.schoolSlug || (schoolMatch ? schoolMatch.slug : '');
         return clsObj;
       })
     );
 
     // Extract unique grades list for dropdown filter
-    const allDistinctGrades = await ClassSection.distinct('className', { entityId: req.entityId });
+    const distinctQuery = { entityId: req.entityId };
+    const allDistinctGrades = await ClassSection.distinct('className', distinctQuery);
 
     res.json({
       classes: classesWithCounts,
       total: classesWithCounts.length,
       distinctGrades: allDistinctGrades.sort(),
+      schoolsCount,
+      schools: registeredSchools
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -180,25 +269,39 @@ router.get('/', async (req, res) => {
 // GET /api/classes/stats — KPI Summary
 router.get('/stats', async (req, res) => {
   try {
-    await seedInitialClassesIfEmpty(req.entityId);
+    const registeredSchools = await getRegisteredSchools(req.entityId);
+    if (registeredSchools.length === 0) {
+      return res.json({
+        totalClasses: 0,
+        totalSections: 0,
+        assignedTeachers: 0,
+        unassignedSections: 0,
+        totalCapacity: 0,
+        totalStudents: 0,
+        overallOccupancy: 0,
+        schoolsCount: 0
+      });
+    }
 
-    const totalSections = await ClassSection.countDocuments({ entityId: req.entityId, status: 'Active' });
-    const distinctGrades = await ClassSection.distinct('className', { entityId: req.entityId, status: 'Active' });
+    const filter = { entityId: req.entityId };
+
+    const totalSections = await ClassSection.countDocuments({ ...filter, status: 'Active' });
+    const distinctGrades = await ClassSection.distinct('className', { ...filter, status: 'Active' });
     const totalClasses = distinctGrades.length;
 
     const assignedSections = await ClassSection.countDocuments({
-      entityId: req.entityId,
+      ...filter,
       status: 'Active',
       classTeacher: { $ne: null }
     });
 
     const capacityAgg = await ClassSection.aggregate([
-      { $match: { entityId: req.entityId, status: 'Active' } },
+      { $match: { ...filter, status: 'Active' } },
       { $group: { _id: null, totalCapacity: { $sum: '$capacity' } } }
     ]);
     const totalCapacity = capacityAgg.length > 0 ? capacityAgg[0].totalCapacity : 0;
 
-    const totalStudents = await Student.countDocuments({ entityId: req.entityId, status: 'Active' });
+    const totalStudents = await Student.countDocuments({ ...filter, status: 'Active' });
 
     res.json({
       totalClasses,
@@ -208,6 +311,7 @@ router.get('/stats', async (req, res) => {
       totalCapacity,
       totalStudents,
       overallOccupancy: totalCapacity > 0 ? Math.round((totalStudents / totalCapacity) * 100) : 0,
+      schoolsCount: registeredSchools.length
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -246,6 +350,16 @@ router.post('/', async (req, res) => {
   if (!checkAdminAuthority(req, res)) return;
 
   try {
+    // 1. Strict Validation: Cannot create class without creating a school first
+    const registeredSchools = await getRegisteredSchools(req.entityId);
+    if (registeredSchools.length === 0) {
+      return res.status(400).json({
+        error: 'School Required',
+        message: 'Cannot create a class without creating a school first. Please create or register a school campus before adding classes.',
+        code: 'SCHOOL_REQUIRED'
+      });
+    }
+
     const {
       className,
       section,
@@ -256,6 +370,7 @@ router.post('/', async (req, res) => {
       subjects,
       schedule,
       status,
+      schoolSlug,
     } = req.body;
 
     if (!className || !className.trim()) {
@@ -269,16 +384,36 @@ router.post('/', async (req, res) => {
     const cleanClassName = className.trim();
     const cleanSection = section.trim().toUpperCase();
 
-    // Check for duplicate Class + Section in this school
+    // 2. Resolve Target School Campus strictly for this entity
+    const requestedSlug = (schoolSlug || req.headers['x-tenant-slug'] || req.headers['x-school-slug'] || '').trim();
+    let targetSchool = null;
+
+    if (requestedSlug && requestedSlug !== 'central' && requestedSlug !== 'test-school') {
+      targetSchool = registeredSchools.find(s => s.slug === requestedSlug || s.entityId === requestedSlug);
+      if (!targetSchool) {
+        return res.status(400).json({
+          error: 'Invalid School Campus',
+          message: `School campus "${requestedSlug}" not found. Please select a valid registered school campus.`,
+          code: 'INVALID_SCHOOL'
+        });
+      }
+    } else {
+      targetSchool = registeredSchools[0];
+    }
+
+    const targetEntityId = req.entityId;
+    const targetSchoolSlug = targetSchool.slug;
+
+    // 3. Check for duplicate Class + Section in this school campus
     const existing = await ClassSection.findOne({
       className: cleanClassName,
       section: cleanSection,
-      entityId: req.entityId,
+      entityId: targetEntityId
     });
 
     if (existing) {
       return res.status(400).json({
-        message: `Class "${cleanClassName}" with Section "${cleanSection}" already exists in your school.`
+        message: `Class "${cleanClassName}" with Section "${cleanSection}" already exists in ${targetSchool.name}.`
       });
     }
 
@@ -287,7 +422,10 @@ router.post('/', async (req, res) => {
     let teacherObjectId = null;
 
     if (classTeacher) {
-      const teacherDoc = await Staff.findOne({ _id: classTeacher, entityId: req.entityId });
+      const teacherDoc = await Staff.findOne({
+        _id: classTeacher,
+        $or: [{ entityId: targetEntityId }, { schoolSlug: targetSchoolSlug }]
+      });
       if (teacherDoc) {
         teacherName = teacherDoc.name;
         teacherObjectId = teacherDoc._id;
@@ -312,18 +450,21 @@ router.post('/', async (req, res) => {
       subjects: parsedSubjects,
       schedule: schedule ? schedule.trim() : 'Mon - Fri | 08:30 AM - 02:30 PM',
       status: status || 'Active',
-      entityId: req.entityId,
+      entityId: targetEntityId,
+      schoolSlug: targetSchoolSlug,
     });
 
     await newClassSection.save();
 
     res.status(201).json({
-      message: `Successfully created ${cleanClassName} - Section ${cleanSection}`,
+      message: `Successfully created ${cleanClassName} - Section ${cleanSection} for ${targetSchool.name}`,
       classSection: newClassSection,
+      schoolName: targetSchool.name,
+      schoolSlug: targetSchoolSlug
     });
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ message: 'This class and section combination already exists for your school.' });
+      return res.status(400).json({ message: 'This class and section combination already exists for this school.' });
     }
     res.status(400).json({ message: 'Validation error', error: error.message });
   }
@@ -401,6 +542,52 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// DELETE /api/classes — Delete ALL Class Sections (Admin Authority Only)
+router.delete('/', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const filter = { entityId: req.entityId };
+
+    const result = await ClassSection.deleteMany(filter);
+
+    res.json({
+      success: true,
+      message: `Successfully deleted all ${result.deletedCount} classes and sections`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/classes/seed — Explicitly generate starter classes (Admin Authority Only)
+router.post('/seed', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const registeredSchools = await getRegisteredSchools(req.entityId);
+    if (registeredSchools.length === 0) {
+      return res.status(400).json({
+        error: 'School Required',
+        message: 'Cannot generate starter classes without a registered school campus. Please create a school campus first.',
+        code: 'SCHOOL_REQUIRED'
+      });
+    }
+
+    const requestedSlug = (req.body?.schoolSlug || req.headers['x-tenant-slug'] || req.headers['x-school-slug'] || '').trim();
+    const targetSchool = registeredSchools.find(s => s.slug === requestedSlug || s.entityId === requestedSlug) || registeredSchools[0];
+
+    await seedInitialClassesIfEmpty(req.entityId, targetSchool.slug);
+    res.json({
+      success: true,
+      message: `Default starter classes created successfully for ${targetSchool.name}`
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // DELETE /api/classes/:id — Delete Class & Section (Admin Authority Only)
 router.delete('/:id', async (req, res) => {
   if (!checkAdminAuthority(req, res)) return;
@@ -416,6 +603,7 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.json({
+      success: true,
       message: `Successfully deleted ${deleted.className} - Section ${deleted.section}`,
       id: req.params.id
     });

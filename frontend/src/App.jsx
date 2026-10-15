@@ -19,6 +19,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import ParentDashboard from './pages/ParentDashboard';
 import Login from './pages/Login';
 import TransportRoutes from './pages/TransportRoutes';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import './index.css';
 
 const MainLayout = ({ children }) => {
@@ -29,11 +30,15 @@ const MainLayout = ({ children }) => {
     const saved = localStorage.getItem('compactMode');
     return saved !== null ? saved === 'true' : true;
   });
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved !== null ? saved === 'true' : false;
+  });
 
   useEffect(() => {
     if (isDarkMode) document.body.classList.add('dark-mode');
     else document.body.classList.remove('dark-mode');
+    localStorage.setItem('darkMode', isDarkMode);
   }, [isDarkMode]);
 
   useEffect(() => {
@@ -153,22 +158,25 @@ const MainLayout = ({ children }) => {
       )}
 
       {/* Layout Manager Drawer */}
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        bottom: 0,
-        width: '360px',
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(25px)',
-        boxShadow: '-10px 0 40px rgba(0,0,0,0.1)',
-        zIndex: 1000,
-        transform: isLayoutManagerOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-        borderLeft: '1px solid rgba(226, 232, 240, 0.8)',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
+      <div 
+        className="layout-drawer"
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '360px',
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(25px)',
+          boxShadow: '-10px 0 40px rgba(0,0,0,0.1)',
+          zIndex: 1000,
+          transform: isLayoutManagerOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          borderLeft: '1px solid rgba(226, 232, 240, 0.8)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         {/* Drawer Header */}
         <div style={{ padding: '24px', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.5)' }}>
           <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#1e3a8a', fontWeight: 800 }}>Manage Layout</h3>
@@ -283,10 +291,13 @@ const AppRoutes = () => {
   const role = sessionStorage.getItem('userRole');
   const tenantSlug = sessionStorage.getItem('tenantSlug') || (pathSlug !== 'login' ? pathSlug : '');
 
-  // Handle global /login redirect -> smart redirect to tenant login
+  // Handle global /login -> universal login page
   if (location.pathname === '/login') {
-    const fallbackSlug = tenantSlug || 'test-school';
-    return <Navigate to={`/${fallbackSlug}/login`} replace />;
+    return (
+      <Routes>
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    );
   }
 
   // Handle specific school login
@@ -298,14 +309,15 @@ const AppRoutes = () => {
     );
   }
 
-  // Auth Guard: If no role or tenant is set, redirect to specific school login
+  // Auth Guard: If no role or tenant is set, redirect to login
   if (!role || !tenantSlug) {
-    const redirectSlug = pathSlug && pathSlug !== 'login' ? pathSlug : (tenantSlug || 'test-school');
+    const redirectSlug = pathSlug && pathSlug !== 'login' ? pathSlug : (tenantSlug || 'greenwood-main');
     return <Navigate to={`/${redirectSlug}/login`} replace />;
   }
 
   const getDashboardForRole = () => {
     switch(role) {
+      case 'superadmin': return <SuperAdminDashboard />;
       case 'principal': return <PrincipalDashboard />;
       case 'teacher': return <TeacherDashboard />;
       case 'student': return <StudentDashboard />;
@@ -313,7 +325,6 @@ const AppRoutes = () => {
       case 'librarian': return <LibraryDashboard />;
       case 'transport': return <TransportDashboard />;
       case 'accountant': return <Finance />;
-      case 'superadmin':
       case 'admin':
       default: return <Dashboard />;
     }
@@ -324,7 +335,8 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/:tenantSlug" element={getDashboardForRole()} />
         <Route path="/:tenantSlug/dashboard" element={getDashboardForRole()} />
-        <Route path="/:tenantSlug/schools" element={<Dashboard />} />
+        <Route path="/:tenantSlug/superadmin" element={<SuperAdminDashboard />} />
+        <Route path="/:tenantSlug/schools" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Dashboard />} />
         <Route path="/:tenantSlug/library-dashboard" element={<LibraryDashboard />} />
         <Route path="/:tenantSlug/books" element={<LibraryBooks />} />
         <Route path="/:tenantSlug/transport-dashboard" element={<TransportDashboard />} />

@@ -42,6 +42,7 @@ const Staff = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState(null);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Success credentials modal
@@ -236,6 +237,48 @@ const Staff = () => {
       }
       setStaffToDelete(null);
       if (selectedStaff?._id === staffToDelete._id) setSelectedStaff(null);
+      await fetchStaffData();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle Delete All Staff
+  const handleDeleteAllStaff = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/staff`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.message || 'Failed to delete all staff records');
+      }
+      setIsDeleteAllModalOpen(false);
+      setSelectedStaff(null);
+      await fetchStaffData();
+    } catch (err) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Handle Seed Default Staff on Demand
+  const handleSeedDefaultStaff = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/staff/seed`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to generate starter staff');
+      }
       await fetchStaffData();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -486,7 +529,7 @@ const Staff = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--dashboard-card-gap)', width: '100%', minHeight: '100%', paddingBottom: '40px', fontFamily: "'Outfit', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', fontFamily: "'Outfit', sans-serif" }}>
       {renderProfileDrawer()}
 
       {/* Top Banner with Admin Authority indicator */}
@@ -528,31 +571,56 @@ const Staff = () => {
         </div>
 
         {isAdmin ? (
-          <button 
-            onClick={() => {
-              setFormData(initialForm);
-              setIsAddModalOpen(true);
-            }}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '10px', 
-              backgroundColor: '#ffffff', 
-              color: '#1e3a8a', 
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
-              transition: 'transform 0.2s',
-            }}
-            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <UserPlus size={18} color="#2563eb" /> Create New Staff
-          </button>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {staffList.length > 0 && (
+              <button
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                  color: '#fca5a5',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  padding: '12px 18px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = '#ef4444'; e.currentTarget.style.color = '#ffffff'; }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.15)'; e.currentTarget.style.color = '#fca5a5'; }}
+              >
+                <Trash2 size={16} /> Delete All Staff
+              </button>
+            )}
+            <button 
+              onClick={() => {
+                setFormData(initialForm);
+                setIsAddModalOpen(true);
+              }}
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '10px', 
+                backgroundColor: '#ffffff', 
+                color: '#1e3a8a', 
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
+                transition: 'transform 0.2s',
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <UserPlus size={18} color="#2563eb" /> Create New Staff
+            </button>
+          </div>
         ) : (
           <div style={{ background: 'rgba(255,255,255,0.15)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem' }}>
             View-Only Access (Administrator permissions required to create staff)
@@ -669,21 +737,21 @@ const Staff = () => {
       </div>
 
       {/* KPI Cards Row */}
-      <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--dashboard-card-gap)' }}>
+      <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
         {[
           { label: 'Total Faculty & Staff', value: stats.totalStaff, color: '#1e3a8a', bg: '#eff6ff', icon: User },
           { label: 'Teaching Faculty', value: stats.teachingStaff, color: '#2563eb', bg: '#dbeafe', icon: BookOpen },
           { label: 'Administrative & Support', value: stats.adminSupport, color: '#0f766e', bg: '#ccfbf1', icon: Briefcase },
           { label: 'On Leave / Away', value: stats.onLeave, color: '#d97706', bg: '#fef3c7', icon: Clock }
         ].map((kpi, i) => (
-          <div key={i} className="card" style={{ padding: '20px', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+          <div key={i} className="card" style={{ padding: '18px 22px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div className="flex-between" style={{ marginBottom: '8px' }}>
               <span className="metric-label" style={{ fontWeight: 600 }}>{kpi.label}</span>
               <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: kpi.color }}>
                 <kpi.icon size={18} />
               </div>
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: kpi.color, margin: '4px 0 0 0' }}>
+            <div style={{ fontSize: '1.85rem', fontWeight: 800, color: kpi.color, margin: '4px 0 0 0' }}>
               {isLoading ? '...' : kpi.value}
             </div>
           </div>
@@ -691,7 +759,7 @@ const Staff = () => {
       </div>
 
       {/* Main Staff Directory Card */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.05)',  }}>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
         
         {/* Controls Bar: Search, Filters, Refresh */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
@@ -793,8 +861,64 @@ const Staff = () => {
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    No staff records found matching your filters.
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
+                    <div style={{ maxWidth: '420px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#eff6ff', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <User size={26} />
+                      </div>
+                      <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#1e293b' }}>
+                        {staffList.length === 0 ? 'No Staff Members Registered' : 'No Matching Staff Records'}
+                      </h4>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+                        {staffList.length === 0 
+                          ? 'Your staff roster is empty. You can register new staff members individually or generate standard starter faculty.' 
+                          : 'No staff members matched your current filter criteria. Try resetting your search or filter options.'}
+                      </p>
+                      {staffList.length === 0 && isAdmin && (
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                          <button
+                            onClick={() => {
+                              setFormData(initialForm);
+                              setIsAddModalOpen(true);
+                            }}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '8px',
+                              background: '#2563eb',
+                              color: 'white',
+                              border: 'none',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <UserPlus size={15} /> Create Staff
+                          </button>
+                          <button
+                            onClick={handleSeedDefaultStaff}
+                            disabled={actionLoading}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '8px',
+                              background: '#f1f5f9',
+                              color: '#334155',
+                              border: '1px solid #cbd5e1',
+                              fontWeight: 600,
+                              fontSize: '0.85rem',
+                              cursor: actionLoading ? 'wait' : 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <RefreshCw size={14} /> {actionLoading ? 'Generating...' : 'Generate Starter Staff'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -860,20 +984,26 @@ const Staff = () => {
                         <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Default</span>
                       )}
                     </td>
-                    <td style={{ padding: '14px', textAlign: 'right' }}>
+                    <td style={{ padding: '14px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                         <button 
-                          onClick={() => setSelectedStaff(s)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedStaff(s);
+                          }}
                           title="View Details"
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: '4px', borderRadius: '4px' }}
                         >
                           <User size={16} />
                         </button>
                         {isAdmin && (
                           <button 
-                            onClick={() => setStaffToDelete(s)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setStaffToDelete(s);
+                            }}
                             title="Delete Staff"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px', borderRadius: '4px' }}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -1428,6 +1558,48 @@ const Staff = () => {
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: 700, cursor: actionLoading ? 'wait' : 'pointer' }}
               >
                 {actionLoading ? 'Removing...' : 'Delete Staff'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* DELETE ALL CONFIRMATION MODAL - RENDERED VIA PORTAL */}
+      {isDeleteAllModalOpen && createPortal(
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(15, 23, 42, 0.75)', 
+          zIndex: 999999, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          padding: '20px'
+        }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', maxWidth: '440px', padding: '24px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3)' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <Trash2 size={24}/>
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e293b', margin: '0 0 6px 0' }}>Delete All Staff Records?</h3>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 20px 0' }}>
+              Are you sure you want to delete all <strong>{staffList.length}</strong> staff members? This action is permanent and will remove their profiles and login access.
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleDeleteAllStaff}
+                disabled={actionLoading}
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: 700, cursor: actionLoading ? 'wait' : 'pointer' }}
+              >
+                {actionLoading ? 'Deleting...' : 'Delete All Staff'}
               </button>
             </div>
           </div>

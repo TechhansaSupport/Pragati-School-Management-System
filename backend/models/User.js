@@ -49,7 +49,8 @@ const userSchema = new mongoose.Schema({
   maintenanceMode: { type: Boolean, default: false },
   isBranch: { type: Boolean, default: false },
   branchName: { type: String, default: '' },
-  parentSchoolSlug: { type: String, default: '' }
+  parentSchoolSlug: { type: String, default: '' },
+  affiliationNo: { type: String, default: '' }
 }, { timestamps: true });
 
 // Compound unique index per school workspace
