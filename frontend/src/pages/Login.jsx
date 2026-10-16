@@ -170,7 +170,7 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        const effectiveSlug = data.tenantSlug || data.slug || tenantSlug || 'greenwood-main';
+        const effectiveSlug = data.tenantSlug || data.slug || tenantSlug || 'pragati';
         // Store user info and token
         sessionStorage.setItem('userInfo', JSON.stringify(data));
         sessionStorage.setItem('userRole', data.role);

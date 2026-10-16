@@ -65,7 +65,7 @@ router.post('/login', async (req, res) => {
           const defaultSchool = await User.findOne({ role: 'school', status: 'active' })
             || await User.findOne({ role: 'school' })
             || await Store.findOne({});
-          slug = defaultSchool?.slug || 'greenwood-main';
+          slug = defaultSchool?.slug || 'pragati';
         }
       }
     }

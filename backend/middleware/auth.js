@@ -52,6 +52,18 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // For SuperAdmin, allow cross-entity school resolution when targetSlug belongs to another school
+    if (!schoolUser && userRole === 'superadmin' && targetSlug && targetSlug !== 'central' && targetSlug !== 'all') {
+      schoolUser = await User.findOne({
+        role: 'school',
+        $or: [
+          { slug: targetSlug },
+          { schoolSlug: targetSlug },
+          { uniqueId: targetSlug }
+        ]
+      });
+    }
+
     // If requested slug does not belong to this entity or wasn't found, find primary school for this entity
     if (!schoolUser && userEntityId) {
       schoolUser = await User.findOne({
@@ -150,7 +162,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    const effectiveEntityId = userEntityId || (tenant && tenant.entityId) || (pragatiTenant && pragatiTenant.entity_id);
+    const effectiveEntityId = (userRole === 'superadmin' && schoolUser?.entityId) || userEntityId || (tenant && tenant.entityId) || (pragatiTenant && pragatiTenant.entity_id);
     const effectiveTenant = tenant || pragatiTenant || { 
       slug: effectiveSlug, 
       storeId: effectiveSlug, 

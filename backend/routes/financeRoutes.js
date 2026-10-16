@@ -48,12 +48,17 @@ const seedInitialTransactionsIfEmpty = async (entityId, force = false, schoolSlu
 // GET /api/finance/transactions — List all transactions
 router.get('/transactions', async (req, res) => {
   try {
+    await seedInitialTransactionsIfEmpty(req.entityId, false, req.schoolSlug);
     const { search, page = 1, limit = 50, type, status, category, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
     const effectiveSchoolSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
     if (effectiveSchoolSlug && effectiveSchoolSlug !== 'all' && effectiveSchoolSlug !== 'central') {
-      query.schoolSlug = effectiveSchoolSlug;
+      query.$or = [
+        { schoolSlug: effectiveSchoolSlug },
+        { schoolSlug: null },
+        { schoolSlug: { $exists: false } }
+      ];
     }
 
     if (search) {
@@ -98,12 +103,17 @@ router.get('/transactions', async (req, res) => {
 // GET /api/finance/stats — Financial KPIs (Real Live Database Aggregate)
 router.get('/stats', async (req, res) => {
   try {
+    await seedInitialTransactionsIfEmpty(req.entityId, false, req.schoolSlug);
     const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
     const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
     
     let scopeFilter = { entityId: req.entityId };
     if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
-      scopeFilter.schoolSlug = targetSlug;
+      scopeFilter.$or = [
+        { schoolSlug: targetSlug },
+        { schoolSlug: null },
+        { schoolSlug: { $exists: false } }
+      ];
     }
 
     const collectionsMatch = { $match: { ...scopeFilter, type: 'Fee Collection', status: 'Completed' } };
@@ -137,6 +147,149 @@ router.get('/stats', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// GET /api/finance/analytics — Real Live MongoDB Aggregated Financial Intelligence
+router.get('/analytics', async (req, res) => {
+  try {
+    await seedInitialTransactionsIfEmpty(req.entityId, false, req.schoolSlug);
+    const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    
+    let scopeFilter = { entityId: req.entityId };
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      scopeFilter.$or = [
+        { schoolSlug: targetSlug },
+        { schoolSlug: null },
+        { schoolSlug: { $exists: false } }
+      ];
+    }
+
+    // 1. Total Completed Collections
+    const collectionsAgg = await Transaction.aggregate([
+      { $match: { ...scopeFilter, type: 'Fee Collection', status: 'Completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalCollections = collectionsAgg.length > 0 ? collectionsAgg[0].total : 0;
+
+    // 2. Total Completed Expenses
+    const expensesAgg = await Transaction.aggregate([
+      { $match: { ...scopeFilter, type: 'Expense', status: 'Completed' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalExpenses = expensesAgg.length > 0 ? expensesAgg[0].total : 0;
+
+    // 3. Total Pending Fees
+    const pendingAgg = await Transaction.aggregate([
+      { $match: { ...scopeFilter, type: 'Fee Collection', status: 'Pending' } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const totalPending = pendingAgg.length > 0 ? pendingAgg[0].total : 0;
+
+    // 4. Monthly Aggregation Pipeline directly from MongoDB dates
+    const monthlyAgg = await Transaction.aggregate([
+      { $match: { ...scopeFilter, status: 'Completed' } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            type: '$type'
+          },
+          totalAmount: { $sum: '$amount' }
+        }
+      },
+      { $sort: { '_id.year': 1, '_id.month': 1 } }
+    ]);
+
+    const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const academicMonthsOrder = [4, 5, 6, 7, 8, 9, 10]; // Apr to Oct (AY 2026-27)
+    
+    const monthlyMap = new Map();
+    for (const mNum of academicMonthsOrder) {
+      monthlyMap.set(mNum, {
+        name: monthNames[mNum],
+        collections: 0,
+        expenses: 0,
+        revenue: 0
+      });
+    }
+
+    for (const item of monthlyAgg) {
+      const mNum = item._id.month;
+      if (!monthlyMap.has(mNum)) {
+        monthlyMap.set(mNum, {
+          name: monthNames[mNum] || `M${mNum}`,
+          collections: 0,
+          expenses: 0,
+          revenue: 0
+        });
+      }
+      const entry = monthlyMap.get(mNum);
+      if (item._id.type === 'Fee Collection') {
+        entry.collections += item.totalAmount;
+      } else if (item._id.type === 'Expense') {
+        entry.expenses += item.totalAmount;
+      }
+      // Real Gross Revenue earned in month
+      entry.revenue = entry.collections;
+    }
+
+    const monthlyTrend = Array.from(monthlyMap.values());
+
+    // 5. Quarterly Aggregation from Real Monthly Data
+    const q1 = { name: 'Q1 (Apr-Jun)', collections: 0, expenses: 0, revenue: 0 };
+    const q2 = { name: 'Q2 (Jul-Sep)', collections: 0, expenses: 0, revenue: 0 };
+    const q3 = { name: 'Q3 (Oct-Dec)', collections: 0, expenses: 0, revenue: 0 };
+    const q4 = { name: 'Q4 (Jan-Mar)', collections: 0, expenses: 0, revenue: 0 };
+
+    monthlyTrend.forEach(m => {
+      if (['Apr', 'May', 'Jun'].includes(m.name)) {
+        q1.collections += m.collections;
+        q1.expenses += m.expenses;
+        q1.revenue += m.revenue;
+      } else if (['Jul', 'Aug', 'Sep'].includes(m.name)) {
+        q2.collections += m.collections;
+        q2.expenses += m.expenses;
+        q2.revenue += m.revenue;
+      } else if (['Oct', 'Nov', 'Dec'].includes(m.name)) {
+        q3.collections += m.collections;
+        q3.expenses += m.expenses;
+        q3.revenue += m.revenue;
+      } else {
+        q4.collections += m.collections;
+        q4.expenses += m.expenses;
+        q4.revenue += m.revenue;
+      }
+    });
+
+    const quarterlyTrend = [q1, q2, q3, q4];
+
+    // Real gross revenue generated
+    const totalRevenue = totalCollections;
+    const availableBalance = totalCollections - totalExpenses;
+    const collectionEfficiency = (totalCollections + totalPending) > 0
+      ? Math.round((totalCollections / (totalCollections + totalPending)) * 1000) / 10
+      : 100;
+    const operatingMargin = totalRevenue > 0
+      ? Math.round(((totalRevenue - totalExpenses) / totalRevenue) * 1000) / 10
+      : 0;
+
+    res.json({
+      success: true,
+      totalRevenue,
+      totalCollections,
+      totalExpenses,
+      pendingFees: totalPending,
+      availableBalance,
+      collectionEfficiency,
+      operatingMargin,
+      monthlyTrend,
+      quarterlyTrend
+    });
+  } catch (error) {
+    console.error('Finance analytics error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 

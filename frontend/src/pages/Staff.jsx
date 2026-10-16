@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
   Search, MoreVertical, User, ChevronLeft, ChevronRight, Plus, X, 
@@ -12,10 +13,11 @@ const API_BASE = 'http://localhost:5000/api';
 
 const Staff = () => {
   // Current user & authentication context
+  const { tenantSlug: urlTenantSlug } = useParams();
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
-  const token = userInfo.token || '';
+  const token = userInfo.token || sessionStorage.getItem('token') || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
-  const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || userInfo.tenantSlug || '';
+  const tenantSlug = urlTenantSlug || sessionStorage.getItem('tenantSlug') || userInfo.slug || userInfo.tenantSlug || '';
 
   const isAdmin = ['admin', 'superadmin', 'principal', 'frontdesk'].includes(userRole);
 
@@ -85,8 +87,10 @@ const Staff = () => {
   // Request headers helper
   const getAuthHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+    const activeToken = token || sessionStorage.getItem('token') || '';
+    const activeSlug = urlTenantSlug || tenantSlug || sessionStorage.getItem('tenantSlug') || '';
+    if (activeToken) headers['Authorization'] = `Bearer ${activeToken}`;
+    if (activeSlug) headers['x-tenant-slug'] = activeSlug;
     return headers;
   };
 
@@ -223,20 +227,24 @@ const Staff = () => {
   };
 
   // Handle Delete Staff
+  // Handle Delete Staff
   const handleDeleteStaff = async () => {
     if (!staffToDelete) return;
+    const targetStaff = staffToDelete;
     setActionLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/staff/${staffToDelete._id}`, {
+      const res = await fetch(`${API_BASE}/staff/${targetStaff._id}`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });
+      const d = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.message || 'Failed to delete staff member');
+        throw new Error(d.message || d.error || 'Failed to delete staff member');
       }
       setStaffToDelete(null);
-      if (selectedStaff?._id === staffToDelete._id) setSelectedStaff(null);
+      if (selectedStaff?._id === targetStaff._id) setSelectedStaff(null);
+      setStaffList(prev => prev.filter(s => s._id !== targetStaff._id));
+      window.dispatchEvent(new CustomEvent('staffListChanged'));
       await fetchStaffData();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -254,11 +262,13 @@ const Staff = () => {
         headers: getAuthHeaders(),
       });
       if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.message || 'Failed to delete all staff records');
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.message || d.error || 'Failed to delete all staff records');
       }
       setIsDeleteAllModalOpen(false);
       setSelectedStaff(null);
+      setStaffList([]);
+      window.dispatchEvent(new CustomEvent('staffListChanged'));
       await fetchStaffData();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -1553,6 +1563,7 @@ const Staff = () => {
                 Cancel
               </button>
               <button 
+                id="confirm-delete-staff-btn"
                 onClick={handleDeleteStaff}
                 disabled={actionLoading}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: 700, cursor: actionLoading ? 'wait' : 'pointer' }}
@@ -1595,6 +1606,7 @@ const Staff = () => {
                 Cancel
               </button>
               <button 
+                id="confirm-delete-all-staff-btn"
                 onClick={handleDeleteAllStaff}
                 disabled={actionLoading}
                 style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', background: '#dc2626', color: 'white', fontWeight: 700, cursor: actionLoading ? 'wait' : 'pointer' }}

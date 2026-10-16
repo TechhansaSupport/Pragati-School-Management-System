@@ -289,7 +289,15 @@ const AppRoutes = () => {
   }
 
   const role = sessionStorage.getItem('userRole');
-  const tenantSlug = sessionStorage.getItem('tenantSlug') || (pathSlug !== 'login' ? pathSlug : '');
+  const tenantSlug = sessionStorage.getItem('tenantSlug') || (pathSlug && pathSlug !== 'login' ? pathSlug : '');
+
+  // Handle root /
+  if (location.pathname === '/') {
+    if (role && tenantSlug) {
+      return <Navigate to={`/${tenantSlug}/dashboard`} replace />;
+    }
+    return <Navigate to="/login" replace />;
+  }
 
   // Handle global /login -> universal login page
   if (location.pathname === '/login') {
@@ -311,8 +319,10 @@ const AppRoutes = () => {
 
   // Auth Guard: If no role or tenant is set, redirect to login
   if (!role || !tenantSlug) {
-    const redirectSlug = pathSlug && pathSlug !== 'login' ? pathSlug : (tenantSlug || 'greenwood-main');
-    return <Navigate to={`/${redirectSlug}/login`} replace />;
+    if (pathSlug && pathSlug !== 'login') {
+      return <Navigate to={`/${pathSlug}/login`} replace />;
+    }
+    return <Navigate to="/login" replace />;
   }
 
   const getDashboardForRole = () => {
