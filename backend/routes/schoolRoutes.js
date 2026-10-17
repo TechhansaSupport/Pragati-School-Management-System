@@ -680,13 +680,25 @@ router.post('/:slug/appoint-admin', protect, authorize('superadmin', 'admin'), a
   }
 });
 
-// @desc    Appoint or Update the Principal for a specific school
+// @desc    Appoint or Update the Principal for a specific school (supports existing teaching staff promotion or new principal creation)
 // @route   POST /api/school/:slug/appoint-principal
 // @access  Protected (Admin / Superadmin)
 router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const slug = (req.params.slug || '').trim();
-    const { name, email, phone, qualification, portalUsername, portalPassword } = req.body;
+    const { 
+      name, 
+      email, 
+      phone, 
+      qualification, 
+      portalUsername, 
+      portalPassword, 
+      salary, 
+      existingStaffId, 
+      staffId 
+    } = req.body;
+
+    const targetStaffId = existingStaffId || staffId;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return res.status(400).json({ error: 'Principal name is required', code: 'MISSING_NAME' });
@@ -717,47 +729,108 @@ router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'
     const pEmail = (email || `${schoolSlug}.principal@pragati.edu`).trim().toLowerCase();
     const pUsername = (portalUsername || `${schoolSlug}_principal`).trim().toLowerCase();
 
-    // Check if an existing Principal staff record exists for this school
-    let principalStaff = await Staff.findOne({
-      role: 'Principal',
-      $or: [
-        { schoolSlug: schoolSlug },
-        { entityId, employeeId: 'PRIN-001' }
-      ]
-    });
+    let principalStaff = null;
 
-    if (principalStaff) {
-      principalStaff.name = trimmedName;
-      if (email) principalStaff.email = pEmail;
-      if (phone) principalStaff.phone = phone.trim();
-      if (qualification) principalStaff.qualification = qualification.trim();
-      principalStaff.portalUsername = pUsername;
-      principalStaff.schoolSlug = schoolSlug;
-      principalStaff.status = 'Active';
-      await principalStaff.save();
-    } else {
-      principalStaff = await Staff.create({
-        name: trimmedName,
-        employeeId: 'PRIN-001',
-        role: 'Principal',
-        department: 'Administration',
-        qualification: qualification || 'M.Ed / Ph.D in Educational Leadership',
-        email: pEmail,
-        phone: phone ? phone.trim() : '',
-        salary: 95000,
-        workload: 'Medium',
-        status: 'Active',
-        portalUsername: pUsername,
-        schoolSlug,
+    if (targetStaffId) {
+      // ─── APPOINT FROM EXISTING TEACHING / FACULTY STAFF ───
+      const existingStaff = await Staff.findOne({
+        _id: targetStaffId,
         entityId
       });
+
+      if (!existingStaff) {
+        return res.status(404).json({ error: 'Selected teaching staff member not found', code: 'STAFF_NOT_FOUND' });
+      }
+
+      // If this campus already had a different active Principal, demote them to avoid duplicates
+      const previousPrincipal = await Staff.findOne({
+        role: 'Principal',
+        entityId,
+        schoolSlug,
+        _id: { $ne: existingStaff._id },
+        status: { $ne: 'Resigned' }
+      });
+
+      if (previousPrincipal) {
+        previousPrincipal.role = 'Teacher';
+        previousPrincipal.department = previousPrincipal.department === 'Administration' ? 'General' : previousPrincipal.department;
+        await previousPrincipal.save();
+
+        // Update their portal User role from principal to teacher
+        await User.updateMany(
+          {
+            entityId,
+            $or: [
+              { referenceId: previousPrincipal._id },
+              { uniqueId: previousPrincipal.portalUsername }
+            ]
+          },
+          { $set: { role: 'teacher' } }
+        );
+      }
+
+      // Promote existing teaching staff member to Principal
+      existingStaff.name = trimmedName;
+      if (email) existingStaff.email = pEmail;
+      if (phone) existingStaff.phone = phone.trim();
+      if (qualification) existingStaff.qualification = qualification.trim();
+      existingStaff.role = 'Principal';
+      existingStaff.department = 'Administration';
+      existingStaff.schoolSlug = schoolSlug;
+      if (salary) existingStaff.salary = Number(salary) || existingStaff.salary;
+      else if (!existingStaff.salary || existingStaff.salary < 95000) existingStaff.salary = 95000;
+      existingStaff.portalUsername = pUsername;
+      existingStaff.status = 'Active';
+      await existingStaff.save();
+
+      principalStaff = existingStaff;
+    } else {
+      // ─── APPOINT / CREATE NEW PRINCIPAL ───
+      principalStaff = await Staff.findOne({
+        role: 'Principal',
+        entityId,
+        schoolSlug
+      });
+
+      if (principalStaff) {
+        principalStaff.name = trimmedName;
+        if (email) principalStaff.email = pEmail;
+        if (phone) principalStaff.phone = phone.trim();
+        if (qualification) principalStaff.qualification = qualification.trim();
+        if (salary) principalStaff.salary = Number(salary);
+        principalStaff.portalUsername = pUsername;
+        principalStaff.schoolSlug = schoolSlug;
+        principalStaff.status = 'Active';
+        await principalStaff.save();
+      } else {
+        const staffCount = await Staff.countDocuments({ entityId });
+        const uniqueEmpId = `PRIN-${schoolSlug.slice(0, 4).toUpperCase()}-${String(staffCount + 1).padStart(3, '0')}`;
+
+        principalStaff = await Staff.create({
+          name: trimmedName,
+          employeeId: uniqueEmpId,
+          role: 'Principal',
+          department: 'Administration',
+          qualification: qualification || 'M.Ed / Ph.D in Educational Leadership',
+          email: pEmail,
+          phone: phone ? phone.trim() : '',
+          salary: salary ? Number(salary) : 95000,
+          workload: 'Medium',
+          status: 'Active',
+          portalUsername: pUsername,
+          schoolSlug,
+          entityId
+        });
+      }
     }
 
     // Provision or update portal user credentials in User (school_ms)
     let portalUser = await User.findOne({
+      entityId,
       $or: [
+        { referenceId: principalStaff._id },
         { uniqueId: pUsername },
-        { referenceId: principalStaff._id }
+        ...(principalStaff.portalUsername ? [{ uniqueId: principalStaff.portalUsername }] : [])
       ]
     });
 
@@ -765,6 +838,10 @@ router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'
       portalUser.uniqueId = pUsername;
       portalUser.role = 'principal';
       portalUser.schoolSlug = schoolSlug;
+      portalUser.name = trimmedName;
+      portalUser.email = pEmail;
+      portalUser.referenceId = principalStaff._id;
+      portalUser.onModel = 'Staff';
       if (portalPassword && portalPassword.trim()) {
         portalUser.password = portalPassword.trim();
       }
@@ -787,6 +864,7 @@ router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'
     return res.json({
       success: true,
       message: `Principal "${trimmedName}" appointed for ${schoolName}!`,
+      appointedFromExisting: !!targetStaffId,
       principal: {
         id: principalStaff._id,
         name: principalStaff.name,
@@ -795,7 +873,9 @@ router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'
         qualification: principalStaff.qualification,
         portalUsername: pUsername,
         schoolName: schoolName,
-        schoolSlug: schoolSlug
+        schoolSlug: schoolSlug,
+        role: 'Principal',
+        employeeId: principalStaff.employeeId
       }
     });
   } catch (error) {

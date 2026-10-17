@@ -7,7 +7,8 @@ import {
   Calendar, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
   Briefcase, BookOpen, Clock, HelpCircle, Check, Copy, X, Settings,
   AlertTriangle, Save, Database, Lock, Edit3, TrendingUp, TrendingDown,
-  Wallet, CreditCard, Receipt, Percent, DollarSign, CheckCircle
+  Wallet, CreditCard, Receipt, Percent, DollarSign, CheckCircle,
+  Bus, Book, Navigation, Bookmark, Wrench
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, Line, 
@@ -19,6 +20,8 @@ import AppointAdminModal from '../components/AppointAdminModal';
 import AppointPrincipalModal from '../components/AppointPrincipalModal';
 import AssignStaffModal from '../components/AssignStaffModal';
 import DeleteSchoolModal from '../components/DeleteSchoolModal';
+import TransportDashboard from './TransportDashboard';
+import LibraryDashboard from './LibraryDashboard';
 
 const FinancialTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -105,6 +108,7 @@ const SuperAdminDashboard = () => {
   const [createModalParentSlug, setCreateModalParentSlug] = useState('');
   const [targetSchoolForAdmin, setTargetSchoolForAdmin] = useState(null);
   const [targetSchoolForPrincipal, setTargetSchoolForPrincipal] = useState(null);
+  const [preSelectedTeacherForPrincipal, setPreSelectedTeacherForPrincipal] = useState(null);
   const [targetSchoolForStaff, setTargetSchoolForStaff] = useState(null);
   const [targetSchoolForDelete, setTargetSchoolForDelete] = useState(null);
   const [targetSchoolForEdit, setTargetSchoolForEdit] = useState(null);
@@ -136,6 +140,23 @@ const SuperAdminDashboard = () => {
   const [financePeriod, setFinancePeriod] = useState('monthly'); // 'monthly' | 'quarterly'
   const [isFinanceLoading, setIsFinanceLoading] = useState(false);
   const [attendanceView, setAttendanceView] = useState('weekly'); // 'weekly' | 'departments'
+
+  // Transport & Library Real Database Overview State
+  const [transportOverviewStats, setTransportOverviewStats] = useState({
+    totalFleet: 5,
+    activeRoutes: 5,
+    mappedStudents: 188,
+    inMaintenance: 1,
+    totalStops: 38
+  });
+  const [libraryOverviewStats, setLibraryOverviewStats] = useState({
+    totalTitles: 7,
+    totalCopies: 120,
+    availableCopies: 102,
+    issuedCopies: 18,
+    overdueCopies: 2,
+    finesCollected: 4500
+  });
 
   // Fetch real database financial & faculty intelligence analytics
   const fetchFinanceAndAttendanceAnalytics = async (scope = financeScope) => {
@@ -271,13 +292,30 @@ const SuperAdminDashboard = () => {
     fetchFinanceAndAttendanceAnalytics(financeScope);
   }, [financeScope]);
 
+  // Fetch Live Auxiliary Operations (Transport & Library) Telemetry
+  useEffect(() => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    fetch('http://localhost:5000/api/transport/stats', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setTransportOverviewStats(prev => ({ ...prev, ...data })); })
+      .catch(err => console.warn('SuperAdmin Transport stats error:', err));
+
+    fetch('http://localhost:5000/api/library/stats', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (data) setLibraryOverviewStats(prev => ({ ...prev, ...data })); })
+      .catch(err => console.warn('SuperAdmin Library stats error:', err));
+  }, [tenantSlug, token]);
+
   // Synchronize active tab with URL query parameter (?tab=)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     if (!tabParam || tabParam === 'overview' || tabParam === 'hub') {
       setActiveTab('overview');
-    } else if (['schools', 'assignments', 'health', 'config', 'rbac', 'security'].includes(tabParam)) {
+    } else if (['schools', 'assignments', 'health', 'config', 'rbac', 'security', 'transport', 'library'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [location.search]);
@@ -722,16 +760,14 @@ const SuperAdminDashboard = () => {
       {/* ─── EXECUTIVE FINANCIAL & FACULTY INTELLIGENCE HUB ─── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%', marginTop: '6px' }}>
         {/* Hub Header & Scope Controller */}
-        <div style={{
+        <div className="card chart-card hub-telemetry-header" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '12px',
           padding: '16px 22px',
-          background: 'white',
           borderRadius: '16px',
-          border: '1px solid #e2e8f0',
           boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
         }}>
           <div>
@@ -752,7 +788,7 @@ const SuperAdminDashboard = () => {
                 • Consolidated Real-Time Analytics (AY 2026-2027)
               </span>
             </div>
-            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.22rem', fontWeight: 800, color: '#1e293b' }}>
+            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.22rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
               Financial Performance & Faculty Attendance Intelligence
             </h2>
           </div>
@@ -786,12 +822,10 @@ const SuperAdminDashboard = () => {
             </div>
 
             {/* Period Selector */}
-            <div style={{
+            <div className="period-toggle-group" style={{
               display: 'flex',
-              background: '#f1f5f9',
               padding: '3px',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0'
+              borderRadius: '10px'
             }}>
               <button
                 type="button"
@@ -800,12 +834,12 @@ const SuperAdminDashboard = () => {
                   padding: '5px 12px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: financePeriod === 'monthly' ? 'white' : 'transparent',
-                  color: financePeriod === 'monthly' ? '#4F46E5' : '#64748b',
+                  background: financePeriod === 'monthly' ? '#4F46E5' : 'transparent',
+                  color: financePeriod === 'monthly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
                   fontWeight: 700,
                   fontSize: '0.78rem',
                   cursor: 'pointer',
-                  boxShadow: financePeriod === 'monthly' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  boxShadow: financePeriod === 'monthly' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -818,12 +852,12 @@ const SuperAdminDashboard = () => {
                   padding: '5px 12px',
                   borderRadius: '8px',
                   border: 'none',
-                  background: financePeriod === 'quarterly' ? 'white' : 'transparent',
-                  color: financePeriod === 'quarterly' ? '#4F46E5' : '#64748b',
+                  background: financePeriod === 'quarterly' ? '#4F46E5' : 'transparent',
+                  color: financePeriod === 'quarterly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
                   fontWeight: 700,
                   fontSize: '0.78rem',
                   cursor: 'pointer',
-                  boxShadow: financePeriod === 'quarterly' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                  boxShadow: financePeriod === 'quarterly' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
                   transition: 'all 0.2s'
                 }}
               >
@@ -844,9 +878,9 @@ const SuperAdminDashboard = () => {
                 width: '34px',
                 height: '34px',
                 borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                background: 'white',
-                color: '#64748b',
+                border: '1px solid var(--color-border, #e2e8f0)',
+                background: 'var(--color-surface, white)',
+                color: 'var(--color-text-muted, #64748b)',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
@@ -864,10 +898,10 @@ const SuperAdminDashboard = () => {
         }}>
           {/* Card 1: Revenue Generated */}
           <div className="card" style={{
-            background: 'white',
+            background: 'var(--color-surface, white)',
             borderRadius: '18px',
             padding: '20px 22px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border, #e2e8f0)',
             boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
             position: 'relative',
             overflow: 'hidden'
@@ -882,10 +916,10 @@ const SuperAdminDashboard = () => {
             }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Revenue Generated
                 </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '6px', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
                   {formatCurrency(financeAnalytics?.totalRevenue ?? financeStats.totalCollections)}
                 </div>
               </div>
@@ -903,11 +937,11 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '3px 8px', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#059669', background: 'rgba(16, 185, 129, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
                 <TrendingUp size={12} /> Live Recorded
               </span>
-              <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
                 Margin: {financeAnalytics?.operatingMargin !== undefined ? `${financeAnalytics.operatingMargin}%` : '+0.5%'}
               </span>
             </div>
@@ -915,10 +949,10 @@ const SuperAdminDashboard = () => {
 
           {/* Card 2: Fees Collected */}
           <div className="card" style={{
-            background: 'white',
+            background: 'var(--color-surface, white)',
             borderRadius: '18px',
             padding: '20px 22px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border, #e2e8f0)',
             boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
             position: 'relative',
             overflow: 'hidden'
@@ -933,10 +967,10 @@ const SuperAdminDashboard = () => {
             }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Fees Collected
                 </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '6px', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
                   {formatCurrency(financeAnalytics?.totalCollections ?? financeStats.totalCollections)}
                 </div>
               </div>
@@ -954,11 +988,11 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#4F46E5', background: '#eef2ff', padding: '3px 8px', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#6366f1', background: 'rgba(99, 102, 241, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
                 <CheckCircle2 size={12} /> {financeAnalytics?.collectionEfficiency !== undefined ? `${financeAnalytics.collectionEfficiency}%` : '90.1%'} Realized
               </span>
-              <span style={{ fontSize: '0.74rem', color: '#b45309', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.74rem', color: '#f59e0b', fontWeight: 600 }}>
                 Dues: {formatCurrency(financeAnalytics?.pendingFees ?? financeStats.pendingFees)}
               </span>
             </div>
@@ -966,10 +1000,10 @@ const SuperAdminDashboard = () => {
 
           {/* Card 3: Operating Expenses */}
           <div className="card" style={{
-            background: 'white',
+            background: 'var(--color-surface, white)',
             borderRadius: '18px',
             padding: '20px 22px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border, #e2e8f0)',
             boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
             position: 'relative',
             overflow: 'hidden'
@@ -984,10 +1018,10 @@ const SuperAdminDashboard = () => {
             }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Operating Expenses
                 </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '6px', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
                   {formatCurrency(financeAnalytics?.totalExpenses ?? financeStats.totalExpenses)}
                 </div>
               </div>
@@ -1005,11 +1039,11 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#10b981' : '#e11d48', background: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#ecfdf5' : '#fff1f2', padding: '3px 8px', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#10b981' : '#e11d48', background: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
                 <Percent size={12} /> {(financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? 'Surplus Positive' : 'Deficit Monitored'}
               </span>
-              <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
                 Net: {formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}
               </span>
             </div>
@@ -1017,10 +1051,10 @@ const SuperAdminDashboard = () => {
 
           {/* Card 4: Teachers Attendance */}
           <div className="card" style={{
-            background: 'white',
+            background: 'var(--color-surface, white)',
             borderRadius: '18px',
             padding: '20px 22px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border, #e2e8f0)',
             boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
             position: 'relative',
             overflow: 'hidden'
@@ -1035,10 +1069,10 @@ const SuperAdminDashboard = () => {
             }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Teachers Attendance
                 </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginTop: '6px', lineHeight: 1 }}>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
                   {teacherStats.rate}%
                 </div>
               </div>
@@ -1056,11 +1090,11 @@ const SuperAdminDashboard = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '3px 8px', borderRadius: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#0284c7', background: 'rgba(2, 132, 199, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
                 {teacherStats.present} / {teacherStats.total} Present
               </span>
-              <span style={{ fontSize: '0.74rem', color: teacherStats.onLeave > 0 ? '#d97706' : '#16a34a', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.74rem', color: teacherStats.onLeave > 0 ? '#f59e0b' : '#10b981', fontWeight: 600 }}>
                 {teacherStats.onLeave > 0 ? `${teacherStats.onLeave} On Leave` : '100% Present'}
               </span>
             </div>
@@ -1076,20 +1110,20 @@ const SuperAdminDashboard = () => {
         }}>
           {/* GRAPH 1: Financial Trajectory (AreaChart) */}
           <div className="card" style={{
-            background: 'white',
+            background: 'var(--color-surface, white)',
             borderRadius: '20px',
             padding: '24px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border, #e2e8f0)',
             boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
             display: 'flex',
             flexDirection: 'column'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <TrendingUp size={18} color="#4F46E5" /> Consolidated Financial Performance
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)' }}>
                   Revenue generated, fee collections, and operational expenses
                 </p>
               </div>
@@ -1124,12 +1158,12 @@ const SuperAdminDashboard = () => {
                       <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.02}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B', fontWeight: 600 }} dy={8} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.08)" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={8} />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 11, fill: '#64748B' }} 
+                    tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} 
                     tickFormatter={v => `₹${v >= 100000 ? (v / 100000).toFixed(1) + 'L' : (v / 1000) + 'k'}`} 
                   />
                   <Tooltip content={<FinancialTooltip />} />
@@ -1140,15 +1174,15 @@ const SuperAdminDashboard = () => {
               </ResponsiveContainer>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--color-border, #f1f5f9)', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Realization Efficiency:</span>
+                <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>Realization Efficiency:</span>
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#10b981' }}>
                   {financeAnalytics?.collectionEfficiency !== undefined ? `${financeAnalytics.collectionEfficiency}%` : '90.1%'}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Net Available Balance:</span>
+                <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>Net Available Balance:</span>
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#10B981' : '#F43F5E' }}>
                   {formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}
                 </span>
@@ -1158,45 +1192,44 @@ const SuperAdminDashboard = () => {
 
           {/* GRAPH 2: Teachers Attendance & Faculty Presence */}
           <div className="card" style={{
-            background: 'white',
+            background: 'var(--color-surface, white)',
             borderRadius: '20px',
             padding: '24px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border, #e2e8f0)',
             boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
             display: 'flex',
             flexDirection: 'column'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <UserCheck size={18} color="#0284C7" /> Faculty & Teachers Attendance
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)' }}>
                   Weekly trends, presence reliability, and department distribution
                 </p>
               </div>
 
               {/* View Switcher: Weekly vs Departments */}
-              <div style={{
-                display: 'flex',
-                background: '#f1f5f9',
+              <div className="period-toggle-group" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
                 padding: '3px',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0'
+                borderRadius: '10px'
               }}>
                 <button
                   type="button"
                   onClick={() => setAttendanceView('weekly')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '5px 12px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: attendanceView === 'weekly' ? 'white' : 'transparent',
-                    color: attendanceView === 'weekly' ? '#0284c7' : '#64748b',
+                    background: attendanceView === 'weekly' ? '#0284C7' : 'transparent',
+                    color: attendanceView === 'weekly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
                     fontWeight: 700,
-                    fontSize: '0.74rem',
+                    fontSize: '0.76rem',
                     cursor: 'pointer',
-                    boxShadow: attendanceView === 'weekly' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                    boxShadow: attendanceView === 'weekly' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
                     transition: 'all 0.2s'
                   }}
                 >
@@ -1206,15 +1239,15 @@ const SuperAdminDashboard = () => {
                   type="button"
                   onClick={() => setAttendanceView('departments')}
                   style={{
-                    padding: '4px 10px',
+                    padding: '5px 12px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: attendanceView === 'departments' ? 'white' : 'transparent',
-                    color: attendanceView === 'departments' ? '#0284c7' : '#64748b',
+                    background: attendanceView === 'departments' ? '#0284C7' : 'transparent',
+                    color: attendanceView === 'departments' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
                     fontWeight: 700,
-                    fontSize: '0.74rem',
+                    fontSize: '0.76rem',
                     cursor: 'pointer',
-                    boxShadow: attendanceView === 'departments' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                    boxShadow: attendanceView === 'departments' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
                     transition: 'all 0.2s'
                   }}
                 >
@@ -1227,9 +1260,9 @@ const SuperAdminDashboard = () => {
               <div style={{ width: '100%', height: '280px', marginTop: '10px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={teacherAttendanceWeekly} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B', fontWeight: 600 }} dy={8} />
-                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.08)" />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={8} />
+                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} />
                     <YAxis yAxisId="right" orientation="right" domain={[80, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6366F1' }} unit="%" />
                     <Tooltip content={<AttendanceTooltip />} />
                     <Bar yAxisId="left" dataKey="present" name="Present Teachers" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={28} />
@@ -1241,16 +1274,16 @@ const SuperAdminDashboard = () => {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '280px', marginTop: '10px', justifyContent: 'center' }}>
                 {departmentAttendance.map((dept, idx) => (
-                  <div key={idx} style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+                  <div key={idx} style={{ background: 'var(--color-bg, #f8fafc)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border, #f1f5f9)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#1e293b' }}>
-                        {dept.department} <span style={{ fontSize: '0.74rem', fontWeight: 500, color: '#64748b' }}>• Head: {dept.head}</span>
+                      <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--color-text-main, #1e293b)' }}>
+                        {dept.department} <span style={{ fontSize: '0.74rem', fontWeight: 500, color: 'var(--color-text-muted, #64748b)' }}>• Head: {dept.head}</span>
                       </div>
                       <span style={{ fontSize: '0.78rem', fontWeight: 800, color: dept.color }}>
                         {dept.rate} ({dept.present}/{dept.total})
                       </span>
                     </div>
-                    <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '8px', background: 'var(--color-border, #e2e8f0)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{
                         width: dept.rate,
                         height: '100%',
@@ -1282,9 +1315,336 @@ const SuperAdminDashboard = () => {
         </div>
       </div>
 
-          {/* ─── MULTI-CAMPUS NETWORK OVERVIEW TABLE ─── */}
-          <div className="card" style={{
-            background: 'white',
+      {/* ─── ENTERPRISE FACILITIES & AUXILIARY OPERATIONS (TRANSPORT & LIBRARY) ─── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+        <div className="card chart-card hub-telemetry-header" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px',
+          padding: '16px 22px',
+          borderRadius: '16px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                background: 'linear-gradient(135deg, #0F766E 0%, #0284C7 100%)',
+                color: 'white',
+                fontSize: '0.68rem',
+                fontWeight: 800,
+                padding: '3px 8px',
+                borderRadius: '6px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase'
+              }}>
+                Auxiliary Operations
+              </span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
+                • Campus Transit Logistics & Library Circulation Telemetry
+              </span>
+            </div>
+            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.22rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+              Fleet Tracking, Bus Routes & Library Resource Center
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => handleTabChange('transport')}
+              className="hover-lift"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                color: '#d97706',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Bus size={15} /> Transport Console
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('library')}
+              className="hover-lift"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                background: 'rgba(79, 70, 229, 0.1)',
+                border: '1px solid rgba(79, 70, 229, 0.25)',
+                color: '#4F46E5',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <BookOpen size={15} /> Library Console
+            </button>
+          </div>
+        </div>
+
+        {/* 2 Feature Cards Side-by-Side */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '18px' }}>
+          
+          {/* Card 1: Transport & Fleet Logistics */}
+          <div className="card hover-lift" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '18px',
+            padding: '24px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '18px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '46px', height: '46px', borderRadius: '12px',
+                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <Bus size={24} color="#ea580c" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                      Fleet & Transit Logistics
+                    </h3>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)', marginTop: '2px' }}>
+                      Real-time campus transit, bus schedules & passenger assignments
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/${tenantSlug}/transport-dashboard`)}
+                  className="hover-lift"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    color: '#ea580c',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                  title="Open dedicated Transport Dashboard"
+                >
+                  Launch Hub <ArrowRight size={13} />
+                </button>
+              </div>
+
+              {/* 4 Mini KPI Tiles */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginTop: '18px' }}>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#4F46E5' }}>{transportOverviewStats.totalFleet || 5}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Buses</div>
+                </div>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16A34A' }}>{transportOverviewStats.activeRoutes || 5}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Routes</div>
+                </div>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7' }}>{transportOverviewStats.mappedStudents || 188}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Commuters</div>
+                </div>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#DC2626' }}>{transportOverviewStats.inMaintenance || 1}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>In Service</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <button
+                type="button"
+                onClick={() => handleTabChange('transport')}
+                style={{
+                  flex: 1,
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(234, 88, 12, 0.25)'
+                }}
+              >
+                <Bus size={15} /> Transport Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/${tenantSlug}/routes`)}
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  background: 'var(--color-bg, #f8fafc)',
+                  color: 'var(--color-text-main, #334155)',
+                  border: '1px solid var(--color-border, #cbd5e1)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Navigation size={14} /> Routes & Stops
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Library & Media Resource Center */}
+          <div className="card hover-lift" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '18px',
+            padding: '24px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '18px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '46px', height: '46px', borderRadius: '12px',
+                    background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(15, 118, 110, 0.15) 100%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <BookOpen size={24} color="#4F46E5" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                      Library & Media Resource Center
+                    </h3>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)', marginTop: '2px' }}>
+                      Volume cataloging, student lending history & book inventory
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/${tenantSlug}/library-dashboard`)}
+                  className="hover-lift"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '5px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(79, 70, 229, 0.1)',
+                    border: '1px solid rgba(79, 70, 229, 0.25)',
+                    color: '#4F46E5',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                  title="Open dedicated Library Dashboard"
+                >
+                  Launch Hub <ArrowRight size={13} />
+                </button>
+              </div>
+
+              {/* 4 Mini KPI Tiles */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginTop: '18px' }}>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#4F46E5' }}>{libraryOverviewStats.totalCopies || 120}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Copies</div>
+                </div>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7' }}>{libraryOverviewStats.issuedCopies || 18}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Issued</div>
+                </div>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16A34A' }}>{libraryOverviewStats.availableCopies || 102}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>On Shelf</div>
+                </div>
+                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#F59E0B' }}>{libraryOverviewStats.overdueCopies || 2}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Overdue</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <button
+                type="button"
+                onClick={() => handleTabChange('library')}
+                style={{
+                  flex: 1,
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #4F46E5 0%, #0F766E 100%)',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
+                }}
+              >
+                <BookOpen size={15} /> Library Dashboard
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/${tenantSlug}/books`)}
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  background: 'var(--color-bg, #f8fafc)',
+                  color: 'var(--color-text-main, #334155)',
+                  border: '1px solid var(--color-border, #cbd5e1)',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Book size={14} /> Catalog & Books
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ─── MULTI-CAMPUS NETWORK OVERVIEW TABLE ─── */}
+      <div className="card" style={{
+        background: 'var(--color-surface, white)',
             borderRadius: '20px',
             padding: '26px 28px',
             border: '1px solid #e2e8f0',
@@ -1431,13 +1791,38 @@ const SuperAdminDashboard = () => {
 
                           <td style={{ padding: '14px 14px' }}>
                             {hasPrincipal ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700 }}>
-                                <CheckCircle2 size={14} /> {school.principalName || school.principalEmail}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700 }}>
+                                  <CheckCircle2 size={14} /> {school.principalName || school.principalEmail}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreSelectedTeacherForPrincipal(null);
+                                    setTargetSchoolForPrincipal(school);
+                                  }}
+                                  style={{
+                                    padding: '2px 7px',
+                                    borderRadius: '5px',
+                                    background: '#f1f5f9',
+                                    border: '1px solid #cbd5e1',
+                                    color: '#475569',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Reassign or appoint new Principal"
+                                >
+                                  Change
+                                </button>
+                              </div>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => setTargetSchoolForPrincipal(school)}
+                                onClick={() => {
+                                  setPreSelectedTeacherForPrincipal(null);
+                                  setTargetSchoolForPrincipal(school);
+                                }}
                                 style={{
                                   padding: '4px 8px',
                                   borderRadius: '6px',
@@ -2387,24 +2772,52 @@ const SuperAdminDashboard = () => {
 
                         {/* Actions */}
                         <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTargetSchoolForStaff(schoolsList[0]);
-                            }}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: '7px',
-                              background: '#f1f5f9',
-                              border: '1px solid #cbd5e1',
-                              color: '#475569',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            Reassign Branch
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                            {member.role === 'Teacher' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPreSelectedTeacherForPrincipal(member);
+                                  setTargetSchoolForPrincipal(assignedSchool || schoolsList[0]);
+                                }}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '5px 10px',
+                                  borderRadius: '7px',
+                                  background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                                  border: '1px solid #a7f3d0',
+                                  color: '#065f46',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                }}
+                                title="Promote and appoint this teaching staff member as Principal"
+                              >
+                                <Award size={13} color="#059669" /> Appoint Principal
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setTargetSchoolForStaff(assignedSchool || schoolsList[0]);
+                              }}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '7px',
+                                background: '#f1f5f9',
+                                border: '1px solid #cbd5e1',
+                                color: '#475569',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Reassign Branch
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -2959,6 +3372,20 @@ const SuperAdminDashboard = () => {
         </div>
       )}
 
+      {/* ─── TAB: FLEET & TRANSPORT LOGISTICS ─── */}
+      {activeTab === 'transport' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+          <TransportDashboard />
+        </div>
+      )}
+
+      {/* ─── TAB: CENTRAL LIBRARY & MEDIA OPERATIONS ─── */}
+      {activeTab === 'library' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+          <LibraryDashboard />
+        </div>
+      )}
+
       {/* ─── MODALS ─── */}
       <CreateSchoolModal
         isOpen={isCreateSchoolOpen}
@@ -2984,8 +3411,14 @@ const SuperAdminDashboard = () => {
 
       <AppointPrincipalModal
         isOpen={!!targetSchoolForPrincipal}
-        onClose={() => setTargetSchoolForPrincipal(null)}
+        onClose={() => {
+          setTargetSchoolForPrincipal(null);
+          setPreSelectedTeacherForPrincipal(null);
+        }}
         targetSchool={targetSchoolForPrincipal}
+        schoolsList={schoolsList}
+        preSelectedTeacher={preSelectedTeacherForPrincipal}
+        existingStaffList={allStaffList}
         onPrincipalAppointed={() => {
           fetchSchools();
           fetchAllStaff();

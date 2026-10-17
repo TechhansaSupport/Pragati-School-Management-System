@@ -94,7 +94,7 @@ const TransportDashboard = () => {
             { label: 'Students Commuting', value: `${transportStats.mappedStudents || 188}`, icon: Users, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)' },
             { label: 'Fleet In Service', value: `${transportStats.inMaintenance || 1}`, icon: Wrench, color: '#DC2626', bg: 'rgba(220, 38, 38,0.1)' }
           ].map((kpi, i) => (
-            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
+            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'var(--color-surface, white)', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <kpi.icon size={20} color={kpi.color} />
@@ -112,14 +112,14 @@ const TransportDashboard = () => {
         <div className="card" style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
           <div className="card-header" style={{ padding: '24px 24px 16px 24px' }}>
             <div className="card-title">Live Route Tracking ({filteredRoutes.length} active)</div>
-            <div className="table-search" style={{ margin: 0, background: 'rgba(248,250,252,0.8)', border: '1px solid rgba(226,232,240,0.8)', borderRadius: '12px' }}>
+            <div className="table-search" style={{ margin: 0, background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #cbd5e1)', borderRadius: '12px' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#64748B' }} />
               <input 
                 type="text" 
                 placeholder="Search Bus No. or Route..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                style={{ outline: 'none', width: '220px', padding: '10px 10px 10px 36px', background: 'transparent', border: 'none', fontSize: '0.9rem' }}
+                style={{ outline: 'none', width: '220px', padding: '10px 10px 10px 36px', background: 'transparent', border: 'none', fontSize: '0.9rem', color: 'var(--color-text-main)' }}
               />
             </div>
           </div>
@@ -127,7 +127,7 @@ const TransportDashboard = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid var(--color-border)', background: 'rgba(248,250,252,0.4)' }}>
+                <tr style={{ borderBottom: '2px solid var(--color-border)', background: 'var(--color-bg, rgba(248,250,252,0.4))' }}>
                   <th style={{ textAlign: 'left', padding: '12px 24px', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Route</th>
                   <th style={{ textAlign: 'left', padding: '12px 24px', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Bus & Driver</th>
                   <th style={{ textAlign: 'left', padding: '12px 24px', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Capacity Occupancy</th>
@@ -136,7 +136,7 @@ const TransportDashboard = () => {
               </thead>
               <tbody>
                 {filteredRoutes.map((route, i) => (
-                  <tr key={route._id || i} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s', cursor: 'pointer' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(248,250,252,0.6)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <tr key={route._id || i} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s', cursor: 'pointer' }}>
                     <td style={{ padding: '16px 24px' }}>
                       <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem' }}>{route.routeId}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{route.name}</div>

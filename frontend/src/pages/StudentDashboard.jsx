@@ -108,8 +108,9 @@ const StudentDashboard = () => {
             {timetableList.map((cls, i) => (
               <div key={i} style={{ 
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                padding: '16px', background: 'rgba(255,255,255,0.6)', 
+                padding: '16px', background: 'var(--color-bg, #f8fafc)', 
                 borderRadius: '12px', borderLeft: `4px solid ${cls.color}`,
+                border: '1px solid var(--color-border, #e2e8f0)',
                 boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
               }}>
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>

@@ -26,6 +26,8 @@ const Sidebar = () => {
             { id: 'Students & IDs', label: 'All Students', icon: Users },
             { id: 'Academics & Exams', label: 'Curriculum & Plans', icon: BookOpen },
             { id: 'Finance & Fees', label: 'Central Financials', icon: CreditCard },
+            { id: 'Transport Dashboard', label: 'Fleet & Transport', icon: Bus },
+            { id: 'Library Dashboard', label: 'Library & Media', icon: BookOpen },
           ]
         },
         {
@@ -150,11 +152,11 @@ const Sidebar = () => {
       case 'Parent Dashboard':
         return path.includes('/parent-dashboard');
       case 'Library Dashboard':
-        return path.includes('/library-dashboard');
+        return path.includes('/library-dashboard') || path.includes('/books') || (path.includes('/superadmin') && search.includes('tab=library'));
       case 'Book Catalog':
         return path.includes('/books');
       case 'Transport Dashboard':
-        return path.includes('/transport-dashboard');
+        return path.includes('/transport-dashboard') || path.includes('/routes') || (path.includes('/superadmin') && search.includes('tab=transport'));
       case 'Routes':
         return path.includes('/routes');
       case 'Reports':

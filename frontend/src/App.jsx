@@ -20,10 +20,44 @@ import ParentDashboard from './pages/ParentDashboard';
 import Login from './pages/Login';
 import TransportRoutes from './pages/TransportRoutes';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import { AlertTriangle, ShieldAlert, Sparkles, X as CloseIcon } from 'lucide-react';
 import './index.css';
 
 const MainLayout = ({ children }) => {
   const [isLayoutManagerOpen, setIsLayoutManagerOpen] = useState(false);
+  const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
+  const token = sessionStorage.getItem('token') || '';
+
+  // Emergency Communication Mode State (Section 10.12)
+  const [emergencyAlert, setEmergencyAlert] = useState(null);
+  const [dismissedAlertId, setDismissedAlertId] = useState(null);
+
+  // Poll / check for active Emergency Broadcast
+  useEffect(() => {
+    const checkEmergency = async () => {
+      try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+        const res = await fetch('http://localhost:5000/api/communication/emergency', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.active && data.alert) {
+            setEmergencyAlert(data.alert);
+          } else {
+            setEmergencyAlert(null);
+          }
+        }
+      } catch (err) {
+        // quiet error in polling
+      }
+    };
+
+    checkEmergency();
+    const interval = setInterval(checkEmergency, 12000);
+    return () => clearInterval(interval);
+  }, [tenantSlug, token]);
   
   // Theme preferences - Compact Mode enabled by default
   const [isCompactMode, setIsCompactMode] = useState(() => {
@@ -54,7 +88,6 @@ const MainLayout = ({ children }) => {
     const timer = setInterval(() => {
       setCurrentDateTime(new Date());
     }, 1000);
-    return () => clearInterval(timer);
   }, []);
 
   const formattedDate = currentDateTime.toLocaleDateString('en-US', {
@@ -75,6 +108,60 @@ const MainLayout = ({ children }) => {
     <div className="app-shell">
       <div className="ambient-background" style={{ filter: 'blur(4px)' }}></div>
       <Header />
+
+      {/* Emergency Communication Mode Banner (Section 10.12) */}
+      {emergencyAlert && emergencyAlert.id !== dismissedAlertId && (
+        <div style={{
+          background: 'linear-gradient(90deg, #DC2626 0%, #B91C1C 50%, #991B1B 100%)',
+          color: 'white',
+          padding: '10px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          boxShadow: '0 4px 15px rgba(220, 38, 38, 0.4)',
+          position: 'relative',
+          zIndex: 80,
+          animation: 'pulse 3s infinite'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.2)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center'
+            }}>
+              <AlertTriangle size={18} color="white" />
+            </div>
+            <div>
+              <span style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', marginRight: '8px' }}>
+                🚨 {emergencyAlert.title}:
+              </span>
+              <span style={{ fontSize: '0.9rem', opacity: 0.95 }}>
+                {emergencyAlert.message}
+              </span>
+              {emergencyAlert.actionRequired && (
+                <span style={{ marginLeft: '10px', fontSize: '0.82rem', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '6px', fontWeight: 600 }}>
+                  Directive: {emergencyAlert.actionRequired}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setDismissedAlertId(emergencyAlert.id)}
+            title="Dismiss from current view"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              opacity: 0.8,
+              padding: '4px'
+            }}
+          >
+            <CloseIcon size={18} />
+          </button>
+        </div>
+      )}
       
       <div className="sub-header">
         <div className="sub-header-left">
@@ -120,6 +207,20 @@ const MainLayout = ({ children }) => {
               }} />
               LIVE
             </span>
+          </div>
+
+          {/* Official Core Motto from Project Report (Page 1) */}
+          <span style={{ color: 'var(--color-border)', margin: '0 8px', userSelect: 'none' }}>|</span>
+          <div style={{
+            fontSize: '0.78rem',
+            color: '#64748B',
+            fontStyle: 'italic',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px'
+          }}>
+            <Sparkles size={13} color="#4F46E5" />
+            <span>"Don't just manage the school. Understand it."</span>
           </div>
         </div>
         <div className="sub-header-right">

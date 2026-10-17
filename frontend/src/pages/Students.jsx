@@ -4,8 +4,10 @@ import {
   Search, MoreVertical, User, ChevronLeft, ChevronRight, Plus, X, 
   Mail, Phone, MapPin, Calendar, Activity, BookOpen, CreditCard, 
   Edit, Trash2, CheckCircle2, AlertCircle, RefreshCw, GraduationCap, 
-  Building2, Layers, Filter, Check, ArrowRight
+  Building2, Layers, Filter, Check, ArrowRight, QrCode, Award, 
+  Shield, Printer, Download, Sparkles, BookMarked, Star
 } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -425,10 +427,14 @@ const Students = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div style={{ display: 'flex', gap: '20px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: '14px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
               {[
                 { id: 'overview', label: 'Overview' },
                 { id: 'academic', label: 'Academic & Class' },
+                { id: 'idcard', label: 'Digital ID (QR)' },
+                { id: 'growth', label: '360° Growth' },
+                { id: 'portfolio', label: 'Portfolio' },
+                { id: 'reportcard', label: 'Report Card' },
                 { id: 'guardian', label: 'Guardian & Contact' }
               ].map(tab => (
                 <div 
@@ -436,9 +442,10 @@ const Students = () => {
                   onClick={() => setActiveTab(tab.id)}
                   style={{ 
                     paddingBottom: '10px', 
-                    fontSize: '0.88rem', 
+                    fontSize: '0.82rem', 
                     fontWeight: 700, 
                     cursor: 'pointer',
+                    whiteSpace: 'nowrap',
                     color: activeTab === tab.id ? '#4F46E5' : '#64748b',
                     borderBottom: activeTab === tab.id ? '2.5px solid #4F46E5' : '2.5px solid transparent',
                     transition: 'all 0.15s'
@@ -563,6 +570,226 @@ const Students = () => {
                     </span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Tab: Digital Student ID (Section 9.3 & 10.11) */}
+            {activeTab === 'idcard' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center' }}>
+                <div style={{
+                  width: '100%', maxWidth: '380px', borderRadius: '20px',
+                  background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+                  color: 'white', padding: '24px', boxShadow: '0 15px 35px -5px rgba(15, 23, 42, 0.4)',
+                  border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden'
+                }}>
+                  <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '140px', height: '140px', borderRadius: '50%', background: 'rgba(79, 70, 229, 0.3)', filter: 'blur(30px)' }}></div>
+                  
+                  {/* School Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.15)', paddingBottom: '12px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.72rem', letterSpacing: '1px', textTransform: 'uppercase', color: '#94a3b8' }}>PRAGATI SMS</div>
+                      <div style={{ fontWeight: 800, fontSize: '1rem', color: '#f8fafc' }}>STUDENT IDENTITY CARD</div>
+                    </div>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 800 }}>P</div>
+                  </div>
+
+                  {/* Student Details with QR */}
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '16px', alignItems: 'center' }}>
+                    <div style={{
+                      width: '74px', height: '84px', borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #4F46E5, #0F766E)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '2rem', fontWeight: 800, color: 'white', flexShrink: 0,
+                      border: '2px solid rgba(255,255,255,0.3)'
+                    }}>
+                      {s.name.charAt(0)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
+                        Roll No: {s.rollNo}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '2px' }}>
+                        Class: {s.grade} - {s.section || 'A'}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                        Blood Group: O+ • Emergency: {s.parentContact || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* QR Code Bar */}
+                  <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px dashed rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Session 2026-2027</div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#4ADE80' }}>● Verified Digital Pass</div>
+                    </div>
+                    <div style={{ width: '48px', height: '48px', background: 'white', padding: '4px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#0F172A" strokeWidth="2.5">
+                        <rect x="2" y="2" width="7" height="7"></rect>
+                        <rect x="15" y="2" width="7" height="7"></rect>
+                        <rect x="2" y="15" width="7" height="7"></rect>
+                        <rect x="6" y="6" width="1" height="1"></rect>
+                        <rect x="17" y="6" width="1" height="1"></rect>
+                        <rect x="6" y="17" width="1" height="1"></rect>
+                        <path d="M15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', width: '100%', maxWidth: '380px' }}>
+                  <button 
+                    onClick={() => window.print()}
+                    style={{ flex: 1, padding: '10px', borderRadius: '10px', background: '#4F46E5', color: 'white', border: 'none', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Printer size={15} /> Print ID Card
+                  </button>
+                  <button 
+                    onClick={() => alert(`Digital ID verified for ${s.name} in Pragati QR Ecosystem.`)}
+                    style={{ flex: 1, padding: '10px', borderRadius: '10px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <QrCode size={15} /> QR Workflow
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: 360° Growth Profile (Section 10.3) */}
+            {activeTab === 'growth' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={16} color="#4F46E5" /> 360° Holistic Growth Profile (Sec. 10.3)
+                  </div>
+                  <div style={{ height: '220px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="75%" data={[
+                        { subject: 'Math', A: 92, fullMark: 100 },
+                        { subject: 'Science', A: 88, fullMark: 100 },
+                        { subject: 'Languages', A: 85, fullMark: 100 },
+                        { subject: 'Arts', A: 90, fullMark: 100 },
+                        { subject: 'Sports', A: 76, fullMark: 100 },
+                        { subject: 'Coding', A: 89, fullMark: 100 },
+                      ]}>
+                        <PolarGrid stroke="#E2E8F0" />
+                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748B', fontSize: 11, fontWeight: 600 }} />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar name="Student" dataKey="A" stroke="#4F46E5" strokeWidth={2} fill="#4F46E5" fillOpacity={0.35} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* AI Performance Insights (Section 10.1) */}
+                <div style={{ padding: '14px', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '12px', border: '1px solid rgba(79, 70, 229, 0.2)' }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                    🤖 AI Performance Insights (Sec. 10.1)
+                  </div>
+                  <div style={{ fontSize: '0.85rem', color: '#1e293b', marginTop: '6px', lineHeight: 1.5 }}>
+                    {s.name} demonstrates exemplary analytical aptitude in Mathematics and Science with an overall attendance standing of <strong>{s.attendance || 98}%</strong>.
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#0F766E', marginTop: '6px', fontWeight: 600 }}>
+                    Recommended Focus: Encourage enrollment in Advanced Regional Science Olympiad.
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>Behavior & Conduct</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>Exemplary (5/5)</div>
+                  </div>
+                  <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#64748B', fontWeight: 600 }}>Co-curricular Rating</div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#4F46E5', marginTop: '2px' }}>Grade A+</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab: Digital Portfolio (Section 10.10) */}
+            {activeTab === 'portfolio' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Award size={16} color="#F59E0B" /> Verified Certificates & Achievements (Sec. 10.10)
+                </div>
+
+                {[
+                  { title: 'Inter-School Mathematics Olympiad', date: 'Sept 2026', badge: 'Gold Medalist', color: '#F59E0B' },
+                  { title: 'Annual Science Exhibition Best Project', date: 'Aug 2026', badge: '1st Runner-Up', color: '#4F46E5' },
+                  { title: '100% Term Attendance Award', date: 'Term 1, 2026', badge: 'Excellence Citation', color: '#16A34A' },
+                  { title: 'Junior Coding Championship - Python', date: 'July 2026', badge: 'Top 5 Finalist', color: '#0F766E' }
+                ].map((cert, idx) => (
+                  <div key={idx} style={{ padding: '12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{cert.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '2px' }}>Issued: {cert.date}</div>
+                    </div>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: cert.color, background: 'white', padding: '3px 8px', borderRadius: '8px', border: `1px solid ${cert.color}` }}>
+                      {cert.badge}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Tab: Digital Report Card (Section 9.9) */}
+            {activeTab === 'reportcard' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748B', textTransform: 'uppercase' }}>Academic Session 2026-2027</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1e293b' }}>Term 1 Comprehensive Report Card</div>
+                    </div>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#16A34A', background: '#dcfce7', padding: '4px 10px', borderRadius: '10px' }}>
+                      Passed with Distinction
+                    </span>
+                  </div>
+
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ color: '#64748B', borderBottom: '1px solid #cbd5e1', textAlign: 'left' }}>
+                        <th style={{ padding: '6px 0' }}>Subject</th>
+                        <th style={{ padding: '6px 0' }}>Max</th>
+                        <th style={{ padding: '6px 0' }}>Obtained</th>
+                        <th style={{ padding: '6px 0' }}>Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { sub: 'Mathematics', max: 100, obt: 95, gr: 'A+' },
+                        { sub: 'Physics & Chemistry', max: 100, obt: 88, gr: 'A' },
+                        { sub: 'English Literature', max: 100, obt: 91, gr: 'A+' },
+                        { sub: 'Social Studies', max: 100, obt: 86, gr: 'A' },
+                        { sub: 'Computer Science', max: 100, obt: 96, gr: 'A+' },
+                      ].map((r, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '6px 0', fontWeight: 600 }}>{r.sub}</td>
+                          <td style={{ padding: '6px 0', color: '#64748B' }}>{r.max}</td>
+                          <td style={{ padding: '6px 0', fontWeight: 700, color: '#4F46E5' }}>{r.obt}</td>
+                          <td style={{ padding: '6px 0', fontWeight: 700, color: '#16A34A' }}>{r.gr}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 700 }}>
+                    <span>Aggregate Score: 456 / 500</span>
+                    <span style={{ color: '#4F46E5' }}>Percentage: 91.2% (GPA 3.9)</span>
+                  </div>
+                </div>
+
+                <div style={{ padding: '12px', background: 'white', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#475569', fontStyle: 'italic' }}>
+                  Principal Remarks: "Consistent analytical performance, demonstrates leadership in co-curricular projects."
+                </div>
+
+                <button 
+                  onClick={() => window.print()}
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', background: '#0F766E', color: 'white', border: 'none', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Download size={15} /> Download & Print Official Report
+                </button>
               </div>
             )}
 

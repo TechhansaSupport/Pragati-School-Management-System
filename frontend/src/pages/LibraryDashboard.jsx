@@ -100,7 +100,7 @@ const LibraryDashboard = () => {
             { label: 'Available on Shelf', value: (libraryStats.availableCopies || 102).toLocaleString(), icon: Clock, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
             { label: 'Overdue Returns', value: libraryStats.overdueCopies || '2', icon: AlertTriangle, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
           ].map((kpi, i) => (
-            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
+            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'var(--color-surface, white)', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <kpi.icon size={20} color={kpi.color} />
@@ -118,14 +118,14 @@ const LibraryDashboard = () => {
         <div className="card" style={{ flex: 1, padding: 0, overflow: 'hidden' }}>
           <div className="card-header" style={{ padding: '24px 24px 16px 24px' }}>
             <div className="card-title">Recent Borrow & Return Logs (Live DB)</div>
-            <div className="table-search" style={{ margin: 0, background: 'rgba(248,250,252,0.8)', border: '1px solid rgba(226,232,240,0.8)', borderRadius: '12px' }}>
+            <div className="table-search" style={{ margin: 0, background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #cbd5e1)', borderRadius: '12px' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#64748B' }} />
               <input 
                 type="text" 
                 placeholder="Search Book or Student..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                style={{ outline: 'none', width: '250px', padding: '10px 10px 10px 36px', background: 'transparent', border: 'none', fontSize: '0.9rem' }}
+                style={{ outline: 'none', width: '250px', padding: '10px 10px 10px 36px', background: 'transparent', border: 'none', fontSize: '0.9rem', color: 'var(--color-text-main)' }}
               />
             </div>
           </div>
@@ -133,7 +133,7 @@ const LibraryDashboard = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid var(--color-border)', background: 'rgba(248,250,252,0.4)' }}>
+                <tr style={{ borderBottom: '2px solid var(--color-border)', background: 'var(--color-bg, rgba(248,250,252,0.4))' }}>
                   <th style={{ textAlign: 'left', padding: '12px 24px', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>ID</th>
                   <th style={{ textAlign: 'left', padding: '12px 24px', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Student</th>
                   <th style={{ textAlign: 'left', padding: '12px 24px', color: 'var(--color-text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>Book Title</th>
@@ -143,7 +143,7 @@ const LibraryDashboard = () => {
               </thead>
               <tbody>
                 {filteredTransactions.map((t, i) => (
-                  <tr key={t.id || i} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s', cursor: 'pointer' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(248,250,252,0.6)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                  <tr key={t.id || i} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s', cursor: 'pointer' }}>
                     <td style={{ padding: '16px 24px', fontWeight: 600, color: '#1e293b', fontSize: '0.9rem' }}>{t.id}</td>
                     <td style={{ padding: '16px 24px', color: 'var(--color-text-main)', fontSize: '0.9rem', fontWeight: 500 }}>{t.student}</td>
                     <td style={{ padding: '16px 24px', color: 'var(--color-text-main)', fontSize: '0.9rem' }}>{t.book}</td>

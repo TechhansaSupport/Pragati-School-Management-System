@@ -129,4 +129,148 @@ router.get('/contacts', async (req, res) => {
   }
 });
 
+// In-memory / persistent emergency alert store per entityId
+let activeEmergencyAlerts = {};
+
+// GET /api/communication/emergency — Active emergency broadcast
+router.get('/emergency', (req, res) => {
+  const alert = activeEmergencyAlerts[req.entityId] || null;
+  res.json({ active: !!alert, alert });
+});
+
+// POST /api/communication/emergency — Publish urgent school-wide emergency alert (Admin/Principal Authority)
+router.post('/emergency', async (req, res) => {
+  try {
+    const { title, message, severity = 'Urgent', actionRequired } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ message: 'Title and message are required' });
+    }
+
+    const alert = {
+      id: `EMG-${Date.now()}`,
+      title: title.trim(),
+      message: message.trim(),
+      severity,
+      actionRequired: actionRequired || 'Follow school protocol and stay updated via official communication.',
+      publishedBy: req.user?.name || 'School Administration',
+      publishedAt: new Date().toISOString(),
+      entityId: req.entityId,
+    };
+
+    activeEmergencyAlerts[req.entityId] = alert;
+
+    // Also persist as an urgent announcement
+    try {
+      await Announcement.create({
+        title: `🚨 EMERGENCY: ${title}`,
+        content: `${message}\nAction: ${alert.actionRequired}`,
+        targetAudience: 'All',
+        priority: 'Urgent',
+        author: alert.publishedBy,
+        entityId: req.entityId,
+      });
+    } catch (e) {
+      // ignore
+    }
+
+    res.json({ success: true, message: 'Emergency alert published across all campus portals.', alert });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to publish emergency alert', error: error.message });
+  }
+});
+
+// DELETE /api/communication/emergency — Revoke / deactivate emergency broadcast
+router.delete('/emergency', (req, res) => {
+  delete activeEmergencyAlerts[req.entityId];
+  res.json({ success: true, message: 'Emergency alert deactivated.' });
+});
+
+// In-memory store for school events per entity
+let schoolEventsStore = {};
+
+// GET /api/communication/events — School Events Calendar
+router.get('/events', (req, res) => {
+  const entityId = req.entityId || 'default';
+  if (!schoolEventsStore[entityId]) {
+    schoolEventsStore[entityId] = [
+      { id: 'EVT-1', title: 'Annual Science & Robotics Fair', date: '2026-11-05', time: '09:00 AM - 03:00 PM', location: 'Main Auditorium & Labs', category: 'Academic', audience: 'All Grades', status: 'Upcoming' },
+      { id: 'EVT-2', title: 'Term 1 Parent-Teacher Meeting (PTM)', date: '2026-10-28', time: '10:00 AM - 02:00 PM', location: 'Classrooms & Quadrangle', category: 'Meeting', audience: 'All Parents', status: 'Scheduled' },
+      { id: 'EVT-3', title: 'Inter-House Sports Meet & Athletics', date: '2026-11-18', time: '08:30 AM - 04:30 PM', location: 'School Sports Ground', category: 'Sports', audience: 'Grades 6 - 12', status: 'Upcoming' },
+      { id: 'EVT-4', title: 'Mid-Term Board Mock Examinations', date: '2026-12-01', time: '08:30 AM - 11:30 AM', location: 'Examination Hall', category: 'Exam', audience: 'Class 10 & 12', status: 'Draft' },
+    ];
+  }
+  res.json(schoolEventsStore[entityId]);
+});
+
+// POST /api/communication/events — Create Event
+router.post('/events', (req, res) => {
+  const entityId = req.entityId || 'default';
+  const { title, date, time, location, category, audience } = req.body;
+  if (!title || !date) return res.status(400).json({ message: 'Title and date required' });
+  
+  if (!schoolEventsStore[entityId]) schoolEventsStore[entityId] = [];
+  const newEvent = {
+    id: `EVT-${Date.now()}`,
+    title: title.trim(),
+    date,
+    time: time || '09:00 AM - 01:00 PM',
+    location: location || 'Campus',
+    category: category || 'General',
+    audience: audience || 'All Students & Parents',
+    status: 'Upcoming'
+  };
+  schoolEventsStore[entityId].unshift(newEvent);
+  res.status(201).json(newEvent);
+});
+
+// In-memory store for Grievances / Support tickets per entity
+let grievancesStore = {};
+
+// GET /api/communication/grievances — Grievance Management
+router.get('/grievances', (req, res) => {
+  const entityId = req.entityId || 'default';
+  if (!grievancesStore[entityId]) {
+    grievancesStore[entityId] = [
+      { id: 'GRV-101', title: 'Route 4 Bus Delayed Repeatedly', category: 'Transport', raisedBy: 'Ramesh Patel (Parent)', student: 'Aarav Patel (Class 10 - A)', priority: 'High', status: 'In Progress', date: '2026-10-14', remarks: 'Transport in-charge reviewing stop schedule with driver.' },
+      { id: 'GRV-102', title: 'Lab Equipment Maintenance Request', category: 'Facilities', raisedBy: 'Dr. Vikram Malhotra (Faculty)', student: 'Physics Lab', priority: 'Medium', status: 'Open', date: '2026-10-12', remarks: 'Requisition sent to admin store.' },
+      { id: 'GRV-103', title: 'Duplicate Fee Receipt Query', category: 'Fees', raisedBy: 'Kiran Patel (Parent)', student: 'Diya Patel (Class 10 - A)', priority: 'Low', status: 'Resolved', date: '2026-10-08', remarks: 'Corrected receipt re-issued via portal.' },
+    ];
+  }
+  res.json(grievancesStore[entityId]);
+});
+
+// POST /api/communication/grievances — Submit Grievance
+router.post('/grievances', (req, res) => {
+  const entityId = req.entityId || 'default';
+  const { title, category, raisedBy, student, priority, description } = req.body;
+  if (!title) return res.status(400).json({ message: 'Title is required' });
+
+  if (!grievancesStore[entityId]) grievancesStore[entityId] = [];
+  const ticket = {
+    id: `GRV-${100 + grievancesStore[entityId].length + 1}`,
+    title: title.trim(),
+    category: category || 'General',
+    raisedBy: raisedBy || req.user?.name || 'Concerned Parent',
+    student: student || 'General',
+    priority: priority || 'Medium',
+    status: 'Open',
+    date: new Date().toISOString().split('T')[0],
+    remarks: description || 'Ticket logged for administrative investigation.'
+  };
+  grievancesStore[entityId].unshift(ticket);
+  res.status(201).json(ticket);
+});
+
+// PUT /api/communication/grievances/:id — Update ticket status
+router.put('/grievances/:id', (req, res) => {
+  const entityId = req.entityId || 'default';
+  const { status, remarks } = req.body;
+  const list = grievancesStore[entityId] || [];
+  const item = list.find(g => g.id === req.params.id);
+  if (!item) return res.status(404).json({ message: 'Ticket not found' });
+  if (status) item.status = status;
+  if (remarks) item.remarks = remarks;
+  res.json(item);
+});
+
 module.exports = router;

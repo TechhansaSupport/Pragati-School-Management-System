@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   PieChart, ShieldCheck, BellRing, MessageCircle, CheckCircle, 
   TrendingUp, Star, Layers, Settings, Fingerprint, AlertTriangle, 
-  Ban, AlertCircle, Building2, ArrowRight
+  Ban, AlertCircle, Building2
 } from 'lucide-react';
 
 const Login = () => {
@@ -564,39 +564,6 @@ const Login = () => {
                 </div>
 
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      fetch('http://localhost:5000/api/school/public-default')
-                        .then(r => r.ok ? r.json() : null)
-                        .then(d => {
-                          if (d?.slug) navigate(`/${d.slug}/login`);
-                          else navigate('/');
-                        })
-                        .catch(() => navigate('/'));
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      color: 'white',
-                      border: 'none',
-                      fontWeight: 700,
-                      fontSize: '0.92rem',
-                      cursor: 'pointer',
-                      background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
-                      boxShadow: '0 4px 12px -2px rgba(79, 70, 229, 0.35)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <span>Switch to Active School</span>
-                    <ArrowRight size={16} />
-                  </button>
-
                   <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#94a3b8', marginTop: '6px' }}>
                     For licensing inquiries, reach out to <span style={{ color: '#4f46e5', fontWeight: 600 }}>support@pragati.edu</span>
                   </div>

@@ -1623,6 +1623,7 @@ const Staff = () => {
       <AppointPrincipalModal
         isOpen={isAppointModalOpen}
         targetSchool={currentSchool || { name: sessionStorage.getItem('schoolName') || 'Current Campus', slug: tenantSlug }}
+        existingStaffList={staffList}
         onClose={() => setIsAppointModalOpen(false)}
         onPrincipalAppointed={(updatedSchool) => {
           fetchSchoolDetails();

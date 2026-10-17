@@ -608,64 +608,68 @@ body.dark-mode .ambient-background {
 }
 
 /* =========================================
-   DARK MODE
+   DARK MODE (Section 14 & 15 Specification)
+   Dark background: #0F172A; dark surface: #1E293B; 
+   primary: #6366F1; primary text: #F8FAFC; muted text: #94A3B8
 ========================================= */
 body.dark-mode {
-  --color-bg: #090d16;
-  --color-surface: #131c31;
-  --color-surface-hover: #1c2844;
-  --color-text-main: #f8fafc;
-  --color-text-muted: #94a3b8;
+  --color-bg: #0F172A;
+  --color-surface: #1E293B;
+  --color-surface-hover: #26354f;
+  --color-text-main: #F8FAFC;
+  --color-text-muted: #94A3B8;
   --color-border: rgba(255, 255, 255, 0.08);
-  --color-primary: #6366f1;
-  background: linear-gradient(135deg, #070a13 0%, #0c1222 50%, #0f172a 100%) !important;
-  color: var(--color-text-main) !important;
+  --color-primary: #6366F1;
+  background: #0F172A !important;
+  color: #F8FAFC !important;
 }
 
 body.dark-mode html {
-  background: #090d16 !important;
+  background: #0F172A !important;
 }
 
 body.dark-mode .ambient-background {
-  background-image: radial-gradient(circle at 20% 20%, rgba(79, 70, 229, 0.18) 0%, transparent 45%),
-                    radial-gradient(circle at 80% 80%, rgba(15, 118, 110, 0.15) 0%, transparent 45%),
-                    linear-gradient(135deg, #070a13 0%, #0c1222 100%);
+  background-image: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+                    radial-gradient(circle at 80% 80%, rgba(15, 118, 110, 0.1) 0%, transparent 45%),
+                    linear-gradient(135deg, #090d16 0%, #0f172a 100%) !important;
   opacity: 1 !important;
 }
 
 body.dark-mode .main-wrapper::before {
-  background-image: linear-gradient(rgba(10, 15, 29, 0.88), rgba(10, 15, 29, 0.92)), url('/dashboard-bg.png');
-  opacity: 0.9;
+  background-image: linear-gradient(rgba(15, 23, 42, 0.94), rgba(15, 23, 42, 0.97)), url('/dashboard-bg.png') !important;
+  opacity: 0.95 !important;
 }
 
 /* Header & Sub-header */
 body.dark-mode .top-header {
-  background: rgba(11, 17, 32, 0.88) !important;
+  background: rgba(15, 23, 42, 0.92) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 body.dark-mode .sub-header {
-  background: rgba(11, 17, 32, 0.78) !important;
+  background: rgba(15, 23, 42, 0.85) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 body.dark-mode .sub-header-item span {
-  color: #e2e8f0 !important;
+  color: #F8FAFC !important;
 }
 
 /* Header Search Bar */
-body.dark-mode .top-header input {
+body.dark-mode .top-header input,
+body.dark-mode .search-bar input {
   background: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #f8fafc !important;
+  color: #F8FAFC !important;
 }
 
-body.dark-mode .top-header input::placeholder {
+body.dark-mode .top-header input::placeholder,
+body.dark-mode .search-bar input::placeholder {
   color: #64748b !important;
 }
 
@@ -679,50 +683,17 @@ body.dark-mode .top-header kbd,
 body.dark-mode .top-header span[style*="border: 1px solid #cbd5e1"],
 body.dark-mode .top-header span[style*="border: '1px solid #cbd5e1'"] {
   background: rgba(255, 255, 255, 0.08) !important;
-  color: #94a3b8 !important;
+  color: #94A3B8 !important;
   border-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-/* Header Dropdowns (School Selector & User Profile) */
-body.dark-mode div[style*="position: absolute"][style*="boxShadow"],
-body.dark-mode div[style*="position: 'absolute'"][style*="boxShadow"] {
-  background: rgba(15, 23, 42, 0.98) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7) !important;
-  color: #f8fafc !important;
-}
-
-body.dark-mode div[style*="position: absolute"] div[style*="background: #ffffff"],
-body.dark-mode div[style*="position: absolute"] div[style*="background: white"],
-body.dark-mode div[style*="position: 'absolute'"] div[style*="background: '#ffffff'"],
-body.dark-mode div[style*="position: 'absolute'"] div[style*="background: 'white'"],
-body.dark-mode div[style*="position: absolute"] div[style*="background: #f8fafc"],
-body.dark-mode div[style*="position: 'absolute'"] div[style*="background: '#f8fafc'"] {
-  background: rgba(30, 41, 59, 0.7) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  color: #f8fafc !important;
-}
-
-body.dark-mode div[style*="position: absolute"] div[style*="color: #1e3a8a"],
-body.dark-mode div[style*="position: absolute"] div[style*="color: #1e293b"],
-body.dark-mode div[style*="position: absolute"] span[style*="color: #1e3a8a"],
-body.dark-mode div[style*="position: absolute"] span[style*="color: #1e293b"] {
-  color: #f8fafc !important;
-}
-
-body.dark-mode div[style*="position: absolute"] div[style*="borderTop: '1px solid #f1f5f9'"],
-body.dark-mode div[style*="position: absolute"] div[style*="border-top: 1px solid #f1f5f9"] {
-  background: rgba(15, 23, 42, 0.95) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 /* Sidebar */
 body.dark-mode .dashboard-sidebar {
-  background: rgba(13, 20, 36, 0.92) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
   backdrop-filter: blur(25px);
   -webkit-backdrop-filter: blur(25px);
   border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5) !important;
 }
 
 body.dark-mode .dashboard-sidebar-section {
@@ -730,7 +701,7 @@ body.dark-mode .dashboard-sidebar-section {
 }
 
 body.dark-mode .dashboard-sidebar-item {
-  color: #94a3b8 !important;
+  color: #94A3B8 !important;
 }
 
 body.dark-mode .dashboard-sidebar-item:hover {
@@ -739,7 +710,7 @@ body.dark-mode .dashboard-sidebar-item:hover {
 }
 
 body.dark-mode .dashboard-sidebar-item:not([style*="linear-gradient"]) svg {
-  color: #94a3b8 !important;
+  color: #94A3B8 !important;
 }
 
 body.dark-mode .dashboard-sidebar-item[style*="linear-gradient"] {
@@ -748,119 +719,622 @@ body.dark-mode .dashboard-sidebar-item[style*="linear-gradient"] {
   box-shadow: 0 4px 14px rgba(79, 70, 229, 0.45) !important;
 }
 
-/* Layout Manager Drawer */
-body.dark-mode .layout-drawer {
-  background: rgba(13, 20, 36, 0.96) !important;
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
-  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: -10px 0 45px rgba(0, 0, 0, 0.75) !important;
+/* ========================================================
+   UNIVERSAL CARDS & SURFACES OVERRIDES (DARK SLATE #1E293B)
+   Matches any element with inline white/light surface styles
+======================================================== */
+body.dark-mode .card,
+body.dark-mode .chart-card,
+body.dark-mode .dashboard-action-card,
+body.dark-mode .risk-student-card,
+body.dark-mode .hub-telemetry-header,
+body.dark-mode .academic-class-card,
+body.dark-mode *[style*="background: white"],
+body.dark-mode *[style*="background: 'white'"],
+body.dark-mode *[style*="background: #ffffff"],
+body.dark-mode *[style*="background: '#ffffff'"],
+body.dark-mode *[style*="background: rgb(255, 255, 255)"],
+body.dark-mode *[style*="background: rgb(255,255,255)"],
+body.dark-mode *[style*="background: rgba(255, 255, 255, 0.7)"],
+body.dark-mode *[style*="background: rgba(255,255,255,0.7)"],
+body.dark-mode *[style*="background: rgba(255, 255, 255, 0.6)"],
+body.dark-mode *[style*="background: rgba(255,255,255,0.6)"],
+body.dark-mode *[style*="background: rgba(255, 255, 255, 0.8)"],
+body.dark-mode *[style*="background: rgba(255,255,255,0.8)"],
+body.dark-mode *[style*="background: rgba(255, 255, 255, 0.9)"],
+body.dark-mode *[style*="background: rgba(255,255,255,0.9)"],
+body.dark-mode *[style*="background-color: white"],
+body.dark-mode *[style*="background-color: 'white'"],
+body.dark-mode *[style*="background-color: #ffffff"],
+body.dark-mode *[style*="background-color: '#ffffff'"],
+body.dark-mode *[style*="background-color: rgb(255, 255, 255)"],
+body.dark-mode *[style*="background-color: rgb(255,255,255)"],
+body.dark-mode *[style*="background-color: rgba(255, 255, 255, 0.7)"],
+body.dark-mode *[style*="background-color: rgba(255,255,255,0.7)"],
+body.dark-mode *[style*="background-color: rgba(255, 255, 255, 0.6)"],
+body.dark-mode *[style*="background-color: rgba(255,255,255,0.6)"],
+body.dark-mode *[style*="background-color: rgba(255, 255, 255, 0.8)"],
+body.dark-mode *[style*="background-color: rgba(255,255,255,0.8)"],
+body.dark-mode *[style*="background-color: rgba(255, 255, 255, 0.9)"],
+body.dark-mode *[style*="background-color: rgba(255,255,255,0.9)"] {
+  background: #1E293B !important;
+  background-color: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35) !important;
 }
 
-body.dark-mode .layout-drawer h3,
-body.dark-mode .layout-drawer div[style*="color: #1e3a8a"],
-body.dark-mode .layout-drawer div[style*="color: '#1e3a8a'"] {
-  color: #f8fafc !important;
+/* Secondary subtle containers (#f8fafc, #f1f5f9) in Dark Mode */
+body.dark-mode *[style*="background: #f8fafc"],
+body.dark-mode *[style*="background: '#f8fafc'"],
+body.dark-mode *[style*="background: rgb(248, 250, 252)"],
+body.dark-mode *[style*="background: rgb(248,250,252)"],
+body.dark-mode *[style*="background-color: #f8fafc"],
+body.dark-mode *[style*="background-color: '#f8fafc'"],
+body.dark-mode *[style*="background-color: rgb(248, 250, 252)"],
+body.dark-mode *[style*="background-color: rgb(248,250,252)"],
+body.dark-mode *[style*="background: #f1f5f9"],
+body.dark-mode *[style*="background: '#f1f5f9'"],
+body.dark-mode *[style*="background: rgb(241, 245, 249)"],
+body.dark-mode *[style*="background: rgb(241,245,249)"],
+body.dark-mode *[style*="background-color: #f1f5f9"],
+body.dark-mode *[style*="background-color: '#f1f5f9'"],
+body.dark-mode *[style*="background-color: rgb(241, 245, 249)"],
+body.dark-mode *[style*="background-color: rgb(241,245,249)"],
+body.dark-mode *[style*="rgba(248, 250, 252"],
+body.dark-mode *[style*="rgba(248,250,252"],
+body.dark-mode *[style*="rgba(241, 245, 249"],
+body.dark-mode *[style*="rgba(241,245,249"],
+body.dark-mode .academic-meta-box,
+body.dark-mode .teacher-todo-item {
+  background: rgba(15, 23, 42, 0.65) !important;
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
 }
 
-body.dark-mode .layout-drawer label {
-  background: rgba(30, 41, 59, 0.6) !important;
+/* Light Blue / Indigo Badges & Pills in Dark Mode */
+body.dark-mode *[style*="background: #eff6ff"],
+body.dark-mode *[style*="background-color: #eff6ff"],
+body.dark-mode *[style*="background: rgb(239, 246, 255)"],
+body.dark-mode *[style*="background-color: rgb(239, 246, 255)"],
+body.dark-mode *[style*="background: #dbeafe"],
+body.dark-mode *[style*="background-color: #dbeafe"],
+body.dark-mode *[style*="background: rgb(219, 234, 254)"],
+body.dark-mode *[style*="background-color: rgb(219, 234, 254)"],
+body.dark-mode *[style*="background: #e0e7ff"],
+body.dark-mode *[style*="background-color: #e0e7ff"],
+body.dark-mode *[style*="background: rgb(224, 231, 255)"],
+body.dark-mode *[style*="background-color: rgb(224, 231, 255)"],
+body.dark-mode *[style*="background: #e0f2fe"],
+body.dark-mode *[style*="background-color: #e0f2fe"],
+body.dark-mode *[style*="background: rgb(224, 242, 254)"],
+body.dark-mode *[style*="background-color: rgb(224, 242, 254)"],
+body.dark-mode .academic-section-badge {
+  background: rgba(99, 102, 241, 0.2) !important;
+  background-color: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+
+/* Light Green Success Badges & Pills in Dark Mode */
+body.dark-mode *[style*="background: #dcfce7"],
+body.dark-mode *[style*="background-color: #dcfce7"],
+body.dark-mode *[style*="background: rgb(220, 252, 231)"],
+body.dark-mode *[style*="background-color: rgb(220, 252, 231)"],
+body.dark-mode *[style*="background: #ecfdf5"],
+body.dark-mode *[style*="background-color: #ecfdf5"],
+body.dark-mode *[style*="background: rgb(236, 253, 245)"],
+body.dark-mode *[style*="background-color: rgb(236, 253, 245)"],
+body.dark-mode *[style*="background: #f0fdf4"],
+body.dark-mode *[style*="background-color: #f0fdf4"],
+body.dark-mode *[style*="background: rgb(240, 253, 244)"],
+body.dark-mode *[style*="background-color: rgb(240, 253, 244)"] {
+  background: rgba(16, 185, 129, 0.2) !important;
+  background-color: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Light Red Danger Badges & Buttons in Dark Mode */
+body.dark-mode *[style*="background: #fef2f2"],
+body.dark-mode *[style*="background-color: #fef2f2"],
+body.dark-mode *[style*="background: rgb(254, 242, 242)"],
+body.dark-mode *[style*="background-color: rgb(254, 242, 242)"],
+body.dark-mode *[style*="background: #fff1f2"],
+body.dark-mode *[style*="background-color: #fff1f2"],
+body.dark-mode *[style*="background: rgb(255, 241, 242)"],
+body.dark-mode *[style*="background-color: rgb(255, 241, 242)"] {
+  background: rgba(239, 68, 68, 0.18) !important;
+  background-color: rgba(239, 68, 68, 0.18) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+
+/* Light Amber / Yellow Warning Badges in Dark Mode */
+body.dark-mode *[style*="background: #fef3c7"],
+body.dark-mode *[style*="background-color: #fef3c7"],
+body.dark-mode *[style*="background: rgb(254, 243, 199)"],
+body.dark-mode *[style*="background-color: rgb(254, 243, 199)"],
+body.dark-mode *[style*="background: #fefce8"],
+body.dark-mode *[style*="background-color: #fefce8"],
+body.dark-mode *[style*="background: rgb(254, 252, 232)"],
+body.dark-mode *[style*="background-color: rgb(254, 252, 232)"] {
+  background: rgba(245, 158, 11, 0.18) !important;
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+/* Light Borders & Progress Tracks Overrides */
+body.dark-mode *[style*="border: 1px solid #e2e8f0"],
+body.dark-mode *[style*="border: 1px solid rgb(226, 232, 240)"],
+body.dark-mode *[style*="border: 1px solid #cbd5e1"],
+body.dark-mode *[style*="border: 1px solid rgb(203, 213, 225)"],
+body.dark-mode *[style*="border: 1.5px solid #e2e8f0"],
+body.dark-mode *[style*="border: 1.5px solid rgb(226, 232, 240)"],
+body.dark-mode *[style*="border-top: 1px solid #f1f5f9"],
+body.dark-mode *[style*="border-top: 1px solid rgb(241, 245, 249)"],
+body.dark-mode *[style*="border-top: 1px solid #e2e8f0"],
+body.dark-mode *[style*="border-top: 1px solid rgb(226, 232, 240)"],
+body.dark-mode *[style*="border-bottom: 1px solid #e2e8f0"],
+body.dark-mode *[style*="border-bottom: 1px solid rgb(226, 232, 240)"] {
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-body.dark-mode .layout-drawer label span {
-  color: #e2e8f0 !important;
+body.dark-mode *[style*="background-color: #e2e8f0"],
+body.dark-mode *[style*="background-color: rgb(226, 232, 240)"],
+body.dark-mode *[style*="background: #e2e8f0"],
+body.dark-mode *[style*="background: rgb(226, 232, 240)"] {
+  background: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-body.dark-mode .layout-drawer > div[style*="borderBottom"],
-body.dark-mode .layout-drawer > div[style*="border-bottom"] {
+/* ========================================================
+   UNIVERSAL TEXT CONTRAST IN DARK MODE (#F8FAFC / #94A3B8)
+======================================================== */
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode *[style*="color: #1e3a8a"],
+body.dark-mode *[style*="color: '#1e3a8a'"],
+body.dark-mode *[style*="color: rgb(30, 58, 138)"],
+body.dark-mode *[style*="color: rgb(30,58,138)"],
+body.dark-mode *[style*="color: #1e40af"],
+body.dark-mode *[style*="color: rgb(30, 64, 175)"],
+body.dark-mode *[style*="color: #1d4ed8"],
+body.dark-mode *[style*="color: rgb(29, 78, 216)"],
+body.dark-mode *[style*="color: #1e293b"],
+body.dark-mode *[style*="color: '#1e293b'"],
+body.dark-mode *[style*="color: rgb(30, 41, 59)"],
+body.dark-mode *[style*="color: rgb(30,41,59)"],
+body.dark-mode *[style*="color: #0F172A"],
+body.dark-mode *[style*="color: '#0F172A'"],
+body.dark-mode *[style*="color: #0f172a"],
+body.dark-mode *[style*="color: rgb(15, 23, 42)"],
+body.dark-mode *[style*="color: rgb(15,23,42)"],
+body.dark-mode *[style*="color: #334155"],
+body.dark-mode *[style*="color: '#334155'"],
+body.dark-mode *[style*="color: rgb(51, 65, 85)"],
+body.dark-mode *[style*="color: rgb(51,65,85)"] {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode p,
+body.dark-mode *[style*="color: #64748b"],
+body.dark-mode *[style*="color: '#64748b'"],
+body.dark-mode *[style*="color: rgb(100, 116, 139)"],
+body.dark-mode *[style*="color: rgb(100,116,139)"],
+body.dark-mode *[style*="color: #475569"],
+body.dark-mode *[style*="color: '#475569'"],
+body.dark-mode *[style*="color: rgb(71, 85, 105)"],
+body.dark-mode *[style*="color: rgb(71,85,105)"] {
+  color: #94A3B8 !important;
+}
+
+body.dark-mode *[style*="color: #166534"],
+body.dark-mode *[style*="color: rgb(22, 101, 52)"] {
+  color: #34d399 !important;
+}
+
+body.dark-mode *[style*="color: #92400e"],
+body.dark-mode *[style*="color: rgb(146, 64, 14)"],
+body.dark-mode *[style*="color: #78350f"],
+body.dark-mode *[style*="color: rgb(120, 53, 15)"] {
+  color: #fbbf24 !important;
+}
+
+body.dark-mode *[style*="color: #991b1b"],
+body.dark-mode *[style*="color: rgb(153, 27, 27)"] {
+  color: #f87171 !important;
+}
+
+/* Big KPI Metric Numbers inside Cards */
+body.dark-mode .card div[style*="fontSize: '1.75rem'"],
+body.dark-mode .card div[style*="fontSize: '1.85rem'"],
+body.dark-mode .card div[style*="fontSize: '1.6rem'"],
+body.dark-mode .card div[style*="fontSize: '1.65rem'"],
+body.dark-mode .card div[style*="fontSize: '2.4rem'"],
+body.dark-mode .card div[style*="font-size: 1.75rem"],
+body.dark-mode .card div[style*="font-size: 1.85rem"],
+body.dark-mode .card div[style*="font-size: 1.6rem"],
+body.dark-mode .card div[style*="font-size: 1.65rem"],
+body.dark-mode .card div[style*="font-size: 2.4rem"],
+body.dark-mode .chart-card div[style*="font-size: 1.75rem"],
+body.dark-mode .chart-card div[style*="font-size: 1.85rem"],
+body.dark-mode .chart-card div[style*="font-size: 1.6rem"],
+body.dark-mode .chart-card div[style*="font-size: 1.65rem"] {
+  color: #F8FAFC !important;
+}
+
+/* ========================================================
+   ACADEMICS COMPONENT SPECIFIC STYLES
+======================================================== */
+.academic-meta-box {
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+}
+
+body.dark-mode .academic-meta-box {
   background: rgba(15, 23, 42, 0.6) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-body.dark-mode .layout-drawer > div[style*="borderTop"],
-body.dark-mode .layout-drawer > div[style*="border-top"] {
-  background: rgba(15, 23, 42, 0.8) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+.academic-section-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
 }
 
-/* All Cards, Metric Panels, & Action Cards */
-body.dark-mode .card,
-body.dark-mode .dashboard-action-card,
-body.dark-mode .risk-student-card {
-  background: rgba(19, 28, 49, 0.85) !important;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+body.dark-mode .academic-section-badge {
+  background: rgba(99, 102, 241, 0.2) !important;
+  color: #a5b4fc !important;
+  border: 1px solid rgba(99, 102, 241, 0.35) !important;
+}
+
+.academic-status-pill.active {
+  background: #dcfce7;
+  color: #166534;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+body.dark-mode .academic-status-pill.active {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+}
+
+.academic-status-pill.archived {
+  background: #f1f5f9;
+  color: #64748b;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+body.dark-mode .academic-status-pill.archived {
+  background: rgba(148, 163, 184, 0.15) !important;
+  color: #94a3b8 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.4) !important;
-  color: #f8fafc !important;
 }
 
-body.dark-mode .dashboard-action-card:hover {
-  background: rgba(26, 38, 64, 0.95) !important;
-  border-color: rgba(99, 102, 241, 0.5) !important;
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6) !important;
+.academic-subject-tag {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 600;
 }
 
-body.dark-mode .card h1,
-body.dark-mode .card h2,
-body.dark-mode .card h3,
-body.dark-mode .card h4,
-body.dark-mode .card h5,
-body.dark-mode .dashboard-action-card h3 {
-  color: #f8fafc !important;
+body.dark-mode .academic-subject-tag {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #a5b4fc !important;
+  border: 1px solid rgba(99, 102, 241, 0.25) !important;
 }
 
-body.dark-mode .card p,
-body.dark-mode .dashboard-action-card p {
+.academic-subject-tag-more {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-weight: 600;
+}
+
+body.dark-mode .academic-subject-tag-more {
+  background: rgba(148, 163, 184, 0.12) !important;
   color: #94a3b8 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-body.dark-mode .card div[style*="color: #1e293b"],
-body.dark-mode .card div[style*="color: '#1e293b'"],
-body.dark-mode .card div[style*="color: #1e3a8a"],
-body.dark-mode .card div[style*="color: '#1e3a8a'"],
-body.dark-mode .card div[style*="color: #0F172A"],
-body.dark-mode .card div[style*="color: '#0F172A'"] {
-  color: #f8fafc !important;
+.academic-icon-btn {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  color: #475569;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-body.dark-mode .card div[style*="color: #64748b"],
-body.dark-mode .card div[style*="color: '#64748b'"],
-body.dark-mode .card div[style*="color: #475569"],
-body.dark-mode .card div[style*="color: '#475569'"] {
-  color: #94a3b8 !important;
-}
-
-body.dark-mode .card span[style*="background: #f1f5f9"],
-body.dark-mode .card span[style*="background: '#f1f5f9'"] {
-  background: rgba(255, 255, 255, 0.08) !important;
+body.dark-mode .academic-icon-btn {
+  background: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: #cbd5e1 !important;
 }
 
-body.dark-mode .card button[style*="background: #f8fafc"],
-body.dark-mode .card button[style*="background: '#f8fafc'"] {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #e2e8f0 !important;
+body.dark-mode .academic-icon-btn:hover {
+  background: #28374d !important;
+  color: #ffffff !important;
 }
 
-/* Tables in Dark Mode */
+.academic-icon-btn.academic-btn-danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #ef4444;
+}
+
+body.dark-mode .academic-icon-btn.academic-btn-danger {
+  background: rgba(239, 68, 68, 0.18) !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+  color: #f87171 !important;
+}
+
+body.dark-mode .academic-icon-btn.academic-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.28) !important;
+  color: #fca5a5 !important;
+}
+
+/* ========================================================
+   TEACHER DASHBOARD SPECIFIC STYLES
+======================================================== */
+.teacher-schedule-card {
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid var(--color-border, #e2e8f0);
+}
+
+body.dark-mode .teacher-schedule-card {
+  background: #1E293B !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+.teacher-roster-pill {
+  background: transparent;
+  color: var(--color-text-muted, #64748B);
+  border: 1px solid var(--color-border, #cbd5e1);
+}
+
+body.dark-mode .teacher-roster-pill {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.dark-mode .teacher-roster-pill:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.teacher-status-action-pill.upcoming {
+  background: rgba(226, 232, 240, 0.7);
+  color: #475569;
+  border: 1px solid transparent;
+}
+
+body.dark-mode .teacher-status-action-pill.upcoming,
+body.dark-mode *[style*="rgba(226, 232, 240, 0.6)"],
+body.dark-mode *[style*="rgba(226,232,240,0.6)"],
+body.dark-mode *[style*="rgba(226, 232, 240, 0.7)"],
+body.dark-mode *[style*="rgba(226, 232, 240, 0.8)"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.teacher-status-action-pill.completed {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16A34A;
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+
+body.dark-mode .teacher-status-action-pill.completed {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.teacher-status-action-pill.in-progress {
+  background: linear-gradient(135deg, #4F46E5, #6366F1);
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+body.dark-mode .teacher-status-action-pill.in-progress {
+  background: linear-gradient(135deg, #6366F1, #818CF8) !important;
+  color: white !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.45) !important;
+}
+
+/* Teacher To-Do Items */
+.teacher-todo-item {
+  background: var(--color-bg, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.teacher-todo-item:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.teacher-todo-item.completed {
+  background: rgba(241, 245, 249, 0.6);
+  border: 1px dashed var(--color-border, #cbd5e1);
+  opacity: 0.65;
+}
+
+.teacher-todo-item.urgent {
+  background: rgba(15, 118, 110, 0.05);
+  border: 1px solid rgba(15, 118, 110, 0.2);
+}
+
+body.dark-mode .teacher-todo-item {
+  background: rgba(15, 23, 42, 0.65) !important;
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .teacher-todo-item:hover {
+  background: rgba(15, 23, 42, 0.9) !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .teacher-todo-item.completed {
+  background: rgba(15, 23, 42, 0.35) !important;
+  background-color: rgba(15, 23, 42, 0.35) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode .teacher-todo-item.urgent {
+  background: rgba(15, 118, 110, 0.15) !important;
+  background-color: rgba(15, 118, 110, 0.15) !important;
+  border-color: rgba(15, 118, 110, 0.35) !important;
+}
+
+body.dark-mode .teacher-todo-item .urgent-text {
+  color: #2dd4bf !important;
+}
+
+.teacher-todo-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.teacher-todo-delete-btn:hover {
+  color: #ef4444 !important;
+  transform: scale(1.15);
+}
+
+
+/* ========================================================
+   BUTTONS, TOGGLE PILLS, & FORM CONTROLS
+======================================================== */
+body.dark-mode button[style*="background: white"],
+body.dark-mode button[style*="background: 'white'"],
+body.dark-mode button[style*="background: #ffffff"],
+body.dark-mode button[style*="background: '#ffffff'"],
+body.dark-mode button[style*="background: rgb(255, 255, 255)"],
+body.dark-mode button[style*="background: rgb(255,255,255)"],
+body.dark-mode button[style*="background: #f8fafc"],
+body.dark-mode button[style*="background: '#f8fafc'"],
+body.dark-mode button[style*="background: rgb(248, 250, 252)"],
+body.dark-mode button[style*="background: rgb(248,250,252)"],
+body.dark-mode button[style*="background: #f1f5f9"],
+body.dark-mode button[style*="background: '#f1f5f9'"],
+body.dark-mode button[style*="background: rgb(241, 245, 249)"],
+body.dark-mode button[style*="background: rgb(241,245,249)"] {
+  background: #1E293B !important;
+  color: #F8FAFC !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+body.dark-mode button[style*="background: none"],
+body.dark-mode button[style*="background: transparent"] {
+  color: #94A3B8 !important;
+}
+
+.period-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  padding: 3px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+body.dark-mode .period-toggle-group {
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+body.dark-mode .period-toggle-group button {
+  color: #94A3B8;
+}
+
+body.dark-mode .period-toggle-group button:hover {
+  color: #F8FAFC !important;
+}
+
+/* Input, Select, and Textarea */
+body.dark-mode input:not([type="checkbox"]):not([type="radio"]),
+body.dark-mode select,
+body.dark-mode textarea {
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+
+body.dark-mode select option {
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+  border-color: #6366F1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
+}
+
+/* ========================================================
+   TABLES IN DARK MODE
+======================================================== */
 body.dark-mode table {
-  color: #e2e8f0 !important;
+  color: #E2E8F0 !important;
 }
 
 body.dark-mode thead tr,
 body.dark-mode th {
-  background: rgba(15, 23, 42, 0.95) !important;
-  color: #94a3b8 !important;
+  background: #0F172A !important;
+  color: #94A3B8 !important;
   border-bottom: 2px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 body.dark-mode tbody tr {
   background: transparent !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-  color: #e2e8f0 !important;
+  color: #E2E8F0 !important;
 }
 
 body.dark-mode tbody tr:hover {
@@ -868,52 +1342,23 @@ body.dark-mode tbody tr:hover {
 }
 
 body.dark-mode td {
-  color: #e2e8f0 !important;
+  color: #E2E8F0 !important;
 }
 
-body.dark-mode td div[style*="color: #1e293b"],
-body.dark-mode td div[style*="color: '#1e293b'"],
-body.dark-mode td span[style*="color: #1e293b"] {
-  color: #f8fafc !important;
+/* ========================================================
+   MODALS, DRAWERS, & AI ASSISTANT PANEL
+======================================================== */
+body.dark-mode .layout-drawer,
+body.dark-mode .ai-assistant-panel {
+  background: rgba(30, 41, 59, 0.98) !important;
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: -10px 0 45px rgba(0, 0, 0, 0.8) !important;
+  color: #F8FAFC !important;
 }
 
-body.dark-mode td div[style*="color: #64748b"],
-body.dark-mode td div[style*="color: '#64748b'"] {
-  color: #94a3b8 !important;
-}
-
-/* Forms, Inputs, & Filters */
-body.dark-mode input,
-body.dark-mode select,
-body.dark-mode textarea {
-  background: rgba(15, 23, 42, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  color: #f8fafc !important;
-}
-
-body.dark-mode select option {
-  background: #0f172a !important;
-  color: #f8fafc !important;
-}
-
-body.dark-mode input:focus,
-body.dark-mode select:focus,
-body.dark-mode textarea:focus {
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25) !important;
-}
-
-body.dark-mode code {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #a5b4fc !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-}
-
-/* Modals & Dialogs */
-body.dark-mode div[style*="background: rgba(15, 23, 42, 0.6)"],
-body.dark-mode div[style*="background: 'rgba(15, 23, 42, 0.6)'"],
-body.dark-mode div[style*="background: rgba(15, 23, 42, 0.75)"],
-body.dark-mode div[style*="background: 'rgba(15, 23, 42, 0.75)'"] {
+body.dark-mode div[style*="position: fixed"][style*="background: rgba(15, 23, 42"] {
   background: rgba(3, 7, 18, 0.8) !important;
   backdrop-filter: blur(8px);
 }
@@ -921,48 +1366,149 @@ body.dark-mode div[style*="background: 'rgba(15, 23, 42, 0.75)'"] {
 body.dark-mode div[style*="borderRadius: '24px'"][style*="background: 'white'"],
 body.dark-mode div[style*="border-radius: 24px"][style*="background: white"],
 body.dark-mode div[style*="border-radius: 20px"][style*="background: white"],
-body.dark-mode div[style*="borderRadius: '20px'"][style*="background: 'white'"] {
-  background: #0f172a !important;
+body.dark-mode div[style*="borderRadius: '20px'"][style*="background: 'white'"],
+body.dark-mode div[style*="border-radius: 16px"][style*="background: white"],
+body.dark-mode div[style*="borderRadius: '16px'"][style*="background: 'white'"] {
+  background: #1E293B !important;
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  color: #f8fafc !important;
+  color: #F8FAFC !important;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Settings Modal Left Sidebar */
-body.dark-mode div[style*="background: rgba(248, 250, 252, 0.8)"],
-body.dark-mode div[style*="background: 'rgba(248, 250, 252, 0.8)'"] {
-  background: rgba(13, 20, 36, 0.95) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+
+/* ========================================================
+   DROPDOWNS & FLOATING MENUS (SOLID OPAQUE SURFACES)
+======================================================== */
+.user-profile-dropdown,
+.school-selector-dropdown,
+.header-search-dropdown {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.25), 0 0 0 1px #E2E8F0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
 }
 
-body.dark-mode div[style*="background: rgba(248, 250, 252, 0.8)"] h2,
-body.dark-mode div[style*="background: 'rgba(248, 250, 252, 0.8)'"] h2 {
-  color: #f8fafc !important;
+.profile-menu-item {
+  color: #1E293B;
+  transition: all 0.2s ease;
+}
+.profile-menu-item:hover {
+  background: rgba(79, 70, 229, 0.08) !important;
+}
+.profile-menu-item:hover span {
+  color: #4F46E5 !important;
 }
 
-body.dark-mode div[style*="background: rgba(248, 250, 252, 0.8)"] div[style*="background: white"],
-body.dark-mode div[style*="background: 'rgba(248, 250, 252, 0.8)'"] div[style*="background: 'white'"] {
-  background: rgba(30, 41, 59, 0.85) !important;
-  color: #818cf8 !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+.profile-menu-logout {
+  color: #DC2626;
+  transition: all 0.2s ease;
 }
+.profile-menu-logout:hover {
+  background: rgba(220, 38, 38, 0.08) !important;
+}
+
+.header-profile-btn:hover {
+  background: rgba(241, 245, 249, 0.8) !important;
+}
+
+/* Dark Mode Overrides for Dropdowns */
+body.dark-mode .header-profile-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode .user-profile-dropdown,
+body.dark-mode .school-selector-dropdown,
+body.dark-mode .header-search-dropdown,
+body.dark-mode div[style*="position: absolute"][style*="box-shadow"],
+body.dark-mode div[style*="position: 'absolute'"][style*="box-shadow"],
+body.dark-mode div[style*="position: absolute"][style*="boxShadow"],
+body.dark-mode div[style*="position: 'absolute'"][style*="boxShadow"] {
+  background: #1E293B !important;
+  background-color: #1E293B !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 25px 50px -10px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  color: #F8FAFC !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+
+body.dark-mode .user-profile-dropdown-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(15, 118, 110, 0.15) 100%) !important;
+}
+
+body.dark-mode .user-profile-dropdown-name {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .profile-menu-item {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .profile-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+body.dark-mode .profile-menu-item:hover span {
+  color: #818CF8 !important;
+}
+
+body.dark-mode .profile-menu-logout:hover {
+  background: rgba(220, 38, 38, 0.18) !important;
+}
+
+body.dark-mode .school-selector-dropdown div[style*="background: #f8fafc"],
+body.dark-mode .school-selector-dropdown div[style*="background: '#f8fafc'"],
+body.dark-mode .school-selector-dropdown div[style*="background: rgb(248, 250, 252)"],
+body.dark-mode .school-selector-dropdown div[style*="background: #ffffff"],
+body.dark-mode .school-selector-dropdown div[style*="background: '#ffffff'"],
+body.dark-mode .school-selector-dropdown div[style*="background: rgb(255, 255, 255)"] {
+  background: #0F172A !important;
+  background-color: #0F172A !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .school-selector-dropdown div[style*="color: #1e3a8a"],
+body.dark-mode .school-selector-dropdown div[style*="color: #1e293b"] {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .school-selector-dropdown code {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .header-search-dropdown div[style*="color: #1e293b"],
+body.dark-mode .header-search-dropdown div[style*="color: #1e3a8a"] {
+  color: #F8FAFC !important;
+}
+
+body.dark-mode .header-search-dropdown div:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
 
 /* Recharts Tooltip in Dark Mode */
 body.dark-mode .recharts-default-tooltip {
-  background-color: #0f172a !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  color: #f8fafc !important;
+  background-color: #0F172A !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #F8FAFC !important;
   border-radius: 10px !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
 }
 
 body.dark-mode .recharts-cartesian-grid-horizontal line,
 body.dark-mode .recharts-cartesian-grid-vertical line {
-  stroke: rgba(255, 255, 255, 0.07) !important;
+  stroke: rgba(255, 255, 255, 0.08) !important;
 }
 
 body.dark-mode .recharts-text {
-  fill: #94a3b8 !important;
+  fill: #94A3B8 !important;
 }
 
 /* =========================================

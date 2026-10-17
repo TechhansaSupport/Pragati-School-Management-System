@@ -300,6 +300,7 @@ const Header = () => {
               {/* Multi-School Selector & Window Launcher Dropdown */}
               {isSchoolDropdownOpen && (
                 <div 
+                  className="school-selector-dropdown"
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     position: 'absolute',
@@ -307,13 +308,11 @@ const Header = () => {
                     left: 0,
                     width: '380px',
                     maxWidth: '90vw',
-                    background: 'rgba(255, 255, 255, 0.98)',
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(226, 232, 240, 0.9)',
+                    background: 'var(--color-surface, #ffffff)',
+                    border: '1px solid var(--color-border, rgba(226, 232, 240, 0.9))',
                     borderRadius: '14px',
-                    boxShadow: '0 16px 40px -8px rgba(0, 0, 0, 0.2)',
-                    zIndex: 99999,
+                    boxShadow: '0 20px 45px -8px rgba(0, 0, 0, 0.35)',
+                    zIndex: 999999,
                     overflow: 'hidden',
                     animation: 'fade-in-down 0.15s ease-out'
                   }}
@@ -848,6 +847,7 @@ const Header = () => {
       <div className="header-right" ref={profileRef} style={{ position: 'relative', zIndex: 9999 }}>
         <div 
           onClick={() => setIsProfileOpen(!isProfileOpen)}
+          className="header-profile-btn"
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -855,12 +855,10 @@ const Header = () => {
             cursor: 'pointer',
             padding: '6px 12px',
             borderRadius: '12px',
-            background: isProfileOpen ? 'rgba(79, 70, 229, 0.05)' : 'transparent',
-            border: isProfileOpen ? '1px solid rgba(79, 70, 229, 0.2)' : '1px solid transparent',
+            background: isProfileOpen ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
+            border: isProfileOpen ? '1px solid rgba(79, 70, 229, 0.25)' : '1px solid transparent',
             transition: 'all 0.2s'
           }}
-          onMouseOver={e => { if(!isProfileOpen) e.currentTarget.style.background = 'rgba(241, 245, 249, 0.8)' }}
-          onMouseOut={e => { if(!isProfileOpen) e.currentTarget.style.background = 'transparent' }}
         >
           <div style={{ textAlign: 'right' }}>
             <div style={{ 
@@ -903,23 +901,35 @@ const Header = () => {
 
         {/* Profile Dropdown Menu */}
         {isProfileOpen && (
-          <div style={{
-            position: 'absolute',
-            top: '100%',
-            right: '0',
-            marginTop: '8px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
-            borderRadius: '16px',
-            boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.15)',
-            zIndex: 99999,
-            width: '240px',
-            overflow: 'hidden',
-            animation: 'fade-in-down 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
-          }}>
-            <div style={{ padding: '16px', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(15, 118, 110, 0.05) 100%)', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', border: '2px solid white', boxShadow: '0 2px 6px rgba(0,0,0,0.08)', flexShrink: 0, background: '#e0e7ff' }}>
+          <div 
+            className="user-profile-dropdown"
+            style={{
+              position: 'absolute',
+              top: '100%',
+              right: '0',
+              marginTop: '8px',
+              background: 'var(--color-surface, #FFFFFF)',
+              border: '1px solid var(--color-border, #E2E8F0)',
+              borderRadius: '16px',
+              boxShadow: '0 20px 45px -10px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--color-border, #E2E8F0)',
+              zIndex: 999999,
+              width: '260px',
+              overflow: 'hidden',
+              animation: 'fade-in-down 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            <div 
+              className="user-profile-dropdown-header"
+              style={{ 
+                padding: '16px', 
+                borderBottom: '1px solid var(--color-border, rgba(226, 232, 240, 0.8))', 
+                background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(15, 118, 110, 0.08) 100%)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '12px' 
+              }}
+            >
+              <div style={{ width: '42px', height: '42px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--color-surface, white)', boxShadow: '0 2px 6px rgba(0,0,0,0.12)', flexShrink: 0, background: '#e0e7ff' }}>
                 <img 
                   src={userInfo.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(userDisplayName)}&background=e0e7ff&color=3730a3&bold=true`} 
                   alt="Avatar" 
@@ -927,31 +937,33 @@ const Header = () => {
                 />
               </div>
               <div style={{ overflow: 'hidden' }}>
-                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8a', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div 
+                  className="user-profile-dropdown-name"
+                  style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--color-text-main, #1e3a8a)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
                   {role === 'superadmin' && <span>👑</span>}
                   <span>{userDisplayName}</span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>@{userInfo.uniqueId || role}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)' }}>@{userInfo.uniqueId || role}</div>
               </div>
             </div>
             
             <div style={{ padding: '8px' }}>
               {[
-                { id: 'profile', icon: User, label: 'My Profile', color: '#4F46E5' },
+                { id: 'profile', icon: User, label: 'My Profile', color: '#6366F1' },
                 { id: 'security', icon: Key, label: 'Change Password & Username', color: '#0F766E' },
-                { id: 'account', icon: Settings, label: 'Account Settings', color: '#64748b' },
-                { id: 'help', icon: HelpCircle, label: 'Help & Support', color: '#64748b' }
+                { id: 'account', icon: Settings, label: 'Account Settings', color: 'var(--color-text-muted, #64748b)' },
+                { id: 'help', icon: HelpCircle, label: 'Help & Support', color: 'var(--color-text-muted, #64748b)' }
               ].map((item, i) => (
                 <div 
                   key={i}
+                  className="profile-menu-item"
                   onClick={() => {
                     setIsProfileOpen(false);
                     setSettingsTab(item.id);
                     setIsSettingsOpen(true);
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}
-                  onMouseOver={e => { e.currentTarget.style.background = 'rgba(79, 70, 229, 0.05)'; e.currentTarget.style.color = '#4F46E5'; }}
-                  onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--color-text-main)'; }}
                 >
                   <item.icon size={16} color={item.color} />
                   <span style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--color-text-main)' }}>{item.label}</span>
@@ -959,15 +971,14 @@ const Header = () => {
               ))}
             </div>
 
-            <div style={{ borderTop: '1px solid rgba(226, 232, 240, 0.8)', padding: '8px' }}>
+            <div style={{ borderTop: '1px solid var(--color-border, rgba(226, 232, 240, 0.8))', padding: '8px' }}>
               <div 
+                className="profile-menu-logout"
                 onClick={handleLogout}
                 style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', cursor: 'pointer', borderRadius: '8px', transition: 'all 0.2s' }}
-                onMouseOver={e => { e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'; e.currentTarget.querySelector('span').style.color = '#DC2626'; e.currentTarget.querySelector('svg').style.stroke = '#DC2626'; }}
-                onMouseOut={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.querySelector('span').style.color = '#64748b'; e.currentTarget.querySelector('svg').style.stroke = '#64748b'; }}
               >
-                <LogOut size={16} color="#64748b" style={{ transition: 'all 0.2s' }} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b', transition: 'all 0.2s' }}>Log out</span>
+                <LogOut size={16} color="#DC2626" style={{ transition: 'all 0.2s' }} />
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#DC2626', transition: 'all 0.2s' }}>Log out</span>
               </div>
             </div>
           </div>
@@ -1003,6 +1014,7 @@ const Header = () => {
       <AppointPrincipalModal
         isOpen={!!targetSchoolForPrincipal}
         targetSchool={targetSchoolForPrincipal}
+        schoolsList={schoolsList}
         onClose={() => setTargetSchoolForPrincipal(null)}
         onPrincipalAppointed={(updatedSchool) => {
           fetchSchoolsList();

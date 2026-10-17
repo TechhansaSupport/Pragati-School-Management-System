@@ -18,9 +18,9 @@ const checkAdminAuthority = (req, res) => {
   return true;
 };
 
-// Seed initial transactions on demand if empty
+// Seed initial transactions ONLY when explicitly triggered by admin (e.g. via /api/finance/seed)
 const seedInitialTransactionsIfEmpty = async (entityId, force = false, schoolSlug = null) => {
-  if (!entityId && !force) return;
+  if (!force) return; // Strictly never auto-seed on read queries
   const count = await Transaction.countDocuments(entityId ? { entityId } : {});
   if (count === 0 || force) {
     const timestamp = Date.now().toString().slice(-6);
@@ -48,7 +48,6 @@ const seedInitialTransactionsIfEmpty = async (entityId, force = false, schoolSlu
 // GET /api/finance/transactions — List all transactions
 router.get('/transactions', async (req, res) => {
   try {
-    await seedInitialTransactionsIfEmpty(req.entityId, false, req.schoolSlug);
     const { search, page = 1, limit = 50, type, status, category, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
@@ -103,7 +102,6 @@ router.get('/transactions', async (req, res) => {
 // GET /api/finance/stats — Financial KPIs (Real Live Database Aggregate)
 router.get('/stats', async (req, res) => {
   try {
-    await seedInitialTransactionsIfEmpty(req.entityId, false, req.schoolSlug);
     const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
     const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
     
@@ -153,7 +151,6 @@ router.get('/stats', async (req, res) => {
 // GET /api/finance/analytics — Real Live MongoDB Aggregated Financial Intelligence
 router.get('/analytics', async (req, res) => {
   try {
-    await seedInitialTransactionsIfEmpty(req.entityId, false, req.schoolSlug);
     const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
     
     let scopeFilter = { entityId: req.entityId };

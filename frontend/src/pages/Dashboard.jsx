@@ -2526,6 +2526,7 @@ const Dashboard = () => {
       <AppointPrincipalModal
         isOpen={!!targetSchoolForPrincipal}
         targetSchool={targetSchoolForPrincipal}
+        schoolsList={schoolsList}
         onClose={() => setTargetSchoolForPrincipal(null)}
         onPrincipalAppointed={(updatedSchool) => {
           fetchSchoolsList();

@@ -299,14 +299,19 @@ router.get('/attendance-analytics', async (req, res) => {
 // GET /api/staff/teachers — Teachers only
 router.get('/teachers', async (req, res) => {
   try {
-    const { search } = req.query;
+    const { search, schoolSlug } = req.query;
     const query = { role: 'Teacher', entityId: req.entityId };
+
+    if (schoolSlug && schoolSlug !== 'all') {
+      query.schoolSlug = schoolSlug;
+    }
 
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { subjects: { $elemMatch: { $regex: search, $options: 'i' } } },
         { employeeId: { $regex: search, $options: 'i' } },
+        { department: { $regex: search, $options: 'i' } },
       ];
     }
 
