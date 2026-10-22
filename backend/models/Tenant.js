@@ -17,7 +17,11 @@ const tenantSchema = new mongoose.Schema({
   maintenanceMode: { type: Boolean, default: false },
   phone: { type: String, default: '' },
   email: { type: String, default: '' },
-  affiliationNo: { type: String, default: '' }
+  affiliationNo: { type: String, default: '' },
+  campusLatitude: { type: Number, default: null },
+  campusLongitude: { type: Number, default: null },
+  campusRadiusMeters: { type: Number, default: 300 },
+  geofenceEnabled: { type: Boolean, default: true }
 }, { timestamps: true });
 
 tenantSchema.pre('save', function (next) {

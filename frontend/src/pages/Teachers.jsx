@@ -30,7 +30,6 @@ const Teachers = () => {
                 placeholder="Search teachers..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ padding: '8px 16px 8px 36px' }}
               />
             </div>
             <button className="header-action-btn">

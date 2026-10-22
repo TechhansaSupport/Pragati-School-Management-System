@@ -4,7 +4,7 @@ const Student = require('../models/Student');
 
 // Helper to verify admin authority
 const checkAdminAuthority = (req, res) => {
-  const allowedRoles = ['admin', 'superadmin', 'principal', 'frontdesk'];
+  const allowedRoles = ['admin', 'superadmin', 'principal', 'frontdesk', 'school', 'school_admin'];
   const userRole = (req.user && req.user.role) ? req.user.role.toLowerCase() : '';
   
   if (userRole && !allowedRoles.includes(userRole)) {
@@ -225,7 +225,87 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/students/:id — Delete student (Admin Authority Only)
+// DELETE /api/students — Delete ALL or SELECTED students (Admin Authority Only)
+router.delete('/', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const { ids } = req.body || {};
+    const targetSlug = req.query.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || req.schoolSlug;
+
+    // Strict isolation to entity
+    const filter = { entityId: req.entityId };
+
+    // 1. Bulk delete selected IDs if provided
+    if (Array.isArray(ids) && ids.length > 0) {
+      filter._id = { $in: ids };
+      const result = await Student.deleteMany(filter);
+
+      const Assignment = require('../models/Assignment');
+      const Fee = require('../models/Fee');
+      const User = require('../models/User');
+
+      await Promise.allSettled([
+        Assignment.updateMany(
+          { entityId: req.entityId },
+          { $pull: { submissions: { studentId: { $in: ids } } } }
+        ),
+        Fee.deleteMany({ entityId: req.entityId, student: { $in: ids } }),
+        User.updateMany(
+          { entityId: req.entityId },
+          { $set: { studentsInitialized: true } }
+        )
+      ]);
+
+      return res.json({
+        success: true,
+        message: `Successfully deleted ${result.deletedCount} selected student record(s)`,
+        deletedCount: result.deletedCount
+      });
+    }
+
+    // 2. Delete all students for target campus (or entire school entity if 'all' or 'central')
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      filter.$or = [
+        { schoolSlug: targetSlug },
+        { schoolSlug: { $exists: false } },
+        { schoolSlug: null },
+        { schoolSlug: '' }
+      ];
+    }
+
+    const result = await Student.deleteMany(filter);
+
+    // Cascading cleanup of related collections
+    const Assignment = require('../models/Assignment');
+    const Fee = require('../models/Fee');
+    const User = require('../models/User');
+
+    const cascadeFilter = { entityId: req.entityId };
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      cascadeFilter.schoolSlug = targetSlug;
+    }
+
+    await Promise.allSettled([
+      Assignment.deleteMany(cascadeFilter),
+      Fee.deleteMany(cascadeFilter),
+      User.updateMany(
+        { entityId: req.entityId },
+        { $set: { studentsInitialized: true } }
+      )
+    ]);
+
+    res.json({
+      success: true,
+      message: `Successfully deleted all ${result.deletedCount} student records`,
+      deletedCount: result.deletedCount
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// DELETE /api/students/:id — Delete single student (Admin Authority Only)
 router.delete('/:id', async (req, res) => {
   if (!checkAdminAuthority(req, res)) return;
 
@@ -236,28 +316,26 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
 
+    const Assignment = require('../models/Assignment');
+    const Fee = require('../models/Fee');
+    const User = require('../models/User');
+
+    await Promise.allSettled([
+      Assignment.updateMany(
+        { entityId: req.entityId },
+        { $pull: { submissions: { studentId: req.params.id } } }
+      ),
+      Fee.deleteMany({ entityId: req.entityId, student: req.params.id }),
+      User.updateMany(
+        { entityId: req.entityId },
+        { $set: { studentsInitialized: true } }
+      )
+    ]);
+
     res.json({
       success: true,
       message: `Student "${student.name}" deleted successfully`,
       id: req.params.id
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// DELETE /api/students — Delete ALL students (Admin Authority Only)
-router.delete('/', async (req, res) => {
-  if (!checkAdminAuthority(req, res)) return;
-
-  try {
-    const filter = { entityId: req.entityId };
-    const result = await Student.deleteMany(filter);
-
-    res.json({
-      success: true,
-      message: `Successfully deleted all ${result.deletedCount} student records`,
-      deletedCount: result.deletedCount
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

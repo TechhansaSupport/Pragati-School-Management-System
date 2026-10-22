@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, Building2, MapPin, Phone, Mail, Award, Calendar, 
-  CheckCircle2, AlertCircle, Save, Globe
+  CheckCircle2, AlertCircle, Save, Globe, Navigation, Crosshair, ExternalLink
 } from 'lucide-react';
 
 const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
@@ -14,6 +14,15 @@ const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
   const [email, setEmail] = useState('');
   const [board, setBoard] = useState('CBSE');
   const [academicYear, setAcademicYear] = useState('2026-2027');
+
+  // Campus Geofence & GPS state
+  const [campusLatitude, setCampusLatitude] = useState('');
+  const [campusLongitude, setCampusLongitude] = useState('');
+  const [campusRadiusMeters, setCampusRadiusMeters] = useState(300);
+  const [geofenceEnabled, setGeofenceEnabled] = useState(true);
+  const [isLocating, setIsLocating] = useState(false);
+  const [locateSuccessMsg, setLocateSuccessMsg] = useState('');
+  const [locateErrorMsg, setLocateErrorMsg] = useState('');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -29,12 +38,51 @@ const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
       setEmail(school.email || '');
       setBoard(school.board || 'CBSE');
       setAcademicYear(school.academicYear || '2026-2027');
+      setCampusLatitude(school.campusLatitude != null ? school.campusLatitude : '');
+      setCampusLongitude(school.campusLongitude != null ? school.campusLongitude : '');
+      setCampusRadiusMeters(school.campusRadiusMeters != null ? school.campusRadiusMeters : 300);
+      setGeofenceEnabled(school.geofenceEnabled !== false);
+      setLocateSuccessMsg('');
+      setLocateErrorMsg('');
       setErrorMsg('');
       setSuccessMsg('');
     }
   }, [school, isOpen]);
 
   if (!isOpen || !school) return null;
+
+  const handleCaptureGPS = () => {
+    if (!navigator.geolocation) {
+      setLocateErrorMsg('Geolocation is not supported by your current browser.');
+      return;
+    }
+    setIsLocating(true);
+    setLocateErrorMsg('');
+    setLocateSuccessMsg('');
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        const acc = Math.round(pos.coords.accuracy || 0);
+        setCampusLatitude(lat);
+        setCampusLongitude(lng);
+        setIsLocating(false);
+        setLocateSuccessMsg(`Current GPS calibrated! Lat: ${lat}, Lng: ${lng} (±${acc}m accuracy)`);
+      },
+      (err) => {
+        setIsLocating(false);
+        if (err.code === 1) {
+          setLocateErrorMsg('Location access was denied. Please allow browser location permission or type coordinates manually.');
+        } else if (err.code === 2) {
+          setLocateErrorMsg('Position unavailable. Please ensure device location/GPS is toggled ON.');
+        } else {
+          setLocateErrorMsg(`GPS Detection Error: ${err.message}`);
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,7 +115,11 @@ const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
           phone: phone.trim(),
           email: email.trim(),
           board,
-          academicYear
+          academicYear,
+          campusLatitude: campusLatitude !== '' ? Number(campusLatitude) : null,
+          campusLongitude: campusLongitude !== '' ? Number(campusLongitude) : null,
+          campusRadiusMeters: Number(campusRadiusMeters) || 300,
+          geofenceEnabled: Boolean(geofenceEnabled)
         })
       });
 
@@ -86,7 +138,15 @@ const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
 
         // Notify parent components to refresh list
         if (typeof onSchoolUpdated === 'function') {
-          onSchoolUpdated(data.school || { ...school, name: name.trim(), address: address.trim() });
+          onSchoolUpdated(data.school || { 
+            ...school, 
+            name: name.trim(), 
+            address: address.trim(),
+            campusLatitude: campusLatitude !== '' ? Number(campusLatitude) : null,
+            campusLongitude: campusLongitude !== '' ? Number(campusLongitude) : null,
+            campusRadiusMeters: Number(campusRadiusMeters) || 300,
+            geofenceEnabled: Boolean(geofenceEnabled)
+          });
         }
         window.dispatchEvent(new CustomEvent('schoolListUpdated'));
 
@@ -123,7 +183,7 @@ const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
         backgroundColor: '#ffffff',
         borderRadius: '20px',
         width: '100%',
-        maxWidth: '560px',
+        maxWidth: '620px',
         maxHeight: '90vh',
         display: 'flex',
         flexDirection: 'column',
@@ -437,6 +497,338 @@ const EditSchoolModal = ({ isOpen, onClose, school, onSchoolUpdated }) => {
                   <option value="2025-2026">2025-2026</option>
                   <option value="2027-2028">2027-2028</option>
                 </select>
+              </div>
+            </div>
+
+            {/* CAMPUS GEOFENCE & GPS CALIBRATION */}
+            <div style={{
+              marginTop: '4px',
+              padding: '18px 20px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(14, 165, 233, 0.05) 100%)',
+              border: '1.5px solid rgba(79, 70, 229, 0.22)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              {/* Header with Status Pill */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    background: '#e0e7ff',
+                    color: '#4F46E5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Navigation size={19} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#1e3a8a' }}>
+                      Campus GPS Geofence Calibration
+                    </h3>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      Pinpoint this campus boundary to verify staff attendance punch-in.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '20px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  background: (campusLatitude && campusLongitude && geofenceEnabled) ? '#dcfce7' : (campusLatitude && campusLongitude) ? '#fef3c7' : '#f1f5f9',
+                  color: (campusLatitude && campusLongitude && geofenceEnabled) ? '#166534' : (campusLatitude && campusLongitude) ? '#b45309' : '#64748b',
+                  border: `1px solid ${(campusLatitude && campusLongitude && geofenceEnabled) ? '#86efac' : (campusLatitude && campusLongitude) ? '#fde68a' : '#cbd5e1'}`
+                }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: (campusLatitude && campusLongitude && geofenceEnabled) ? '#16a34a' : (campusLatitude && campusLongitude) ? '#f59e0b' : '#94a3b8'
+                  }} />
+                  {(campusLatitude && campusLongitude && geofenceEnabled)
+                    ? `🟢 Calibrated (${campusRadiusMeters}m Geofence Active)`
+                    : (campusLatitude && campusLongitude)
+                    ? '🟡 Coordinates Saved (Enforcement Off)'
+                    : '⚪ Not Calibrated Yet'}
+                </span>
+              </div>
+
+              {/* 1-Click Auto-Detect Button & Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleCaptureGPS}
+                  disabled={isLocating}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    background: isLocating ? '#94a3b8' : 'linear-gradient(135deg, #4F46E5 0%, #0284c7 100%)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: isLocating ? 'wait' : 'pointer',
+                    boxShadow: '0 3px 10px rgba(79, 70, 229, 0.25)',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Detect GPS coordinates directly from your device location"
+                >
+                  <Crosshair size={16} />
+                  {isLocating ? 'Capturing High-Accuracy GPS...' : 'Auto-Detect Current GPS Location'}
+                </button>
+
+                {campusLatitude && campusLongitude && (
+                  <a
+                    href={`https://www.google.com/maps?q=${campusLatitude},${campusLongitude}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 14px',
+                      borderRadius: '9px',
+                      background: '#ffffff',
+                      border: '1.5px solid #cbd5e1',
+                      color: '#1e3a8a',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      textDecoration: 'none'
+                    }}
+                    title="Open pinned location in Google Maps to verify accuracy"
+                  >
+                    <ExternalLink size={13} color="#4F46E5" />
+                    Verify Pin on Map
+                  </a>
+                )}
+
+                {(campusLatitude || campusLongitude) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCampusLatitude('');
+                      setCampusLongitude('');
+                      setLocateSuccessMsg('');
+                      setLocateErrorMsg('');
+                    }}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#94a3b8',
+                      fontSize: '0.76rem',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      padding: '4px'
+                    }}
+                  >
+                    Clear Coordinates
+                  </button>
+                )}
+              </div>
+
+              {/* Geolocation feedback alerts */}
+              {locateSuccessMsg && (
+                <div style={{
+                  padding: '9px 12px',
+                  borderRadius: '9px',
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  color: '#166534',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <CheckCircle2 size={16} color="#16a34a" style={{ flexShrink: 0 }} />
+                  <span>{locateSuccessMsg}</span>
+                </div>
+              )}
+
+              {locateErrorMsg && (
+                <div style={{
+                  padding: '9px 12px',
+                  borderRadius: '9px',
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <AlertCircle size={16} color="#dc2626" style={{ flexShrink: 0 }} />
+                  <span>{locateErrorMsg}</span>
+                </div>
+              )}
+
+              {/* Latitude & Longitude manual inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                    Campus Center Latitude (°N/S)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={campusLatitude}
+                    onChange={(e) => setCampusLatitude(e.target.value)}
+                    placeholder="e.g. 28.613939"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '9px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                    Campus Center Longitude (°E/W)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={campusLongitude}
+                    onChange={(e) => setCampusLongitude(e.target.value)}
+                    placeholder="e.g. 77.209021"
+                    style={{
+                      width: '100%',
+                      padding: '9px 12px',
+                      borderRadius: '9px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      color: '#0f172a',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Radius Presets and Custom Input */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Allowed Campus Boundary Radius: <strong>{campusRadiusMeters} meters</strong>
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {[
+                    { label: '100m (Compact)', val: 100 },
+                    { label: '200m (Medium)', val: 200 },
+                    { label: '300m (Standard)', val: 300 },
+                    { label: '500m (Large)', val: 500 },
+                    { label: '1000m (1 km)', val: 1000 }
+                  ].map((preset) => {
+                    const isSelected = Number(campusRadiusMeters) === preset.val;
+                    return (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        onClick={() => setCampusRadiusMeters(preset.val)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: isSelected ? '1.5px solid #4F46E5' : '1px solid #cbd5e1',
+                          background: isSelected ? 'rgba(79, 70, 229, 0.12)' : '#ffffff',
+                          color: isSelected ? '#4F46E5' : '#475569',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
+                    <input
+                      type="number"
+                      min="50"
+                      max="10000"
+                      value={campusRadiusMeters}
+                      onChange={(e) => setCampusRadiusMeters(e.target.value)}
+                      style={{
+                        width: '74px',
+                        padding: '5px 8px',
+                        borderRadius: '7px',
+                        border: '1.5px solid #cbd5e1',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        textAlign: 'center'
+                      }}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>meters</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Geofence Enforcement Toggle */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderRadius: '11px',
+                background: '#ffffff',
+                border: '1px solid #e2e8f0'
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#1e293b' }}>
+                    Enforce Strict Geofence Attendance
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
+                    Staff cannot clock in or out if their mobile/laptop device is outside the {campusRadiusMeters}m radius perimeter.
+                  </div>
+                </div>
+                <label style={{ position: 'relative', display: 'inline-block', width: '46px', height: '24px', cursor: 'pointer', flexShrink: 0 }}>
+                  <input
+                    type="checkbox"
+                    checked={geofenceEnabled}
+                    onChange={(e) => setGeofenceEnabled(e.target.checked)}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: geofenceEnabled ? '#4F46E5' : '#cbd5e1',
+                    borderRadius: '24px',
+                    transition: '0.2s'
+                  }}>
+                    <span style={{
+                      position: 'absolute',
+                      left: geofenceEnabled ? '24px' : '3px',
+                      top: '3px',
+                      width: '18px',
+                      height: '18px',
+                      backgroundColor: '#ffffff',
+                      borderRadius: '50%',
+                      transition: '0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                    }} />
+                  </span>
+                </label>
               </div>
             </div>
           </div>

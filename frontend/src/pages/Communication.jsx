@@ -376,46 +376,62 @@ const Communication = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
       
       {/* Top Banner & KPI Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
-        <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(79, 70, 229, 0.1)', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+        <div className="chart-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', minHeight: '88px', boxSizing: 'border-box' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(79, 70, 229, 0.1)', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Megaphone size={24} />
           </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Live Bulletins</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e3a8a' }}>{totalAnnouncements}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px', lineHeight: 1.2 }}>Live Bulletins</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#1e3a8a', lineHeight: 1.15 }}>{totalAnnouncements}</div>
           </div>
         </div>
 
-        <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: activeEmergency ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="chart-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', minHeight: '88px', boxSizing: 'border-box' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: activeEmergency ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.1)', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <ShieldAlert size={24} />
           </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Emergency Mode</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: activeEmergency ? '#dc2626' : '#16a34a' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px', lineHeight: 1.2 }}>Emergency Mode</div>
+            <div style={{ 
+              fontSize: '1.15rem', 
+              fontWeight: 800, 
+              color: activeEmergency ? '#dc2626' : '#16a34a',
+              lineHeight: 1.2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: activeEmergency ? '#dc2626' : '#16a34a',
+                boxShadow: activeEmergency ? '0 0 8px #dc2626' : '0 0 6px #16a34a',
+                flexShrink: 0
+              }} />
               {activeEmergency ? 'BROADCAST ACTIVE' : 'Normal / Standby'}
             </div>
           </div>
         </div>
 
-        <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(15, 118, 110, 0.1)', color: '#0F766E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="chart-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', minHeight: '88px', boxSizing: 'border-box' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(15, 118, 110, 0.1)', color: '#0F766E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Calendar size={24} />
           </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Campus Events</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f766e' }}>{upcomingEventsCount}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px', lineHeight: 1.2 }}>Campus Events</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f766e', lineHeight: 1.15 }}>{upcomingEventsCount}</div>
           </div>
         </div>
 
-        <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="chart-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', minHeight: '88px', boxSizing: 'border-box' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.1)', color: '#F59E0B', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <LifeBuoy size={24} />
           </div>
-          <div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase' }}>Active Grievances</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#b45309' }}>{openGrievancesCount}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px', lineHeight: 1.2 }}>Active Grievances</div>
+            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#b45309', lineHeight: 1.15 }}>{openGrievancesCount}</div>
           </div>
         </div>
       </div>
@@ -441,21 +457,22 @@ const Communication = () => {
 
       {/* Tabs & Action Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', gap: '6px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid var(--color-border)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '5px', background: 'white', padding: '5px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', flexWrap: 'wrap', alignItems: 'center' }}>
           <button 
             onClick={() => setActiveTab('announcements')}
             style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
+              height: '36px',
+              padding: '0 16px', 
+              borderRadius: '10px', 
               border: 'none', 
               fontWeight: 700, 
               fontSize: '0.85rem', 
               cursor: 'pointer', 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '6px',
+              gap: '7px',
               backgroundColor: activeTab === 'announcements' ? '#4F46E5' : 'transparent', 
-              color: activeTab === 'announcements' ? 'white' : 'var(--color-text-secondary)', 
+              color: activeTab === 'announcements' ? 'white' : '#64748b', 
               transition: 'all 0.2s',
               boxShadow: activeTab === 'announcements' ? '0 2px 8px rgba(79, 70, 229, 0.3)' : 'none'
             }}
@@ -466,17 +483,18 @@ const Communication = () => {
           <button 
             onClick={() => setActiveTab('emergency')}
             style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
+              height: '36px',
+              padding: '0 16px', 
+              borderRadius: '10px', 
               border: 'none', 
               fontWeight: 700, 
               fontSize: '0.85rem', 
               cursor: 'pointer', 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '6px',
+              gap: '7px',
               backgroundColor: activeTab === 'emergency' ? '#DC2626' : (activeEmergency ? 'rgba(239, 68, 68, 0.12)' : 'transparent'), 
-              color: activeTab === 'emergency' ? 'white' : (activeEmergency ? '#dc2626' : 'var(--color-text-secondary)'), 
+              color: activeTab === 'emergency' ? 'white' : (activeEmergency ? '#dc2626' : '#64748b'), 
               transition: 'all 0.2s',
               boxShadow: activeTab === 'emergency' ? '0 2px 8px rgba(220, 38, 38, 0.35)' : 'none'
             }}
@@ -487,17 +505,18 @@ const Communication = () => {
           <button 
             onClick={() => setActiveTab('events')}
             style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
+              height: '36px',
+              padding: '0 16px', 
+              borderRadius: '10px', 
               border: 'none', 
               fontWeight: 700, 
               fontSize: '0.85rem', 
               cursor: 'pointer', 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '6px',
+              gap: '7px',
               backgroundColor: activeTab === 'events' ? '#0F766E' : 'transparent', 
-              color: activeTab === 'events' ? 'white' : 'var(--color-text-secondary)', 
+              color: activeTab === 'events' ? 'white' : '#64748b', 
               transition: 'all 0.2s',
               boxShadow: activeTab === 'events' ? '0 2px 8px rgba(15, 118, 110, 0.3)' : 'none'
             }}
@@ -508,17 +527,18 @@ const Communication = () => {
           <button 
             onClick={() => setActiveTab('grievances')}
             style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
+              height: '36px',
+              padding: '0 16px', 
+              borderRadius: '10px', 
               border: 'none', 
               fontWeight: 700, 
               fontSize: '0.85rem', 
               cursor: 'pointer', 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '6px',
+              gap: '7px',
               backgroundColor: activeTab === 'grievances' ? '#F59E0B' : 'transparent', 
-              color: activeTab === 'grievances' ? 'white' : 'var(--color-text-secondary)', 
+              color: activeTab === 'grievances' ? 'white' : '#64748b', 
               transition: 'all 0.2s',
               boxShadow: activeTab === 'grievances' ? '0 2px 8px rgba(245, 158, 11, 0.3)' : 'none'
             }}
@@ -529,17 +549,18 @@ const Communication = () => {
           <button 
             onClick={() => setActiveTab('messages')}
             style={{ 
-              padding: '8px 16px', 
-              borderRadius: '8px', 
+              height: '36px',
+              padding: '0 16px', 
+              borderRadius: '10px', 
               border: 'none', 
               fontWeight: 700, 
               fontSize: '0.85rem', 
               cursor: 'pointer', 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
-              gap: '6px',
+              gap: '7px',
               backgroundColor: activeTab === 'messages' ? '#4F46E5' : 'transparent', 
-              color: activeTab === 'messages' ? 'white' : 'var(--color-text-secondary)', 
+              color: activeTab === 'messages' ? 'white' : '#64748b', 
               transition: 'all 0.2s',
               boxShadow: activeTab === 'messages' ? '0 2px 8px rgba(79, 70, 229, 0.3)' : 'none'
             }}
@@ -552,17 +573,20 @@ const Communication = () => {
           <button 
             onClick={() => setIsAnnounceModalOpen(true)}
             style={{ 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
               gap: '8px', 
               background: '#4F46E5', 
               color: 'white', 
               border: 'none', 
-              padding: '10px 18px', 
-              borderRadius: '10px', 
+              height: '42px',
+              padding: '0 20px', 
+              borderRadius: '12px', 
               fontWeight: 700, 
+              fontSize: '0.88rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
+              transition: 'all 0.2s'
             }}
           >
             <Plus size={18} /> Post New Notice
@@ -573,17 +597,20 @@ const Communication = () => {
           <button 
             onClick={() => setIsEventModalOpen(true)}
             style={{ 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
               gap: '8px', 
               background: '#0F766E', 
               color: 'white', 
               border: 'none', 
-              padding: '10px 18px', 
-              borderRadius: '10px', 
+              height: '42px',
+              padding: '0 20px', 
+              borderRadius: '12px', 
               fontWeight: 700, 
+              fontSize: '0.88rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
+              boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)',
+              transition: 'all 0.2s'
             }}
           >
             <Plus size={18} /> Add Campus Event
@@ -594,17 +621,20 @@ const Communication = () => {
           <button 
             onClick={() => setIsGrievanceModalOpen(true)}
             style={{ 
-              display: 'flex', 
+              display: 'inline-flex', 
               alignItems: 'center', 
               gap: '8px', 
               background: '#F59E0B', 
               color: 'white', 
               border: 'none', 
-              padding: '10px 18px', 
-              borderRadius: '10px', 
+              height: '42px',
+              padding: '0 20px', 
+              borderRadius: '12px', 
               fontWeight: 700, 
+              fontSize: '0.88rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)'
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+              transition: 'all 0.2s'
             }}
           >
             <Plus size={18} /> Log Grievance Ticket
@@ -617,37 +647,53 @@ const Communication = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Filter Bar */}
-          <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'white' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '240px' }}>
-              <div className="search-bar" style={{ width: '100%', maxWidth: '340px' }}>
+          <div className="chart-card" style={{ 
+            padding: '14px 20px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '14px', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: '260px', maxWidth: '420px' }}>
+              <div className="search-bar" style={{ width: '100%' }}>
                 <Search size={16} />
                 <input 
                   type="text" 
                   placeholder="Search notices by title, content or author..."
                   value={announcementSearch}
                   onChange={(e) => setAnnouncementSearch(e.target.value)}
-                  style={{ padding: '8px 16px 8px 36px' }}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Filter size={15} style={{ color: 'var(--color-text-secondary)' }} />
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Priority:</span>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '4px' }}>
+                <Filter size={15} style={{ color: '#64748b' }} />
+                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Priority:</span>
+              </div>
               {['ALL', 'URGENT', 'IMPORTANT', 'NORMAL'].map((level) => (
                 <button
                   key={level}
                   onClick={() => setAnnouncementFilter(level)}
                   style={{
-                    padding: '6px 12px',
+                    height: '36px',
+                    padding: '0 14px',
                     borderRadius: '8px',
-                    border: '1px solid var(--color-border)',
+                    border: announcementFilter === level ? '1px solid #1e3a8a' : '1px solid #e2e8f0',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    background: announcementFilter === level ? '#1e3a8a' : 'white',
-                    color: announcementFilter === level ? 'white' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s'
+                    background: announcementFilter === level ? '#1e3a8a' : '#f8fafc',
+                    color: announcementFilter === level ? 'white' : '#64748b',
+                    transition: 'all 0.15s',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   {level}
@@ -656,9 +702,20 @@ const Communication = () => {
               <button 
                 onClick={fetchAnnouncements} 
                 title="Refresh notices"
-                style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                style={{ 
+                  height: '36px', 
+                  width: '36px', 
+                  borderRadius: '8px', 
+                  border: '1px solid #e2e8f0', 
+                  background: '#f8fafc', 
+                  cursor: 'pointer', 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  transition: 'all 0.15s'
+                }}
               >
-                <RefreshCw size={15} style={{ color: 'var(--color-text-secondary)' }} />
+                <RefreshCw size={15} style={{ color: '#64748b' }} />
               </button>
             </div>
           </div>
@@ -819,7 +876,17 @@ const Communication = () => {
               </button>
             </div>
           ) : (
-            <div className="chart-card" style={{ padding: '20px 24px', background: 'white', display: 'flex', alignItems: 'center', gap: '16px', borderLeft: '5px solid #16a34a' }}>
+            <div className="chart-card" style={{ 
+              padding: '20px 24px', 
+              background: 'white', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '16px', 
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              borderLeft: '5px solid #16a34a',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+            }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(22, 163, 74, 0.12)', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CheckCircle2 size={24} />
               </div>
@@ -833,7 +900,13 @@ const Communication = () => {
           )}
 
           {/* Quick Scenario Templates */}
-          <div className="chart-card" style={{ padding: '24px', background: 'white' }}>
+          <div className="chart-card" style={{ 
+            padding: '24px', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '8px' }}>
               🚨 Activate High-Visibility Emergency Broadcast
             </h3>
@@ -979,24 +1052,41 @@ const Communication = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Filter Bar */}
-          <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'white' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Filter size={15} style={{ color: 'var(--color-text-secondary)' }} />
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Category:</span>
+          <div className="chart-card" style={{ 
+            padding: '14px 20px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '14px', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '4px' }}>
+                <Filter size={15} style={{ color: '#64748b' }} />
+                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Category:</span>
+              </div>
               {['ALL', 'ACADEMIC', 'MEETING', 'SPORTS', 'EXAM'].map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setEventCategoryFilter(cat)}
                   style={{
-                    padding: '6px 12px',
+                    height: '36px',
+                    padding: '0 14px',
                     borderRadius: '8px',
-                    border: '1px solid var(--color-border)',
+                    border: eventCategoryFilter === cat ? '1px solid #0F766E' : '1px solid #e2e8f0',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    background: eventCategoryFilter === cat ? '#0F766E' : 'white',
-                    color: eventCategoryFilter === cat ? 'white' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s'
+                    background: eventCategoryFilter === cat ? '#0F766E' : '#f8fafc',
+                    color: eventCategoryFilter === cat ? 'white' : '#64748b',
+                    transition: 'all 0.15s',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   {cat}
@@ -1007,9 +1097,20 @@ const Communication = () => {
             <button 
               onClick={fetchEvents} 
               title="Refresh calendar"
-              style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              style={{ 
+                height: '36px', 
+                width: '36px', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                background: '#f8fafc', 
+                cursor: 'pointer', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                transition: 'all 0.15s'
+              }}
             >
-              <RefreshCw size={15} style={{ color: 'var(--color-text-secondary)' }} />
+              <RefreshCw size={15} style={{ color: '#64748b' }} />
             </button>
           </div>
 
@@ -1090,24 +1191,41 @@ const Communication = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Filter Bar */}
-          <div className="chart-card" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'white' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Filter size={15} style={{ color: 'var(--color-text-secondary)' }} />
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Status:</span>
+          <div className="chart-card" style={{ 
+            padding: '14px 20px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '14px', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '4px' }}>
+                <Filter size={15} style={{ color: '#64748b' }} />
+                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Status:</span>
+              </div>
               {['ALL', 'OPEN', 'IN PROGRESS', 'RESOLVED'].map((st) => (
                 <button
                   key={st}
                   onClick={() => setGrievanceStatusFilter(st)}
                   style={{
-                    padding: '6px 12px',
+                    height: '36px',
+                    padding: '0 14px',
                     borderRadius: '8px',
-                    border: '1px solid var(--color-border)',
+                    border: grievanceStatusFilter === st ? '1px solid #F59E0B' : '1px solid #e2e8f0',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    background: grievanceStatusFilter === st ? '#F59E0B' : 'white',
-                    color: grievanceStatusFilter === st ? 'white' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s'
+                    background: grievanceStatusFilter === st ? '#F59E0B' : '#f8fafc',
+                    color: grievanceStatusFilter === st ? 'white' : '#64748b',
+                    transition: 'all 0.15s',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
                   }}
                 >
                   {st}
@@ -1118,14 +1236,32 @@ const Communication = () => {
             <button 
               onClick={fetchGrievances} 
               title="Refresh tickets"
-              style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--color-border)', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              style={{ 
+                height: '36px', 
+                width: '36px', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0', 
+                background: '#f8fafc', 
+                cursor: 'pointer', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                transition: 'all 0.15s'
+              }}
             >
-              <RefreshCw size={15} style={{ color: 'var(--color-text-secondary)' }} />
+              <RefreshCw size={15} style={{ color: '#64748b' }} />
             </button>
           </div>
 
           {/* Grievances Ticket Table */}
-          <div className="chart-card" style={{ padding: 0, overflow: 'hidden', background: 'white' }}>
+          <div className="chart-card" style={{ 
+            padding: 0, 
+            overflow: 'hidden', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.88rem' }}>
               <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 <tr>
@@ -1216,7 +1352,17 @@ const Communication = () => {
         <div style={{ display: 'flex', gap: '20px', width: '100%', height: 'calc(100vh - 300px)', minHeight: '560px' }}>
           
           {/* Left Column: Live Contacts Directory */}
-          <div className="chart-card" style={{ width: '360px', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'white' }}>
+          <div className="chart-card" style={{ 
+            width: '360px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: 0, 
+            overflow: 'hidden', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--color-border)', background: 'white' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e3a8a' }}>Campus Directory</span>
@@ -1231,7 +1377,6 @@ const Communication = () => {
                   placeholder="Search faculty or students..."
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
-                  style={{ padding: '8px 16px 8px 36px', width: '100%' }}
                 />
               </div>
             </div>
@@ -1306,7 +1451,17 @@ const Communication = () => {
           </div>
 
           {/* Right Column: Interactive Chat & Message Panel */}
-          <div className="chart-card" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', background: 'white' }}>
+          <div className="chart-card" style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            padding: 0, 
+            overflow: 'hidden', 
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
             {selectedContact ? (
               <>
                 {/* Chat Panel Header */}

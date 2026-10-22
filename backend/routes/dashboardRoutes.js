@@ -7,6 +7,10 @@ const Transaction = require('../models/Transaction');
 const ClassSection = require('../models/ClassSection');
 const Book = require('../models/Book');
 const TransportRoute = require('../models/TransportRoute');
+const Assignment = require('../models/Assignment');
+const TeacherTask = require('../models/TeacherTask');
+const Attendance = require('../models/Attendance');
+const Timetable = require('../models/Timetable');
 
 // Seed helper on-demand if school has 0 fee records
 const seedInitialFeesIfEmpty = async (entityId, force = false) => {
@@ -165,9 +169,16 @@ router.get('/teacher-summary', async (req, res) => {
   try {
     let classes = await ClassSection.find({ entityId: req.entityId, status: 'Active' });
     let totalStudents = await Student.countDocuments({ entityId: req.entityId });
-    const teacherStaff = await Staff.findOne({ entityId: req.entityId, role: 'Teacher' });
+    const teacherStaff = await Staff.findOne({
+      entityId: req.entityId,
+      $or: [
+        { portalUsername: req.user?.username },
+        { name: req.user?.name },
+        { role: 'Teacher' }
+      ]
+    });
 
-    // Auto-seed starter classes and students if empty so dashboard is always rich and functional
+    // Auto-seed starter classes if empty so workspace has real structure
     if (classes.length === 0) {
       const defaultClasses = [
         {
@@ -202,7 +213,7 @@ router.get('/teacher-summary', async (req, res) => {
           className: 'Class 11',
           section: 'SCIENCE',
           classTeacher: null,
-          classTeacherName: 'Senior Faculty',
+          classTeacherName: 'Unassigned',
           roomNumber: 'Room 302',
           capacity: 35,
           academicSession: '2026-2027',
@@ -216,7 +227,7 @@ router.get('/teacher-summary', async (req, res) => {
           className: 'Class 8',
           section: 'A',
           classTeacher: null,
-          classTeacherName: 'Faculty Member',
+          classTeacherName: 'Unassigned',
           roomNumber: 'Room 102',
           capacity: 35,
           academicSession: '2026-2027',
@@ -235,61 +246,192 @@ router.get('/teacher-summary', async (req, res) => {
       }
     }
 
-    if (totalStudents === 0) {
-      const defaultStudents = [
-        { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 98, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 95, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Sneha Reddy', rollNo: 'STU-1003', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 96, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Arjun Nair', rollNo: 'STU-1004', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Gopal Nair', parentContact: '+91 98201 12353', email: 'arjun.nair@pragati.edu', attendance: 92, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Priya Joshi', rollNo: 'STU-1005', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Anand Joshi', parentContact: '+91 98201 12354', email: 'priya.joshi@pragati.edu', attendance: 99, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Vihaan Verma', rollNo: 'STU-1006', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 91, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Kabir Mehta', rollNo: 'STU-1007', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 94, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Ananya Iyer', rollNo: 'STU-1008', grade: 'Class 9', section: 'B', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 97, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Riya Sen', rollNo: 'STU-1009', grade: 'Class 11', section: 'SCIENCE', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { name: 'Rohan Gupta', rollNo: 'STU-1010', grade: 'Class 11', section: 'SCIENCE', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 89, status: 'Active', entityId: req.entityId, schoolSlug: req.schoolSlug }
-      ];
-      try {
-        await Student.insertMany(defaultStudents);
-        totalStudents = await Student.countDocuments({ entityId: req.entityId });
-      } catch (err) {
-        // Ignore duplicate in race condition
-      }
-    }
-
-    // Calculate real attendance average
+    // Calculate real attendance average from live Student records
     const attResult = await Student.aggregate([
       { $match: { entityId: req.entityId } },
       { $group: { _id: null, avgAttendance: { $avg: '$attendance' } } },
     ]);
-    const attendanceRate = attResult.length > 0 ? `${(Math.round(attResult[0].avgAttendance * 10) / 10)}%` : '98.5%';
+    const attendanceRate = (totalStudents > 0 && attResult.length > 0 && attResult[0].avgAttendance !== null)
+      ? `${(Math.round(attResult[0].avgAttendance * 10) / 10)}%`
+      : '0%';
 
-    // Map real classes to today's schedule
-    const schedule = classes.map((c, idx) => ({
-      id: c._id,
-      time: idx === 0 ? '08:00 AM - 09:00 AM' : idx === 1 ? '09:00 AM - 10:00 AM' : idx === 2 ? '10:15 AM - 11:15 AM' : '11:15 AM - 12:15 PM',
-      subject: c.className.includes('Science') || c.section.includes('SCI') ? 'Physics & Chemistry' : (teacherStaff?.department || 'Mathematics'),
-      cls: `${c.className} - ${c.section}`,
-      className: c.className,
-      section: c.section,
-      roomNumber: c.roomNumber || `Room ${200 + idx}`,
-      students: `${c.capacity || 40} Capacity`,
-      capacity: c.capacity || 40,
-      status: idx === 0 ? 'Completed' : idx === 1 ? 'In Progress' : 'Upcoming',
-      color: idx === 0 ? '#16A34A' : idx === 1 ? '#4F46E5' : '#60A5FA',
+    // Map real classes to today's schedule with live enrolled counts
+    const schedule = await Promise.all(classes.map(async (c, idx) => {
+      const cleanGrade = c.className.replace(/Class\s*/i, '').replace(/th|st|nd|rd/i, '').trim();
+      const enrolled = await Student.countDocuments({
+        entityId: req.entityId,
+        grade: { $regex: new RegExp(`(${c.className}|Class\\s*${cleanGrade}|${cleanGrade}th)`, 'i') },
+        section: { $regex: new RegExp(`^${c.section}$`, 'i') }
+      });
+
+      return {
+        id: c._id,
+        time: idx === 0 ? '08:00 AM - 09:00 AM' : idx === 1 ? '09:00 AM - 10:00 AM' : idx === 2 ? '10:15 AM - 11:15 AM' : '11:15 AM - 12:15 PM',
+        subject: c.className.includes('Science') || c.section.includes('SCI') ? 'Physics & Chemistry' : (teacherStaff?.department || 'Mathematics'),
+        cls: `${c.className} - ${c.section}`,
+        className: c.className,
+        section: c.section,
+        roomNumber: c.roomNumber || `Room ${200 + idx}`,
+        students: `${enrolled} Enrolled`,
+        enrolled,
+        capacity: c.capacity || 40,
+        status: idx === 0 ? 'Completed' : idx === 1 ? 'In Progress' : 'Upcoming',
+        color: idx === 0 ? '#16A34A' : idx === 1 ? '#4F46E5' : '#60A5FA',
+      };
+    }));
+
+    // Real assignments and submissions from MongoDB
+    let assignments = await Assignment.find({ entityId: req.entityId }).sort({ createdAt: -1 });
+
+    // Seed starter assignments ONLY if totalStudents > 0 and no assignments exist yet
+    if (assignments.length === 0 && totalStudents > 0) {
+      const studentsFor10A = await Student.find({ entityId: req.entityId, grade: /10/i, section: /A/i });
+      const studentsFor9B = await Student.find({ entityId: req.entityId, grade: /9/i, section: /B/i });
+
+      const starterAssignments = [];
+      if (studentsFor10A.length > 0) {
+        starterAssignments.push({
+          title: 'Calculus & Quadratic Equations',
+          classSection: 'Class 10 - A',
+          className: 'Class 10',
+          section: 'A',
+          subject: 'Mathematics',
+          dueDate: new Date(Date.now() + 3 * 86400000),
+          maxMarks: 50,
+          instructions: 'Complete exercises 4.1 to 4.5 from NCERT book.',
+          teacherId: teacherStaff?._id,
+          teacherName: teacherStaff?.name || 'Mr. Ramesh Singh',
+          entityId: req.entityId,
+          schoolSlug: req.schoolSlug,
+          submissions: studentsFor10A.slice(0, 3).map(s => ({
+            studentId: s._id,
+            studentName: s.name,
+            rollNo: s.rollNo,
+            submittedAt: new Date(),
+            maxMarks: 50,
+            status: 'Submitted'
+          }))
+        });
+      }
+
+      if (studentsFor9B.length > 0) {
+        starterAssignments.push({
+          title: 'Algebra Homework Set #3',
+          classSection: 'Class 9 - B',
+          className: 'Class 9',
+          section: 'B',
+          subject: 'Mathematics',
+          dueDate: new Date(Date.now() + 4 * 86400000),
+          maxMarks: 25,
+          instructions: 'Solve linear equations in two variables.',
+          teacherId: teacherStaff?._id,
+          teacherName: teacherStaff?.name || 'Mr. Ramesh Singh',
+          entityId: req.entityId,
+          schoolSlug: req.schoolSlug,
+          submissions: studentsFor9B.slice(0, 2).map(s => ({
+            studentId: s._id,
+            studentName: s.name,
+            rollNo: s.rollNo,
+            submittedAt: new Date(Date.now() - 86400000),
+            maxMarks: 25,
+            status: 'Submitted'
+          }))
+        });
+      }
+
+      if (starterAssignments.length > 0) {
+        try {
+          await Assignment.insertMany(starterAssignments);
+          assignments = await Assignment.find({ entityId: req.entityId }).sort({ createdAt: -1 });
+        } catch (e) {
+          // ignore duplicate
+        }
+      }
+    }
+
+    // Extract pending submissions awaiting review
+    const pendingSubmissions = [];
+    assignments.forEach(asg => {
+      (asg.submissions || []).forEach(sub => {
+        if (sub.status !== 'Graded') {
+          pendingSubmissions.push({
+            id: sub._id,
+            assignmentId: asg._id,
+            studentId: sub.studentId,
+            studentName: sub.studentName,
+            rollNo: sub.rollNo,
+            cls: asg.classSection,
+            assignment: asg.title,
+            submittedAt: sub.submittedAt ? new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Today',
+            maxMarks: sub.maxMarks || asg.maxMarks || 50,
+            instructions: asg.instructions
+          });
+        }
+      });
+    });
+
+    // Real Tasks from MongoDB
+    let tasks = await TeacherTask.find({ entityId: req.entityId }).sort({ createdAt: -1 });
+    if (tasks.length === 0) {
+      const defaultTasks = [
+        { text: 'Grade Mid-Term Unit Assessments', due: 'Due Today • 14 Pending', priority: 'Urgent', completed: false, entityId: req.entityId, schoolSlug: req.schoolSlug },
+        { text: 'Prepare Lesson Plan for Term 2', due: 'By Friday', priority: 'Normal', completed: false, entityId: req.entityId, schoolSlug: req.schoolSlug },
+        { text: 'Review Student Attendance Defaulters', due: 'By Next Week', priority: 'Important', completed: false, entityId: req.entityId, schoolSlug: req.schoolSlug },
+      ];
+      try {
+        tasks = await TeacherTask.insertMany(defaultTasks);
+      } catch (e) {}
+    }
+
+    // Real Class Performance Metrics from MongoDB
+    const performanceData = await Promise.all(classes.map(async (c) => {
+      const cleanGrade = c.className.replace(/Class\s*/i, '').replace(/th|st|nd|rd/i, '').trim();
+      const classStudents = await Student.find({
+        entityId: req.entityId,
+        grade: { $regex: new RegExp(`(${c.className}|Class\\s*${cleanGrade}|${cleanGrade}th)`, 'i') },
+        section: { $regex: new RegExp(`^${c.section}$`, 'i') }
+      });
+
+      const enrolled = classStudents.length;
+      const avgAtt = enrolled > 0
+        ? Math.round(classStudents.reduce((acc, s) => acc + (s.attendance || 0), 0) / enrolled)
+        : 0;
+
+      const classAssignments = assignments.filter(a => a.classSection === `${c.className} - ${c.section}` || a.className === c.className);
+      let submittedCount = 0;
+      let pendingCount = 0;
+      classAssignments.forEach(a => {
+        (a.submissions || []).forEach(s => {
+          if (s.status === 'Graded') submittedCount++;
+          else pendingCount++;
+        });
+      });
+
+      return {
+        name: `${c.className} ${c.section}`,
+        submitted: submittedCount,
+        pending: pendingCount,
+        attendance: avgAtt,
+        enrolled
+      };
     }));
 
     res.json({
-      teacherName: req.user?.name || (teacherStaff ? teacherStaff.name : 'Faculty Member'),
+      teacherName: req.user?.name || (teacherStaff ? teacherStaff.name : 'Mr. Ramesh Singh'),
       totalStudents,
-      classesCount: classes.length || 4,
-      pendingGrading: 14,
+      classesCount: classes.length,
+      pendingGrading: pendingSubmissions.length,
       attendanceRate,
       schedule,
-      performanceData: classes.map(c => ({
-        name: `${c.className} ${c.section}`,
-        submitted: Math.round((c.capacity || 40) * 0.85),
-        pending: Math.max(2, Math.round((c.capacity || 40) * 0.15)),
+      submissions: pendingSubmissions,
+      tasks: tasks.map(t => ({
+        id: t._id,
+        text: t.text,
+        due: t.due,
+        priority: t.priority,
+        completed: t.completed
       })),
+      performanceData,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -336,15 +478,41 @@ router.get('/teacher/roster/:className/:section', async (req, res) => {
 router.post('/teacher/attendance', async (req, res) => {
   try {
     const { className, section, records = [] } = req.body;
-    
-    // Update individual students' attendance percentage if records provided
+    const cleanClass = (className || 'Class 10').trim();
+    const cleanSection = (section || 'A').trim().toUpperCase();
+
+    const d = new Date();
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    // Calculate totals
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+    let excused = 0;
+
+    const detailedRecords = [];
     for (const rec of records) {
       if (rec.studentId) {
         const student = await Student.findOne({ _id: rec.studentId, entityId: req.entityId });
         if (student) {
-          if (rec.status === 'Absent') {
+          const st = rec.status || 'Present';
+          if (st === 'Absent') absent++;
+          else if (st === 'Late') late++;
+          else if (st === 'Excused') excused++;
+          else present++;
+
+          detailedRecords.push({
+            studentId: student._id,
+            studentName: student.name,
+            rollNo: student.rollNo || '',
+            status: st,
+            remarks: rec.remarks || ''
+          });
+
+          // Update student running percentage
+          if (st === 'Absent') {
             student.attendance = Math.max(0, (student.attendance || 100) - 2);
-          } else if (rec.status === 'Present') {
+          } else if (st === 'Present') {
             student.attendance = Math.min(100, (student.attendance || 95) + 1);
           }
           await student.save();
@@ -352,12 +520,188 @@ router.post('/teacher/attendance', async (req, res) => {
       }
     }
 
+    const total = detailedRecords.length;
+    const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
+
+    // Persist full attendance sheet in Attendance collection
+    await Attendance.findOneAndUpdate(
+      { className: cleanClass, section: cleanSection, date: dateStr, entityId: req.entityId },
+      {
+        $set: {
+          className: cleanClass,
+          section: cleanSection,
+          date: dateStr,
+          records: detailedRecords,
+          summary: {
+            total,
+            present,
+            absent,
+            late,
+            excused,
+            attendanceRate: rate
+          },
+          markedByName: req.user?.name || 'Class Teacher',
+          markedBy: req.user?._id || null,
+          entityId: req.entityId,
+          schoolSlug: req.schoolSlug || ''
+        }
+      },
+      { upsert: true, new: true }
+    );
+
     res.json({
       success: true,
-      message: `Attendance marked successfully for ${className} - ${section}. ${records.length} records processed.`
+      message: `Attendance marked successfully for ${cleanClass} - ${cleanSection}. ${records.length} records processed.`
     });
   } catch (error) {
     res.status(500).json({ message: 'Error submitting attendance', error: error.message });
+  }
+});
+
+// POST /api/dashboard/teacher/assignment — Create new assignment in MongoDB
+router.post('/teacher/assignment', async (req, res) => {
+  try {
+    const { title, classSection, subject, dueDate, maxMarks = 50, instructions } = req.body;
+    if (!title || !classSection) {
+      return res.status(400).json({ message: 'Title and classSection are required' });
+    }
+
+    const parts = classSection.split(' - ');
+    const className = parts[0] || classSection;
+    const section = parts[1] || 'A';
+    const cleanGrade = className.replace(/Class\s*/i, '').replace(/th|st|nd|rd/i, '').trim();
+
+    // Find real students in this class to create initial submissions
+    const enrolledStudents = await Student.find({
+      entityId: req.entityId,
+      grade: { $regex: new RegExp(`(${className}|Class\\s*${cleanGrade}|${cleanGrade}th)`, 'i') },
+      section: { $regex: new RegExp(`^${section}$`, 'i') }
+    });
+
+    const submissions = enrolledStudents.map(s => ({
+      studentId: s._id,
+      studentName: s.name,
+      rollNo: s.rollNo,
+      submittedAt: new Date(),
+      maxMarks: Number(maxMarks) || 50,
+      status: 'Submitted'
+    }));
+
+    const newAssignment = new Assignment({
+      title: title.trim(),
+      classSection,
+      className,
+      section,
+      subject: subject || 'General',
+      dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 3 * 86400000),
+      maxMarks: Number(maxMarks) || 50,
+      instructions: instructions || '',
+      teacherName: req.user?.name || 'Mr. Ramesh Singh',
+      entityId: req.entityId,
+      schoolSlug: req.schoolSlug,
+      submissions
+    });
+
+    await newAssignment.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Assignment "${title}" created successfully with ${submissions.length} submission(s)`,
+      assignment: newAssignment
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating assignment', error: error.message });
+  }
+});
+
+// POST /api/dashboard/teacher/grade — Grade a submission in MongoDB
+router.post('/teacher/grade', async (req, res) => {
+  try {
+    const { assignmentId, submissionId, marksObtained, feedback } = req.body;
+    if (!assignmentId || !submissionId) {
+      return res.status(400).json({ message: 'assignmentId and submissionId are required' });
+    }
+
+    const assignment = await Assignment.findOne({ _id: assignmentId, entityId: req.entityId });
+    if (!assignment) {
+      return res.status(404).json({ message: 'Assignment not found' });
+    }
+
+    const sub = assignment.submissions.id(submissionId);
+    if (!sub) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
+
+    sub.marksObtained = Number(marksObtained);
+    sub.feedback = feedback || '';
+    sub.status = 'Graded';
+
+    await assignment.save();
+
+    res.json({
+      success: true,
+      message: `Grade of ${marksObtained}/${sub.maxMarks} saved successfully for ${sub.studentName}`,
+      submission: sub
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error saving grade', error: error.message });
+  }
+});
+
+// Task Management Routes (Persistent in MongoDB)
+router.get('/teacher/tasks', async (req, res) => {
+  try {
+    const tasks = await TeacherTask.find({ entityId: req.entityId }).sort({ createdAt: -1 });
+    res.json({ success: true, tasks });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching tasks', error: error.message });
+  }
+});
+
+router.post('/teacher/tasks', async (req, res) => {
+  try {
+    const { text, due, priority } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ message: 'Task text is required' });
+    }
+
+    const newTask = new TeacherTask({
+      text: text.trim(),
+      due: due || 'Due Tomorrow',
+      priority: priority || 'Normal',
+      completed: false,
+      teacherUsername: req.user?.username,
+      entityId: req.entityId,
+      schoolSlug: req.schoolSlug
+    });
+
+    await newTask.save();
+    res.status(201).json({ success: true, task: newTask });
+  } catch (error) {
+    res.status(500).json({ message: 'Error creating task', error: error.message });
+  }
+});
+
+router.put('/teacher/tasks/:id/toggle', async (req, res) => {
+  try {
+    const task = await TeacherTask.findOne({ _id: req.params.id, entityId: req.entityId });
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    task.completed = !task.completed;
+    await task.save();
+    res.json({ success: true, task });
+  } catch (error) {
+    res.status(500).json({ message: 'Error toggling task', error: error.message });
+  }
+});
+
+router.delete('/teacher/tasks/:id', async (req, res) => {
+  try {
+    const task = await TeacherTask.findOneAndDelete({ _id: req.params.id, entityId: req.entityId });
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+    res.json({ success: true, message: 'Task deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error deleting task', error: error.message });
   }
 });
 

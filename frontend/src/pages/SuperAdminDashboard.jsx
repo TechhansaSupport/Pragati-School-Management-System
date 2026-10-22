@@ -2142,6 +2142,40 @@ const SuperAdminDashboard = () => {
                               <code style={{ fontSize: '0.72rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#475569' }}>
                                 /{sch.slug}
                               </code>
+
+                              {/* GPS Geofence Status Badge */}
+                              {sch.campusLatitude && sch.campusLongitude ? (
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  fontWeight: 700,
+                                  background: sch.geofenceEnabled !== false ? '#dcfce7' : '#fef3c7',
+                                  color: sch.geofenceEnabled !== false ? '#166534' : '#b45309',
+                                  border: `1px solid ${sch.geofenceEnabled !== false ? '#86efac' : '#fde68a'}`,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }} title={`Campus center: ${sch.campusLatitude}, ${sch.campusLongitude} (Radius: ${sch.campusRadiusMeters || 300}m)`}>
+                                  <Navigation size={10} />
+                                  {sch.geofenceEnabled !== false ? `GPS Geofenced (${sch.campusRadiusMeters || 300}m)` : 'GPS Calibrated (Off)'}
+                                </span>
+                              ) : (
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  fontWeight: 650,
+                                  background: '#fff7ed',
+                                  color: '#c2410c',
+                                  border: '1px solid #fed7aa',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}>
+                                  <AlertCircle size={10} /> GPS Not Calibrated
+                                </span>
+                              )}
                             </div>
 
                             {sch.address && (
@@ -2160,6 +2194,31 @@ const SuperAdminDashboard = () => {
 
                         {/* Top Action Buttons for this School */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {/* Calibrate GPS Button */}
+                          <button
+                            type="button"
+                            onClick={() => setTargetSchoolForEdit(sch)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 14px',
+                              borderRadius: '9px',
+                              background: (sch.campusLatitude && sch.campusLongitude) ? 'rgba(79, 70, 229, 0.08)' : '#fff7ed',
+                              border: (sch.campusLatitude && sch.campusLongitude) ? '1.5px solid rgba(79, 70, 229, 0.3)' : '1.5px solid #fdba74',
+                              color: (sch.campusLatitude && sch.campusLongitude) ? '#4F46E5' : '#c2410c',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                            }}
+                            title="Calibrate GPS coordinates, radius, and geofence boundary for staff attendance"
+                          >
+                            <Navigation size={13} color={(sch.campusLatitude && sch.campusLongitude) ? '#4F46E5' : '#c2410c'} />
+                            Calibrate GPS
+                          </button>
+
                           {/* Edit School Button */}
                           <button
                             type="button"

@@ -16,18 +16,23 @@ const NavItem = ({ icon, label, path }) => {
   );
 };
 
-const TopNav = () => (
-  <div className="top-nav">
-    <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" path="/" />
-    <NavItem icon={<Users size={16} />} label="Students" path="/students" />
-    <NavItem icon={<UserCheck size={16} />} label="Teachers" path="/teachers" />
-    <NavItem icon={<BookOpen size={16} />} label="Academics" path="/academics" />
-    <NavItem icon={<CreditCard size={16} />} label="Fees" path="/fees" />
-    <NavItem icon={<Calendar size={16} />} label="Timetable" path="/timetable" />
-    <NavItem icon={<Activity size={16} />} label="Attendance" path="/attendance" />
-    <NavItem icon={<MessageSquare size={16} />} label="Communication" path="/communication" />
-    <NavItem icon={<FileText size={16} />} label="Reports" path="/reports" />
-  </div>
-);
+const TopNav = () => {
+  const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
+  const getPath = (p) => tenantSlug ? `/${tenantSlug}${p === '/' ? '' : p}` : p;
+
+  return (
+    <div className="top-nav">
+      <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" path={getPath('/')} />
+      <NavItem icon={<Users size={16} />} label="Students" path={getPath('/students')} />
+      <NavItem icon={<UserCheck size={16} />} label="Teachers" path={getPath('/staff')} />
+      <NavItem icon={<BookOpen size={16} />} label="Academics" path={getPath('/academics')} />
+      <NavItem icon={<Calendar size={16} />} label="Timetable" path={getPath('/academics?tab=timetable')} />
+      <NavItem icon={<Activity size={16} />} label="Attendance" path={getPath('/attendance')} />
+      <NavItem icon={<CreditCard size={16} />} label="Fees" path={getPath('/finance')} />
+      <NavItem icon={<MessageSquare size={16} />} label="Communication" path={getPath('/communication')} />
+      <NavItem icon={<FileText size={16} />} label="Reports" path={getPath('/reports')} />
+    </div>
+  );
+};
 
 export default TopNav;

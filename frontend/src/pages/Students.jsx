@@ -26,10 +26,11 @@ const Students = () => {
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
-  const isAdmin = ['admin', 'superadmin', 'principal', 'frontdesk'].includes(userRole);
+  const isAdmin = ['admin', 'superadmin', 'principal', 'frontdesk', 'school', 'school_admin'].includes(userRole);
 
   // Data States
   const [studentsList, setStudentsList] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -80,7 +81,10 @@ const Students = () => {
   const getAuthHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+    if (tenantSlug) {
+      headers['x-tenant-slug'] = tenantSlug;
+      headers['x-school-slug'] = tenantSlug;
+    }
     return headers;
   };
 
@@ -92,6 +96,7 @@ const Students = () => {
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
+        ...(tenantSlug && tenantSlug !== 'all' && tenantSlug !== 'central' ? { schoolSlug: tenantSlug } : {}),
         ...(searchQuery.trim() ? { search: searchQuery.trim() } : {}),
         ...(gradeFilter !== 'All' ? { grade: gradeFilter } : {}),
         ...(sectionFilter !== 'All' ? { section: sectionFilter } : {}),
@@ -272,17 +277,17 @@ const Students = () => {
         headers: getAuthHeaders()
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
+        setSelectedIds(prev => prev.filter(id => id !== studentToDelete._id));
         setStudentToDelete(null);
         if (selectedStudent?._id === studentToDelete._id) {
           setSelectedStudent(null);
         }
-        fetchStudents();
-        fetchMetadata();
+        await Promise.all([fetchStudents(), fetchMetadata()]);
         window.dispatchEvent(new CustomEvent('schoolListUpdated'));
       } else {
-        const err = await res.json();
-        alert(err.message || 'Failed to delete student');
+        alert(data.message || data.error || 'Failed to delete student');
       }
     } catch (err) {
       alert('Network error: ' + err.message);
@@ -291,30 +296,80 @@ const Students = () => {
     }
   };
 
-  // Delete All Students
+  // Delete All Students (Campus-Scoped or Global)
   const handleDeleteAllStudents = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/students`, {
+      const deleteUrl = tenantSlug && tenantSlug !== 'all' && tenantSlug !== 'central'
+        ? `${API_BASE}/students?schoolSlug=${encodeURIComponent(tenantSlug)}`
+        : `${API_BASE}/students`;
+
+      const res = await fetch(deleteUrl, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
 
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setIsDeleteAllModalOpen(false);
         setSelectedStudent(null);
-        fetchStudents();
-        fetchMetadata();
+        setSelectedIds([]);
+        setStudentsList([]);
+        setTotalCount(0);
+        await Promise.all([fetchStudents(), fetchMetadata()]);
         window.dispatchEvent(new CustomEvent('schoolListUpdated'));
       } else {
-        const err = await res.json();
-        alert(err.message || 'Failed to delete all students');
+        alert(data.message || data.error || 'Failed to delete all students');
       }
     } catch (err) {
       alert('Network error: ' + err.message);
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Delete Selected Students
+  const handleDeleteSelectedStudents = async () => {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to permanently delete the ${selectedIds.length} selected student record(s)?`)) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/students`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ ids: selectedIds })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setSelectedIds([]);
+        setSelectedStudent(null);
+        await Promise.all([fetchStudents(), fetchMetadata()]);
+        window.dispatchEvent(new CustomEvent('schoolListUpdated'));
+      } else {
+        alert(data.message || data.error || 'Failed to delete selected students');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Selection handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(studentsList.map(st => st._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
   };
 
   // Generate Starter Students on Demand
@@ -1012,6 +1067,44 @@ const Students = () => {
           </div>
         )}
 
+        {/* Bulk Selection Actions Toolbar */}
+        {isAdmin && selectedIds.length > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px',
+            padding: '10px 18px', marginBottom: '14px', animation: 'fade-in 0.2s'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af', fontWeight: 700, fontSize: '0.88rem' }}>
+              <CheckCircle2 size={18} color="#2563eb" />
+              <span>{selectedIds.length} student{selectedIds.length > 1 ? 's' : ''} selected</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                style={{
+                  background: 'white', border: '1px solid #cbd5e1', color: '#475569',
+                  padding: '6px 14px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Clear Selection
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={handleDeleteSelectedStudents}
+                style={{
+                  background: '#dc2626', color: 'white', border: 'none',
+                  padding: '6px 16px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700,
+                  cursor: actionLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+                }}
+              >
+                <Trash2 size={14} /> {actionLoading ? 'Deleting...' : `Delete Selected (${selectedIds.length})`}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Table Content */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {isLoading ? (
@@ -1051,7 +1144,18 @@ const Students = () => {
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
+                <tr style={{ borderBottom: '1.5px solid #e2e8f0', background: '#f8fafc' }}>
+                  {isAdmin && (
+                    <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={studentsList.length > 0 && selectedIds.length === studentsList.length}
+                        onChange={handleSelectAll}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
+                        title="Select all on this page"
+                      />
+                    </th>
+                  )}
                   <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Roll No</th>
                   <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Student Name</th>
                   <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Assigned Class</th>
@@ -1066,10 +1170,27 @@ const Students = () => {
                   <tr 
                     key={st._id} 
                     onClick={() => setSelectedStudent(st)} 
-                    style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background-color 0.15s' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    style={{
+                      borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background-color 0.15s',
+                      backgroundColor: selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent'
+                    }}
+                    onMouseOver={(e) => {
+                      if (!selectedIds.includes(st._id)) e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.backgroundColor = selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent';
+                    }}
                   >
+                    {isAdmin && (
+                      <td style={{ padding: '12px 14px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(st._id)}
+                          onChange={() => handleToggleSelect(st._id)}
+                          style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
+                        />
+                      </td>
+                    )}
                     <td style={{ padding: '12px 14px' }}>
                       <code style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '5px', fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
                         {st.rollNo}

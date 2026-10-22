@@ -242,6 +242,20 @@ router.get('/', async (req, res) => {
         const schoolMatch = registeredSchools.find(s => s.slug === cls.schoolSlug || s.entityId === cls.entityId);
 
         const clsObj = cls.toObject();
+        // Dynamically resolve teacher name from Staff or default to 'Unassigned'
+        if (cls.classTeacher) {
+          const teacher = await Staff.findById(cls.classTeacher).select('name');
+          if (teacher) {
+            clsObj.classTeacherName = teacher.name;
+          } else {
+            clsObj.classTeacher = null;
+            clsObj.classTeacherName = 'Unassigned';
+          }
+        } else if (!cls.classTeacher || cls.classTeacherName === 'Senior Faculty' || cls.classTeacherName === 'Faculty Member') {
+          clsObj.classTeacher = null;
+          clsObj.classTeacherName = 'Unassigned';
+        }
+
         clsObj.enrolledStudents = studentCount;
         clsObj.occupancyPercent = cls.capacity > 0 ? Math.round((studentCount / cls.capacity) * 100) : 0;
         clsObj.schoolName = schoolMatch ? schoolMatch.name : (cls.schoolSlug || 'Main Campus');
@@ -336,6 +350,18 @@ router.get('/:id', async (req, res) => {
     }).sort({ rollNo: 1, name: 1 });
 
     const clsObj = cls.toObject();
+    if (cls.classTeacher) {
+      const teacher = await Staff.findById(cls.classTeacher).select('name');
+      if (teacher) {
+        clsObj.classTeacherName = teacher.name;
+      } else {
+        clsObj.classTeacher = null;
+        clsObj.classTeacherName = 'Unassigned';
+      }
+    } else if (!cls.classTeacher || cls.classTeacherName === 'Senior Faculty' || cls.classTeacherName === 'Faculty Member') {
+      clsObj.classTeacher = null;
+      clsObj.classTeacherName = 'Unassigned';
+    }
     clsObj.students = students;
     clsObj.enrolledStudents = students.length;
 

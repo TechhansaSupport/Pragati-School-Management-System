@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
-  Search, MoreVertical, User, ChevronLeft, ChevronRight, Plus, X, 
+  Search, MoreVertical, User, Users, ChevronLeft, ChevronRight, Plus, X, 
   Mail, Phone, Calendar, Briefcase, BookOpen, Clock, ShieldCheck, 
   Key, Lock, Check, Copy, Trash2, Edit, AlertCircle, RefreshCw, 
-  UserPlus, CheckCircle2, Eye, EyeOff, Award, Building2, UserCheck, ExternalLink
+  UserPlus, CheckCircle2, Eye, EyeOff, Award, Building2, UserCheck, ExternalLink,
+  LogIn, LogOut, History, Sparkles
 } from 'lucide-react';
 import AppointPrincipalModal from '../components/AppointPrincipalModal';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -46,6 +48,30 @@ const Staff = () => {
   const [staffToDelete, setStaffToDelete] = useState(null);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Top-level Navigation Tab: 'directory' | 'punch-sheet' | 'clock'
+  const [activeMainTab, setActiveMainTab] = useState('directory');
+
+  // Daily Punch Sheet States
+  const [punchSheetDate, setPunchSheetDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
+  const [punchSheetData, setPunchSheetData] = useState(null);
+  const [punchSheetLoading, setPunchSheetLoading] = useState(false);
+  const [punchSheetSearch, setPunchSheetSearch] = useState('');
+  const [punchSheetDeptFilter, setPunchSheetDeptFilter] = useState('All');
+  const [punchSheetStatusFilter, setPunchSheetStatusFilter] = useState('All');
+
+  // Manual Punch Entry Modal for Admin
+  const [manualPunchModalOpen, setManualPunchModalOpen] = useState(false);
+  const [manualPunchStaff, setManualPunchStaff] = useState(null);
+  const [manualPunchForm, setManualPunchForm] = useState({
+    punchInTime: '09:00',
+    punchOutTime: '17:00',
+    status: 'Present',
+    notes: 'Admin manual entry'
+  });
 
   // Success credentials modal
   const [newCredentials, setNewCredentials] = useState(null);
@@ -146,6 +172,65 @@ const Staff = () => {
       window.removeEventListener('schoolListUpdated', handlePrincipalUpdate);
     };
   }, [tenantSlug]);
+
+  // Fetch Daily Punch Sheet
+  const fetchPunchSheet = async () => {
+    setPunchSheetLoading(true);
+    try {
+      const activeSlug = urlTenantSlug || tenantSlug || '';
+      const res = await fetch(`${API_BASE}/staff-attendance/daily-sheet?date=${punchSheetDate}&schoolSlug=${activeSlug}`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPunchSheetData(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load daily punch sheet:', err);
+    } finally {
+      setPunchSheetLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPunchSheet();
+    const handlePunchUpdate = () => fetchPunchSheet();
+    window.addEventListener('staffPunchUpdated', handlePunchUpdate);
+    return () => window.removeEventListener('staffPunchUpdated', handlePunchUpdate);
+  }, [punchSheetDate, tenantSlug]);
+
+  // Admin Manual Punch adjustment handler
+  const handleManualPunchSubmit = async (e) => {
+    e.preventDefault();
+    if (!manualPunchStaff) return;
+    setActionLoading(true);
+    try {
+      const payload = {
+        staffId: manualPunchStaff.staffId || manualPunchStaff._id,
+        date: punchSheetDate,
+        punchInTime: manualPunchForm.punchInTime ? `${punchSheetDate}T${manualPunchForm.punchInTime}:00` : null,
+        punchOutTime: manualPunchForm.punchOutTime ? `${punchSheetDate}T${manualPunchForm.punchOutTime}:00` : null,
+        status: manualPunchForm.status,
+        notes: manualPunchForm.notes,
+      };
+
+      const res = await fetch(`${API_BASE}/staff-attendance/manual-entry`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to record manual punch');
+
+      setManualPunchModalOpen(false);
+      await fetchPunchSheet();
+      window.dispatchEvent(new CustomEvent('staffPunchUpdated'));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Generate random password helper
   const generatePassword = () => {
@@ -768,8 +853,90 @@ const Staff = () => {
         ))}
       </div>
 
+      {/* Module Navigation Tabs */}
+      <div className="staff-tabs-wrapper">
+        <div className="staff-tabs-bar">
+          {/* TAB 1: ALL STAFF DIRECTORY */}
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('directory')}
+            className={`staff-nav-tab ${activeMainTab === 'directory' ? 'active tab-directory' : ''}`}
+          >
+            <Users size={17} className="tab-icon" style={{ color: activeMainTab === 'directory' ? '#ffffff' : '#2563eb' }} />
+            <span>Staff Directory</span>
+            <span 
+              className="tab-badge"
+              style={{
+                background: activeMainTab === 'directory' ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
+                color: activeMainTab === 'directory' ? '#ffffff' : '#64748b',
+                border: activeMainTab === 'directory' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
+              }}
+            >
+              {staffList.length}
+            </span>
+          </button>
+
+          {/* TAB 2: DAILY PUNCH SHEET & ATTENDANCE */}
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('punch-sheet')}
+            className={`staff-nav-tab ${activeMainTab === 'punch-sheet' ? 'active tab-punch-sheet' : ''}`}
+          >
+            <Clock size={17} className="tab-icon" style={{ color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#059669' }} />
+            <span>Daily Attendance Sheet</span>
+            {punchSheetData?.currentlyWorking > 0 ? (
+              <span 
+                className="tab-badge"
+                style={{
+                  background: activeMainTab === 'punch-sheet' ? 'rgba(255, 255, 255, 0.22)' : '#dcfce7',
+                  color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#15803d',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: activeMainTab === 'punch-sheet' ? '#ffffff' : '#16a34a', display: 'inline-block' }} />
+                {punchSheetData.currentlyWorking} on duty
+              </span>
+            ) : (
+              <span 
+                className="tab-badge"
+                style={{
+                  background: activeMainTab === 'punch-sheet' ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
+                  color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#64748b',
+                  border: activeMainTab === 'punch-sheet' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
+                }}
+              >
+                Shift Roster
+              </span>
+            )}
+          </button>
+
+          {/* TAB 3: PERSONAL PUNCH CLOCK */}
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('clock')}
+            className={`staff-nav-tab ${activeMainTab === 'clock' ? 'active tab-clock' : ''}`}
+          >
+            <LogIn size={17} className="tab-icon" style={{ color: activeMainTab === 'clock' ? '#ffffff' : '#4f46e5' }} />
+            <span>My Time Clock</span>
+            <span 
+              className="tab-badge"
+              style={{
+                background: activeMainTab === 'clock' ? 'rgba(255, 255, 255, 0.22)' : '#e0e7ff',
+                color: activeMainTab === 'clock' ? '#ffffff' : '#4338ca',
+                border: activeMainTab === 'clock' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #c7d2fe'
+              }}
+            >
+              Live Shift
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Main Staff Directory Card */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+      {activeMainTab === 'directory' && (
+      <div className="card staff-tab-content" style={{ display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
         
         {/* Controls Bar: Search, Filters, Refresh */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
@@ -1049,6 +1216,422 @@ const Staff = () => {
           </div>
         </div>
       </div>
+      )}
+
+      {/* TAB 2: DAILY PUNCH SHEET & ATTENDANCE */}
+      {activeMainTab === 'punch-sheet' && (
+        <div className="staff-tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Controls Bar for Punch Sheet */}
+          <div className="card" style={{ padding: '20px 24px', borderRadius: '18px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            
+            {/* Date Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a' }}>Attendance Date:</span>
+                <input 
+                  type="date"
+                  value={punchSheetDate}
+                  onChange={(e) => setPunchSheetDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    fontWeight: 700,
+                    color: '#1e3a8a',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const d = new Date();
+                  setPunchSheetDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+                }}
+                style={{
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  padding: '7px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                Today
+              </button>
+            </div>
+
+            {/* Department Filter & Search */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', width: '220px' }}>
+                <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
+                <input 
+                  type="text" 
+                  placeholder="Filter by staff name or ID..." 
+                  value={punchSheetSearch}
+                  onChange={e => setPunchSheetSearch(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '8px 10px 8px 32px', 
+                    borderRadius: '10px', 
+                    border: '1px solid #cbd5e1', 
+                    fontSize: '0.82rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <select 
+                value={punchSheetDeptFilter} 
+                onChange={e => setPunchSheetDeptFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.82rem', color: '#334155', background: 'white' }}
+              >
+                <option value="All">All Departments</option>
+                {departments.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+
+              <select 
+                value={punchSheetStatusFilter} 
+                onChange={e => setPunchSheetStatusFilter(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.82rem', color: '#334155', background: 'white' }}
+              >
+                <option value="All">All Punch Statuses</option>
+                <option value="Working">Currently Working</option>
+                <option value="Completed">Shift Completed</option>
+                <option value="Late">Late Arrivals</option>
+                <option value="Not Punched">Not Punched In</option>
+              </select>
+
+              <button 
+                onClick={fetchPunchSheet}
+                style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}
+              >
+                <RefreshCw size={13} className={punchSheetLoading ? 'spin' : ''} /> Refresh
+              </button>
+            </div>
+          </div>
+
+          {/* Punch KPI Summary Bar */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+            <div className="card" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid #bbf7d0', background: '#f0fdf4' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Currently Working</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#15803d', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                {punchSheetData?.currentlyWorking || 0}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#166534', opacity: 0.8, marginTop: '2px' }}>Punched in on campus</div>
+            </div>
+
+            <div className="card" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid #bfdbfe', background: '#eff6ff' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase' }}>Shift Completed</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#1d4ed8', marginTop: '2px' }}>
+                {punchSheetData?.completedShift || 0}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#1e40af', opacity: 0.8, marginTop: '2px' }}>Punched out for day</div>
+            </div>
+
+            <div className="card" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid #fde68a', background: '#fefce8' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#854d0e', textTransform: 'uppercase' }}>Late Arrivals</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#b45309', marginTop: '2px' }}>
+                {punchSheetData?.lateArrivals || 0}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#854d0e', opacity: 0.8, marginTop: '2px' }}>In after 09:15 AM</div>
+            </div>
+
+            <div className="card" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Not Marked</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#334155', marginTop: '2px' }}>
+                {punchSheetData?.notMarked || 0}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>No punch registered</div>
+            </div>
+
+            <div className="card" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid #ccfbf1', background: '#f0fdfa' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase' }}>Avg Work Hours</div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f766e', marginTop: '2px' }}>
+                {punchSheetData?.avgWorkMinutes ? `${Math.floor(punchSheetData.avgWorkMinutes / 60)}h ${punchSheetData.avgWorkMinutes % 60}m` : '0h 0m'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#0f766e', opacity: 0.8, marginTop: '2px' }}>Across active staff</div>
+            </div>
+          </div>
+
+          {/* Daily Punch Sheet Table */}
+          <div className="card" style={{ padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', background: 'white', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <th style={{ padding: '12px 14px' }}>Emp ID</th>
+                  <th style={{ padding: '12px 14px' }}>Staff Name</th>
+                  <th style={{ padding: '12px 14px' }}>Department</th>
+                  <th style={{ padding: '12px 14px' }}>Punch In</th>
+                  <th style={{ padding: '12px 14px' }}>Punch Out</th>
+                  <th style={{ padding: '12px 14px' }}>Work Duration</th>
+                  <th style={{ padding: '12px 14px' }}>Status</th>
+                  <th style={{ padding: '12px 14px' }}>Punch Activity Log</th>
+                  {isAdmin && <th style={{ padding: '12px 14px', textAlign: 'right' }}>Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {punchSheetLoading ? (
+                  <tr>
+                    <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      Loading daily punch sheet records...
+                    </td>
+                  </tr>
+                ) : (!punchSheetData?.sheet || punchSheetData.sheet.length === 0) ? (
+                  <tr>
+                    <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      No staff records found for this date.
+                    </td>
+                  </tr>
+                ) : (
+                  punchSheetData.sheet
+                    .filter(s => {
+                      if (punchSheetDeptFilter !== 'All' && s.department !== punchSheetDeptFilter) return false;
+                      if (punchSheetSearch) {
+                        const q = punchSheetSearch.toLowerCase();
+                        return (s.name?.toLowerCase().includes(q) || s.employeeId?.toLowerCase().includes(q) || s.department?.toLowerCase().includes(q));
+                      }
+                      if (punchSheetStatusFilter === 'Working') return s.isCurrentlyPunchedIn;
+                      if (punchSheetStatusFilter === 'Completed') return s.punchOut;
+                      if (punchSheetStatusFilter === 'Late') return s.attendanceStatus?.includes('Late');
+                      if (punchSheetStatusFilter === 'Not Punched') return !s.punchIn;
+                      return true;
+                    })
+                    .map(staff => {
+                      const hours = Math.floor((staff.workDurationMinutes || 0) / 60);
+                      const mins = (staff.workDurationMinutes || 0) % 60;
+                      return (
+                        <tr key={staff.staffId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: 700, color: '#6366f1' }}>
+                            {staff.employeeId}
+                          </td>
+                          <td style={{ padding: '14px', fontWeight: 700, color: '#1e3a8a', fontSize: '0.9rem' }}>
+                            {staff.name}
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>{staff.role}</div>
+                          </td>
+                          <td style={{ padding: '14px', fontSize: '0.85rem', color: '#475569' }}>
+                            {staff.department}
+                          </td>
+                          <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: staff.punchIn ? 700 : 500, color: staff.punchIn ? '#15803d' : '#94a3b8' }}>
+                            {staff.punchIn ? new Date(staff.punchIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                          </td>
+                          <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: staff.punchOut ? 700 : 500, color: staff.punchOut ? '#1e3a8a' : '#94a3b8' }}>
+                            {staff.punchOut ? new Date(staff.punchOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                          </td>
+                          <td style={{ padding: '14px', fontSize: '0.85rem', fontWeight: 700, color: '#334155' }}>
+                            {staff.workDurationMinutes > 0 ? `${hours}h ${mins}m` : (staff.isCurrentlyPunchedIn ? '⏱ Active Shift' : '--')}
+                          </td>
+                          <td style={{ padding: '14px' }}>
+                            <span style={{
+                              padding: '3px 10px',
+                              borderRadius: '20px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              background: staff.isCurrentlyPunchedIn 
+                                ? '#dcfce7' 
+                                : staff.punchOut 
+                                  ? '#eff6ff' 
+                                  : staff.status === 'On Leave'
+                                    ? '#fef3c7'
+                                    : '#f1f5f9',
+                              color: staff.isCurrentlyPunchedIn 
+                                ? '#15803d' 
+                                : staff.punchOut 
+                                  ? '#1d4ed8' 
+                                  : staff.status === 'On Leave'
+                                    ? '#854d0e'
+                                    : '#64748b',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px'
+                            }}>
+                              {staff.isCurrentlyPunchedIn && (
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                              )}
+                              {staff.attendanceStatus}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px', fontSize: '0.78rem', color: '#64748b' }}>
+                            {(staff.punches && staff.punches.length > 0) ? (
+                              <span>
+                                {staff.punches.map(p => `${p.type} (${new Date(p.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`).join(' → ')}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#cbd5e1' }}>No stamps</span>
+                            )}
+                          </td>
+                          {isAdmin && (
+                            <td style={{ padding: '14px', textAlign: 'right' }}>
+                              <button
+                                onClick={() => {
+                                  setManualPunchStaff(staff);
+                                  setManualPunchForm({
+                                    punchInTime: staff.punchIn ? new Date(staff.punchIn).toTimeString().slice(0, 5) : '09:00',
+                                    punchOutTime: staff.punchOut ? new Date(staff.punchOut).toTimeString().slice(0, 5) : '17:00',
+                                    status: staff.attendanceStatus?.includes('Late') ? 'Late' : (staff.attendanceStatus?.includes('Half') ? 'Half Day' : 'Present'),
+                                    notes: staff.notes || 'Admin manual adjustment'
+                                  });
+                                  setManualPunchModalOpen(true);
+                                }}
+                                style={{
+                                  background: '#eef2ff',
+                                  border: '1px solid #c7d2fe',
+                                  borderRadius: '8px',
+                                  padding: '5px 12px',
+                                  color: '#4f46e5',
+                                  fontSize: '0.76rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Edit size={12} /> Adjust
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: PERSONAL PUNCH CLOCK */}
+      {activeMainTab === 'clock' && (
+        <div className="staff-tab-content" style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
+          <StaffPunchClock onPunchSuccess={() => fetchPunchSheet()} />
+        </div>
+      )}
+
+      {/* MANUAL PUNCH MODAL (ADMIN OVERRIDE) */}
+      {manualPunchModalOpen && manualPunchStaff && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(5px)',
+          zIndex: 999999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '460px',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#1e3a8a' }}>
+                  Manual Punch Entry / Adjustment
+                </h3>
+                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                  {manualPunchStaff.name} ({manualPunchStaff.employeeId}) • Date: {punchSheetDate}
+                </span>
+              </div>
+              <button 
+                onClick={() => setManualPunchModalOpen(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleManualPunchSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Punch In Time
+                  </label>
+                  <input
+                    type="time"
+                    value={manualPunchForm.punchInTime}
+                    onChange={e => setManualPunchForm({ ...manualPunchForm, punchInTime: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Punch Out Time
+                  </label>
+                  <input
+                    type="time"
+                    value={manualPunchForm.punchOutTime}
+                    onChange={e => setManualPunchForm({ ...manualPunchForm, punchOutTime: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Attendance Status
+                </label>
+                <select
+                  value={manualPunchForm.status}
+                  onChange={e => setManualPunchForm({ ...manualPunchForm, status: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', background: 'white' }}
+                >
+                  <option value="Present">Present (Full Day)</option>
+                  <option value="Half Day">Half Day</option>
+                  <option value="Late">Late Arrival</option>
+                  <option value="Overtime">Overtime</option>
+                  <option value="On Duty">On Duty (OD)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Adjustment Notes / Justification
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Biometric reader offline, approved by Principal"
+                  value={manualPunchForm.notes}
+                  onChange={e => setManualPunchForm({ ...manualPunchForm, notes: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setManualPunchModalOpen(false)}
+                  style={{ padding: '9px 16px', borderRadius: '8px', background: 'white', border: '1px solid #cbd5e1', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  style={{ padding: '9px 20px', borderRadius: '8px', background: '#2563eb', border: 'none', color: 'white', fontWeight: 700, fontSize: '0.85rem', cursor: actionLoading ? 'wait' : 'pointer' }}
+                >
+                  {actionLoading ? 'Saving...' : 'Save Punch Record'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* CREATE STAFF MODAL (ADMIN AUTHORITY) - RENDERED VIA PORTAL TO BODY */}
       {isAddModalOpen && createPortal(

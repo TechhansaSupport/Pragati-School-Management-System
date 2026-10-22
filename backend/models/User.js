@@ -50,7 +50,12 @@ const userSchema = new mongoose.Schema({
   isBranch: { type: Boolean, default: false },
   branchName: { type: String, default: '' },
   parentSchoolSlug: { type: String, default: '' },
-  affiliationNo: { type: String, default: '' }
+  affiliationNo: { type: String, default: '' },
+  // Campus Geofence Configuration
+  campusLatitude: { type: Number, default: null },
+  campusLongitude: { type: Number, default: null },
+  campusRadiusMeters: { type: Number, default: 300 }, // Default 300m campus boundary
+  geofenceEnabled: { type: Boolean, default: true }
 }, { timestamps: true });
 
 // Compound unique index per school workspace

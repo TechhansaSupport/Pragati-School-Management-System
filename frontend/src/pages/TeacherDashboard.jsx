@@ -4,9 +4,10 @@ import {
   Users, BookOpen, Clock, FileText, CheckCircle, Calendar, 
   ChevronRight, Award, Bell, Check, Plus, Trash2, X, Search, 
   CheckSquare, Square, AlertCircle, Sparkles, Send, UserCheck, 
-  ArrowUpRight, Edit3, ClipboardList, BookMarked, User
+  ArrowUpRight, Edit3, ClipboardList, BookMarked, User, RefreshCw
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, Legend } from 'recharts';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -26,10 +27,10 @@ const TeacherDashboard = () => {
   // Main Dashboard State
   const [teacherSummary, setTeacherSummary] = useState({
     teacherName: userInfo.name || 'Mr. Ramesh Singh',
-    totalStudents: 142,
-    classesCount: 4,
-    pendingGrading: 14,
-    attendanceRate: '98.5%',
+    totalStudents: 0,
+    classesCount: 0,
+    pendingGrading: 0,
+    attendanceRate: '0%',
     schedule: [],
     performanceData: [],
   });
@@ -47,35 +48,11 @@ const TeacherDashboard = () => {
   // Schedule State (with live overrides for marked attendance)
   const [localSchedule, setLocalSchedule] = useState([]);
 
-  // Tasks / Action Required State (Persisted in localStorage)
-  const taskStorageKey = `pragati_teacher_tasks_${tenantSlug || 'default'}`;
-  const defaultTasks = [
-    { id: 1, text: 'Grade Mid-Term Unit Assessments', due: 'Due Today • 14 Pending', priority: 'Urgent', completed: false },
-    { id: 2, text: 'Prepare Lesson Plan for Term 2', due: 'By Friday', priority: 'Normal', completed: false },
-    { id: 3, text: 'Review Student Attendance Defaulters', due: 'By Next Week', priority: 'Important', completed: false },
-  ];
-
-  const [tasks, setTasks] = useState(() => {
-    try {
-      const saved = localStorage.getItem(taskStorageKey);
-      return saved ? JSON.parse(saved) : defaultTasks;
-    } catch (e) {
-      return defaultTasks;
-    }
-  });
-
+  // Tasks / Action Required State (From MongoDB)
+  const [tasks, setTasks] = useState([]);
   const [newTaskText, setNewTaskText] = useState('');
   const [newTaskDue, setNewTaskDue] = useState('Due Tomorrow');
   const [isAddingTask, setIsAddingTask] = useState(false);
-
-  // Sync tasks to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(taskStorageKey, JSON.stringify(tasks));
-    } catch (e) {
-      console.warn('Failed to save tasks to localStorage');
-    }
-  }, [tasks, taskStorageKey]);
 
   // Modals State
   const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
@@ -93,6 +70,33 @@ const TeacherDashboard = () => {
   const [rosterSearch, setRosterSearch] = useState('');
 
   const [isTimetableModalOpen, setIsTimetableModalOpen] = useState(false);
+  const [facultyTimetable, setFacultyTimetable] = useState(null);
+  const [isTimetableLoading, setIsTimetableLoading] = useState(false);
+
+  const fetchTeacherTimetable = async () => {
+    setIsTimetableLoading(true);
+    try {
+      const teacherName = userInfo.name || teacherSummary.teacherName || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+      const res = await fetch(`${API_BASE}/timetable/teacher?name=${encodeURIComponent(teacherName)}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setFacultyTimetable(data);
+      }
+    } catch (e) {
+      console.warn('Error loading teacher timetable:', e);
+    } finally {
+      setIsTimetableLoading(false);
+    }
+  };
+
+  const handleOpenTimetableModal = () => {
+    setIsTimetableModalOpen(true);
+    fetchTeacherTimetable();
+  };
 
   const [isNewAssignmentModalOpen, setIsNewAssignmentModalOpen] = useState(false);
   const [assignmentForm, setAssignmentForm] = useState({
@@ -109,65 +113,65 @@ const TeacherDashboard = () => {
   const [gradeInput, setGradeInput] = useState('');
   const [feedbackInput, setFeedbackInput] = useState('');
 
-  // Sample student submissions awaiting grading
-  const [submissions, setSubmissions] = useState([
-    { id: 101, studentName: 'Aarav Sharma', rollNo: 'STU-1001', cls: 'Class 10 - A', assignment: 'Calculus & Quadratic Equations', submittedAt: 'Today, 10:45 AM', maxMarks: 50 },
-    { id: 102, studentName: 'Diya Patel', rollNo: 'STU-1002', cls: 'Class 10 - A', assignment: 'Calculus & Quadratic Equations', submittedAt: 'Today, 11:20 AM', maxMarks: 50 },
-    { id: 103, studentName: 'Vihaan Verma', rollNo: 'STU-1006', cls: 'Class 9 - B', assignment: 'Algebra Homework Set #3', submittedAt: 'Yesterday, 04:15 PM', maxMarks: 25 },
-    { id: 104, studentName: 'Sneha Reddy', rollNo: 'STU-1003', cls: 'Class 10 - A', assignment: 'Trigonometry Applications', submittedAt: 'Oct 14, 02:30 PM', maxMarks: 50 },
-  ]);
+  // Student submissions awaiting grading from live MongoDB
+  const [submissions, setSubmissions] = useState([]);
 
   // Metrics Chart View Mode
   const [metricsMode, setMetricsMode] = useState('submissions'); // 'submissions' | 'attendance'
 
-  // Fetch Teacher Summary from backend
-  useEffect(() => {
+  // Fetch Teacher Summary from backend (Live DB)
+  const fetchDashboardData = async () => {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
 
-    fetch(`${API_BASE}/dashboard/teacher-summary`, { headers })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/teacher-summary`, { headers });
+      if (res.ok) {
+        const data = await res.json();
         if (data) {
           setTeacherSummary(prev => ({
             ...prev,
             ...data,
-            teacherName: userInfo.name || data.teacherName || 'Faculty Member',
+            teacherName: userInfo.name || data.teacherName || 'Mr. Ramesh Singh',
           }));
           if (data.schedule && data.schedule.length > 0) {
             setLocalSchedule(data.schedule);
           }
+          if (Array.isArray(data.submissions)) {
+            setSubmissions(data.submissions);
+          }
+          if (Array.isArray(data.tasks)) {
+            setTasks(data.tasks);
+          }
         }
-      })
-      .catch(err => console.warn('Teacher summary fetch error:', err))
-      .finally(() => setIsLoading(false));
+      }
+    } catch (err) {
+      console.warn('Teacher summary fetch error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, [tenantSlug, token]);
 
   // Effective Schedule (defaults if backend schedule is empty)
   const effectiveSchedule = useMemo(() => {
     if (localSchedule.length > 0) return localSchedule;
-    if (teacherSummary.schedule.length > 0) return teacherSummary.schedule;
-    return [
-      { id: 'c1', time: '08:00 AM - 09:00 AM', subject: 'Mathematics', cls: 'Class 10 - A', className: 'Class 10', section: 'A', roomNumber: 'Room 201', students: '40 Capacity', status: 'Completed', color: '#16A34A' },
-      { id: 'c2', time: '09:00 AM - 10:00 AM', subject: 'Mathematics', cls: 'Class 9 - B', className: 'Class 9', section: 'B', roomNumber: 'Room 105', students: '40 Capacity', status: 'In Progress', color: '#4F46E5' },
-      { id: 'c3', time: '10:15 AM - 11:15 AM', subject: 'Free Period / Grading', cls: 'Staff Room', className: 'Staff Room', section: '-', roomNumber: 'Faculty Lounge', students: '-', status: 'Upcoming', color: '#60A5FA' },
-      { id: 'c4', time: '11:15 AM - 12:15 PM', subject: 'Physics & Chemistry', cls: 'Class 11 - SCIENCE', className: 'Class 11', section: 'SCIENCE', roomNumber: 'Lab 2', students: '35 Capacity', status: 'Upcoming', color: '#60A5FA' }
-    ];
+    if (teacherSummary.schedule && teacherSummary.schedule.length > 0) return teacherSummary.schedule;
+    return [];
   }, [localSchedule, teacherSummary.schedule]);
 
   const performanceList = useMemo(() => {
-    if (teacherSummary.performanceData.length > 0) return teacherSummary.performanceData;
-    return [
-      { name: 'Class 10 A', submitted: 38, pending: 2, attendance: 97 },
-      { name: 'Class 9 B', submitted: 35, pending: 5, attendance: 94 },
-      { name: 'Class 11 Sci', submitted: 28, pending: 2, attendance: 92 },
-      { name: 'Class 8 A', submitted: 32, pending: 3, attendance: 96 }
-    ];
+    if (teacherSummary.performanceData && teacherSummary.performanceData.length > 0) return teacherSummary.performanceData;
+    return [];
   }, [teacherSummary.performanceData]);
 
-  // Open Attendance Modal for a Class
+  // Open Attendance Modal for a Class (Live DB)
   const handleOpenAttendance = async (cls) => {
+    if (!cls) return;
     setSelectedClassForAttendance(cls);
     setIsAttendanceModalOpen(true);
     setAttendanceLoading(true);
@@ -190,23 +194,11 @@ const TeacherDashboard = () => {
           status: 'Present' // Default to present
         })));
       } else {
-        // Fallback realistic students
-        setAttendanceRoster([
-          { id: 's1', name: 'Aarav Sharma', rollNo: 'STU-1001', gender: 'Male', attendance: 98, status: 'Present' },
-          { id: 's2', name: 'Diya Patel', rollNo: 'STU-1002', gender: 'Female', attendance: 95, status: 'Present' },
-          { id: 's3', name: 'Sneha Reddy', rollNo: 'STU-1003', gender: 'Female', attendance: 96, status: 'Present' },
-          { id: 's4', name: 'Arjun Nair', rollNo: 'STU-1004', gender: 'Male', attendance: 92, status: 'Present' },
-          { id: 's5', name: 'Priya Joshi', rollNo: 'STU-1005', gender: 'Female', attendance: 99, status: 'Present' },
-          { id: 's6', name: 'Rohan Gupta', rollNo: 'STU-1006', gender: 'Male', attendance: 88, status: 'Present' }
-        ]);
+        setAttendanceRoster([]);
       }
     } catch (err) {
       console.warn('Error fetching roster:', err);
-      setAttendanceRoster([
-        { id: 's1', name: 'Aarav Sharma', rollNo: 'STU-1001', gender: 'Male', attendance: 98, status: 'Present' },
-        { id: 's2', name: 'Diya Patel', rollNo: 'STU-1002', gender: 'Female', attendance: 95, status: 'Present' },
-        { id: 's3', name: 'Sneha Reddy', rollNo: 'STU-1003', gender: 'Female', attendance: 96, status: 'Present' },
-      ]);
+      setAttendanceRoster([]);
     } finally {
       setAttendanceLoading(false);
     }
@@ -214,7 +206,7 @@ const TeacherDashboard = () => {
 
   // Toggle single student attendance status
   const handleToggleStudentStatus = (studentId, newStatus) => {
-    setAttendanceRoster(prev => prev.map(s => s.id === studentId ? { ...s, status: newStatus } : s));
+    setAttendanceRoster(prev => prev.map(s => (s.id === studentId || s._id === studentId) ? { ...s, status: newStatus } : s));
   };
 
   // Bulk mark all present / absent
@@ -222,7 +214,7 @@ const TeacherDashboard = () => {
     setAttendanceRoster(prev => prev.map(s => ({ ...s, status })));
   };
 
-  // Submit Attendance
+  // Submit Attendance (Live DB)
   const handleSaveAttendance = async () => {
     if (!selectedClassForAttendance) return;
     const classNameClean = selectedClassForAttendance.className || (selectedClassForAttendance.cls ? selectedClassForAttendance.cls.split(' - ')[0] : 'Class 10');
@@ -239,7 +231,7 @@ const TeacherDashboard = () => {
         body: JSON.stringify({
           className: classNameClean,
           section: sectionClean,
-          records: attendanceRoster.map(s => ({ studentId: s.id, status: s.status }))
+          records: attendanceRoster.map(s => ({ studentId: s.id || s._id, status: s.status }))
         })
       });
     } catch (err) {
@@ -260,10 +252,12 @@ const TeacherDashboard = () => {
     setIsAttendanceModalOpen(false);
     const presentCount = attendanceRoster.filter(s => s.status === 'Present').length;
     showToast(`✅ Attendance recorded for ${selectedClassForAttendance.cls}! (${presentCount}/${attendanceRoster.length} Present)`);
+    fetchDashboardData();
   };
 
-  // Open Class Roster Modal
+  // Open Class Roster Modal (Live DB)
   const handleOpenRoster = async (cls) => {
+    if (!cls) return;
     setSelectedClassForRoster(cls);
     setIsRosterModalOpen(true);
     setRosterLoading(true);
@@ -282,71 +276,131 @@ const TeacherDashboard = () => {
       if (data && data.students && data.students.length > 0) {
         setRosterStudents(data.students);
       } else {
-        setRosterStudents([
-          { id: 's1', name: 'Aarav Sharma', rollNo: 'STU-1001', gender: 'Male', attendance: 98, parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu' },
-          { id: 's2', name: 'Diya Patel', rollNo: 'STU-1002', gender: 'Female', attendance: 95, parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu' },
-          { id: 's3', name: 'Sneha Reddy', rollNo: 'STU-1003', gender: 'Female', attendance: 96, parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu' },
-          { id: 's4', name: 'Arjun Nair', rollNo: 'STU-1004', gender: 'Male', attendance: 92, parentContact: '+91 98201 12353', email: 'arjun.nair@pragati.edu' },
-          { id: 's5', name: 'Priya Joshi', rollNo: 'STU-1005', gender: 'Female', attendance: 99, parentContact: '+91 98201 12354', email: 'priya.joshi@pragati.edu' }
-        ]);
+        setRosterStudents([]);
       }
     } catch (err) {
-      setRosterStudents([
-        { id: 's1', name: 'Aarav Sharma', rollNo: 'STU-1001', gender: 'Male', attendance: 98, parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu' },
-        { id: 's2', name: 'Diya Patel', rollNo: 'STU-1002', gender: 'Female', attendance: 95, parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu' }
-      ]);
+      console.warn('Error fetching roster:', err);
+      setRosterStudents([]);
     } finally {
       setRosterLoading(false);
     }
   };
 
-  // Toggle To-Do Task Completion
-  const handleToggleTask = (taskId) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t));
+  // Toggle To-Do Task Completion (Live DB)
+  const handleToggleTask = async (taskId) => {
+    setTasks(prev => prev.map(t => (t.id === taskId || t._id === taskId) ? { ...t, completed: !t.completed } : t));
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    try {
+      await fetch(`${API_BASE}/dashboard/teacher/tasks/${taskId}/toggle`, {
+        method: 'PUT',
+        headers
+      });
+    } catch (err) {
+      console.warn('Error toggling task:', err);
+    }
   };
 
-  // Add New To-Do Task
-  const handleAddTask = (e) => {
+  // Add New To-Do Task (Live DB)
+  const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTaskText.trim()) return;
-    const newTask = {
-      id: Date.now(),
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    const taskPayload = {
       text: newTaskText.trim(),
       due: newTaskDue,
       priority: newTaskDue.includes('Today') ? 'Urgent' : 'Normal',
-      completed: false
     };
-    setTasks(prev => [newTask, ...prev]);
-    setNewTaskText('');
-    setIsAddingTask(false);
-    showToast('Task added to your Action Required list!');
+
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/teacher/tasks`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(taskPayload)
+      });
+      const data = await res.json();
+      if (res.ok && data.task) {
+        setTasks(prev => [data.task, ...prev]);
+        setNewTaskText('');
+        setIsAddingTask(false);
+        showToast('Task added to your Action Required list!');
+      } else {
+        const fallback = { id: Date.now(), ...taskPayload, completed: false };
+        setTasks(prev => [fallback, ...prev]);
+        setNewTaskText('');
+        setIsAddingTask(false);
+        showToast('Task added to your Action Required list!');
+      }
+    } catch (err) {
+      const fallback = { id: Date.now(), ...taskPayload, completed: false };
+      setTasks(prev => [fallback, ...prev]);
+      setNewTaskText('');
+      setIsAddingTask(false);
+      showToast('Task added to your Action Required list!');
+    }
   };
 
-  // Delete Task
-  const handleDeleteTask = (taskId, e) => {
+  // Delete Task (Live DB)
+  const handleDeleteTask = async (taskId, e) => {
     e.stopPropagation();
-    setTasks(prev => prev.filter(t => t.id !== taskId));
-    showToast('Task removed from list', 'info');
+    setTasks(prev => prev.filter(t => (t.id !== taskId && t._id !== taskId)));
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    try {
+      await fetch(`${API_BASE}/dashboard/teacher/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers
+      });
+      showToast('Task removed from list', 'info');
+    } catch (err) {
+      showToast('Task removed from list', 'info');
+    }
   };
 
-  // Create Assignment
-  const handleCreateAssignment = (e) => {
+  // Create Assignment (Live DB)
+  const handleCreateAssignment = async (e) => {
     e.preventDefault();
     if (!assignmentForm.title.trim()) return;
-    setIsNewAssignmentModalOpen(false);
-    setTeacherSummary(prev => ({
-      ...prev,
-      pendingGrading: (prev.pendingGrading || 14) + 1
-    }));
-    showToast(`📚 Assignment "${assignmentForm.title}" published for ${assignmentForm.classSection}!`);
-    setAssignmentForm({
-      title: '',
-      classSection: 'Class 10 - A',
-      subject: 'Mathematics',
-      dueDate: '2026-10-24',
-      maxMarks: '50',
-      instructions: ''
-    });
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/teacher/assignment`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(assignmentForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsNewAssignmentModalOpen(false);
+        showToast(`📚 Assignment "${assignmentForm.title}" published for ${assignmentForm.classSection}!`);
+        setAssignmentForm({
+          title: '',
+          classSection: 'Class 10 - A',
+          subject: 'Mathematics',
+          dueDate: '2026-10-24',
+          maxMarks: '50',
+          instructions: ''
+        });
+        fetchDashboardData();
+      } else {
+        alert(data.message || 'Failed to create assignment');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
   };
 
   // Open Grading Modal
@@ -357,17 +411,43 @@ const TeacherDashboard = () => {
     setIsGradingModalOpen(true);
   };
 
-  // Submit Grade
-  const handleSubmitGrade = (e) => {
+  // Submit Grade (Live DB)
+  const handleSubmitGrade = async (e) => {
     e.preventDefault();
-    if (!gradeInput) return;
-    setSubmissions(prev => prev.filter(s => s.id !== selectedSubmission.id));
-    setTeacherSummary(prev => ({
-      ...prev,
-      pendingGrading: Math.max(0, (prev.pendingGrading || 14) - 1)
-    }));
-    setIsGradingModalOpen(false);
-    showToast(`⭐ Grade saved: ${gradeInput}/${selectedSubmission.maxMarks} for ${selectedSubmission.studentName}!`);
+    if (!gradeInput || !selectedSubmission) return;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/teacher/grade`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          assignmentId: selectedSubmission.assignmentId,
+          submissionId: selectedSubmission.id || selectedSubmission._id,
+          marksObtained: Number(gradeInput),
+          feedback: feedbackInput
+        })
+      });
+
+      if (res.ok) {
+        setSubmissions(prev => prev.filter(s => (s.id !== selectedSubmission.id && s._id !== selectedSubmission.id)));
+        setTeacherSummary(prev => ({
+          ...prev,
+          pendingGrading: Math.max(0, (prev.pendingGrading || 1) - 1)
+        }));
+        setIsGradingModalOpen(false);
+        showToast(`⭐ Grade saved: ${gradeInput}/${selectedSubmission.maxMarks} for ${selectedSubmission.studentName}!`);
+        fetchDashboardData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.message || 'Failed to save grade');
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
   };
 
   return (
@@ -418,7 +498,7 @@ const TeacherDashboard = () => {
             {getGreeting()}, {teacherSummary.teacherName}! 👋
           </h2>
           <p style={{ opacity: 0.92, fontSize: '0.95rem', margin: '0 0 16px 0', maxWidth: '650px', lineHeight: 1.5 }}>
-            You have {teacherSummary.classesCount || 4} lecture periods scheduled and {teacherSummary.pendingGrading || 14} student assignments awaiting review today in this campus.
+            You have {teacherSummary.classesCount || 0} lecture periods scheduled and {teacherSummary.pendingGrading || 0} student assignments awaiting review today in this campus.
           </p>
 
           {/* Quick Action Pills inside Banner */}
@@ -466,7 +546,7 @@ const TeacherDashboard = () => {
               <BookMarked size={14} /> Create Assignment
             </button>
             <button 
-              onClick={() => setIsTimetableModalOpen(true)}
+              onClick={handleOpenTimetableModal}
               style={{
                 background: 'rgba(255, 255, 255, 0.2)',
                 backdropFilter: 'blur(8px)',
@@ -505,10 +585,10 @@ const TeacherDashboard = () => {
         {/* KPI Row */}
         <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
           {[
-            { label: 'Total Students', value: teacherSummary.totalStudents || '142', icon: Users, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)', sub: 'Across active batches' },
-            { label: 'Active Classes', value: teacherSummary.classesCount || '4', icon: BookOpen, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', sub: 'Daily Lecture Schedule' },
-            { label: 'Pending Grading', value: teacherSummary.pendingGrading || '14', icon: FileText, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)', sub: 'Assignments & tests' },
-            { label: 'Attendance Rate', value: teacherSummary.attendanceRate || '98.5%', icon: CheckCircle, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)', sub: 'Above target (95%)' }
+            { label: 'Total Students', value: teacherSummary.totalStudents !== undefined ? teacherSummary.totalStudents : 0, icon: Users, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)', sub: (teacherSummary.totalStudents > 0 ? 'Across active batches' : 'No students enrolled') },
+            { label: 'Active Classes', value: teacherSummary.classesCount ?? 0, icon: BookOpen, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', sub: `${teacherSummary.classesCount || 0} batches configured` },
+            { label: 'Pending Grading', value: teacherSummary.pendingGrading ?? 0, icon: FileText, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)', sub: `${teacherSummary.pendingGrading || 0} assignments awaiting review` },
+            { label: 'Attendance Rate', value: teacherSummary.attendanceRate || '0%', icon: CheckCircle, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)', sub: (parseFloat(teacherSummary.attendanceRate) > 0 ? 'Above target (95%)' : 'No attendance recorded') }
           ].map((kpi, i) => (
             <div key={i} className="card hover-lift" style={{ 
               display: 'flex', flexDirection: 'column', gap: '10px', 
@@ -547,7 +627,7 @@ const TeacherDashboard = () => {
               </div>
             </div>
             <div 
-              onClick={() => setIsTimetableModalOpen(true)}
+              onClick={handleOpenTimetableModal}
               style={{ fontSize: '0.85rem', color: '#4F46E5', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
               className="hover-lift"
             >
@@ -655,47 +735,72 @@ const TeacherDashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-            {submissions.map((sub) => (
-              <div key={sub.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '12px 16px', background: 'var(--color-bg, #f8fafc)', borderRadius: '12px',
-                border: '1px solid var(--color-border, #e2e8f0)', transition: 'all 0.2s'
+            {submissions.length === 0 ? (
+              <div style={{
+                textAlign: 'center', padding: '28px 16px', background: 'var(--color-bg, #f8fafc)',
+                borderRadius: '12px', border: '1px solid var(--color-border, #e2e8f0)', color: '#64748B'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ 
-                    width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #4F46E5, #60A5FA)', 
-                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' 
-                  }}>
-                    {sub.studentName.charAt(0)}
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main, #0f172a)' }}>{sub.studentName}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                      {sub.cls} • {sub.assignment} • <span style={{ color: '#0F766E', fontWeight: 600 }}>{sub.submittedAt}</span>
-                    </div>
-                  </div>
+                <CheckCircle size={32} color="#16A34A" style={{ margin: '0 auto 8px auto', opacity: 0.8 }} />
+                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1e293b' }}>All student submissions reviewed!</div>
+                <div style={{ fontSize: '0.8rem', marginTop: '4px', color: '#64748B' }}>
+                  No pending assignments awaiting review. Create an assignment to assign student work.
                 </div>
-
-                <button 
-                  onClick={() => handleOpenGrading(sub)}
+                <button
+                  onClick={() => setIsNewAssignmentModalOpen(true)}
                   style={{
-                    background: '#4F46E5', color: 'white', border: 'none',
-                    padding: '6px 14px', borderRadius: '16px', fontSize: '0.78rem',
-                    fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                    marginTop: '12px', background: '#4F46E5', color: 'white', border: 'none',
+                    padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer'
                   }}
-                  className="hover-lift"
                 >
-                  Grade / Review
+                  Create Assignment
                 </button>
               </div>
-            ))}
+            ) : (
+              submissions.map((sub) => (
+                <div key={sub.id || sub._id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 16px', background: 'var(--color-bg, #f8fafc)', borderRadius: '12px',
+                  border: '1px solid var(--color-border, #e2e8f0)', transition: 'all 0.2s'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ 
+                      width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #4F46E5, #60A5FA)', 
+                      color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' 
+                    }}>
+                      {sub.studentName.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main, #0f172a)' }}>{sub.studentName}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                        {sub.cls} • {sub.assignment} • <span style={{ color: '#0F766E', fontWeight: 600 }}>{sub.submittedAt}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleOpenGrading(sub)}
+                    style={{
+                      background: '#4F46E5', color: 'white', border: 'none',
+                      padding: '6px 14px', borderRadius: '16px', fontSize: '0.78rem',
+                      fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                    className="hover-lift"
+                  >
+                    Grade / Review
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
       </div>
 
       {/* RIGHT COLUMN */}
-      <div className="right-column">
+      <div className="right-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Real-time Faculty Punch In / Punch Out Time Clock */}
+        <StaffPunchClock onPunchSuccess={(data) => showToast(data.message)} />
+
         {/* Action Required / To-Do */}
         <div className="card">
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -770,45 +875,53 @@ const TeacherDashboard = () => {
 
           {/* Task List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {tasks.map((task) => (
-              <div 
-                key={task.id} 
-                onClick={() => handleToggleTask(task.id)}
-                className={`teacher-todo-item hover-lift ${task.completed ? 'completed' : ''} ${task.priority === 'Urgent' ? 'urgent' : ''}`}
-                style={{ 
-                  opacity: task.completed ? 0.65 : 1
-                }}
-              >
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <div style={{ color: task.completed ? '#16A34A' : 'var(--color-text-muted, #64748B)' }}>
-                    {task.completed ? <CheckSquare size={18} color="#16A34A" /> : <Square size={18} />}
-                  </div>
-                  <div>
-                    <div style={{ 
-                      fontWeight: 600, fontSize: '0.88rem', 
-                      color: task.completed ? 'var(--color-text-muted, #64748B)' : 'var(--color-text-main, #1e293b)',
-                      textDecoration: task.completed ? 'line-through' : 'none' 
-                    }}>
-                      {task.text}
-                    </div>
-                    <div 
-                      className={task.priority === 'Urgent' ? 'urgent-text' : ''}
-                      style={{ fontSize: '0.74rem', color: task.priority === 'Urgent' ? '#0F766E' : 'var(--color-text-muted)', marginTop: '2px', fontWeight: 600 }}
-                    >
-                      {task.due}
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={(e) => handleDeleteTask(task.id, e)}
-                  title="Remove task"
-                  className="teacher-todo-delete-btn"
-                >
-                  <Trash2 size={15} />
-                </button>
+            {tasks.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 16px', color: '#64748B', fontSize: '0.85rem' }}>
+                <CheckSquare size={26} color="#10B981" style={{ margin: '0 auto 6px auto', opacity: 0.8 }} />
+                <div style={{ fontWeight: 600, color: '#334155' }}>No pending tasks</div>
+                <div style={{ fontSize: '0.78rem', marginTop: '2px' }}>Click "+ Add Task" to create a new action item.</div>
               </div>
-            ))}
+            ) : (
+              tasks.map((task) => (
+                <div 
+                  key={task.id || task._id} 
+                  onClick={() => handleToggleTask(task.id || task._id)}
+                  className={`teacher-todo-item hover-lift ${task.completed ? 'completed' : ''} ${task.priority === 'Urgent' ? 'urgent' : ''}`}
+                  style={{ 
+                    opacity: task.completed ? 0.65 : 1
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ color: task.completed ? '#16A34A' : 'var(--color-text-muted, #64748B)' }}>
+                      {task.completed ? <CheckSquare size={18} color="#16A34A" /> : <Square size={18} />}
+                    </div>
+                    <div>
+                      <div style={{ 
+                        fontWeight: 600, fontSize: '0.88rem', 
+                        color: task.completed ? 'var(--color-text-muted, #64748B)' : 'var(--color-text-main, #1e293b)',
+                        textDecoration: task.completed ? 'line-through' : 'none' 
+                      }}>
+                        {task.text}
+                      </div>
+                      <div 
+                        className={task.priority === 'Urgent' ? 'urgent-text' : ''}
+                        style={{ fontSize: '0.74rem', color: task.priority === 'Urgent' ? '#0F766E' : 'var(--color-text-muted)', marginTop: '2px', fontWeight: 600 }}
+                      >
+                        {task.due}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={(e) => handleDeleteTask(task.id || task._id, e)}
+                    title="Remove task"
+                    className="teacher-todo-delete-btn"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -977,13 +1090,19 @@ const TeacherDashboard = () => {
             <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {attendanceLoading ? (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>Loading enrolled students...</div>
+              ) : attendanceRoster.length === 0 ? (
+                <div style={{ padding: '36px 20px', textAlign: 'center', color: '#64748B' }}>
+                  <Users size={36} color="#94A3B8" style={{ margin: '0 auto 8px auto', opacity: 0.6 }} />
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>No students currently enrolled in this class</div>
+                  <div style={{ fontSize: '0.82rem', marginTop: '4px' }}>Admit students to this class in Student Directory to record attendance.</div>
+                </div>
               ) : attendanceRoster.filter(s => !attendanceSearch || s.name.toLowerCase().includes(attendanceSearch.toLowerCase()) || s.rollNo.toLowerCase().includes(attendanceSearch.toLowerCase())).length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', color: '#64748B' }}>No students found matching filter.</div>
               ) : (
                 attendanceRoster
                   .filter(s => !attendanceSearch || s.name.toLowerCase().includes(attendanceSearch.toLowerCase()) || s.rollNo.toLowerCase().includes(attendanceSearch.toLowerCase()))
                   .map((student) => (
-                    <div key={student.id} style={{
+                    <div key={student.id || student._id} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '10px 14px', borderRadius: '12px', border: '1px solid #e2e8f0',
                       background: student.status === 'Absent' ? 'rgba(239, 68, 68, 0.04)' : student.status === 'Late' ? 'rgba(245, 158, 11, 0.04)' : 'white'
@@ -1008,7 +1127,7 @@ const TeacherDashboard = () => {
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button 
                           type="button"
-                          onClick={() => handleToggleStudentStatus(student.id, 'Present')}
+                          onClick={() => handleToggleStudentStatus(student.id || student._id, 'Present')}
                           style={{
                             background: student.status === 'Present' ? '#16A34A' : '#f1f5f9',
                             color: student.status === 'Present' ? 'white' : '#64748B',
@@ -1020,7 +1139,7 @@ const TeacherDashboard = () => {
                         </button>
                         <button 
                           type="button"
-                          onClick={() => handleToggleStudentStatus(student.id, 'Absent')}
+                          onClick={() => handleToggleStudentStatus(student.id || student._id, 'Absent')}
                           style={{
                             background: student.status === 'Absent' ? '#DC2626' : '#f1f5f9',
                             color: student.status === 'Absent' ? 'white' : '#64748B',
@@ -1032,7 +1151,7 @@ const TeacherDashboard = () => {
                         </button>
                         <button 
                           type="button"
-                          onClick={() => handleToggleStudentStatus(student.id, 'Late')}
+                          onClick={() => handleToggleStudentStatus(student.id || student._id, 'Late')}
                           style={{
                             background: student.status === 'Late' ? '#D97706' : '#f1f5f9',
                             color: student.status === 'Late' ? 'white' : '#64748B',
@@ -1133,6 +1252,12 @@ const TeacherDashboard = () => {
             <div style={{ padding: '16px 24px', overflowY: 'auto', flex: 1 }}>
               {rosterLoading ? (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#64748B' }}>Loading roster data...</div>
+              ) : rosterStudents.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#64748B' }}>
+                  <Users size={36} color="#94A3B8" style={{ margin: '0 auto 10px auto', opacity: 0.7 }} />
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#1e293b' }}>No students currently enrolled in this class</div>
+                  <div style={{ fontSize: '0.82rem', marginTop: '6px' }}>Admit students to this class in the Student Directory to populate this roster.</div>
+                </div>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
@@ -1148,7 +1273,7 @@ const TeacherDashboard = () => {
                     {rosterStudents
                       .filter(s => !rosterSearch || s.name.toLowerCase().includes(rosterSearch.toLowerCase()) || s.rollNo.toLowerCase().includes(rosterSearch.toLowerCase()))
                       .map((st) => (
-                        <tr key={st.id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '0.85rem' }}>
+                        <tr key={st.id || st._id} style={{ borderBottom: '1px solid #f1f5f9', fontSize: '0.85rem' }}>
                           <td style={{ padding: '10px 12px', fontWeight: 700, color: '#4F46E5' }}>{st.rollNo}</td>
                           <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1e293b' }}>{st.name}</td>
                           <td style={{ padding: '10px 12px', color: '#64748B' }}>{st.gender}</td>
@@ -1220,41 +1345,101 @@ const TeacherDashboard = () => {
             </div>
 
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', minWidth: '600px' }}>
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} style={{ textAlign: 'center', fontWeight: 800, padding: '8px', background: '#f1f5f9', borderRadius: '8px', fontSize: '0.85rem', color: '#334155' }}>
-                    {day}
-                  </div>
-                ))}
-
-                {/* Timetable Period Grid Slots */}
-                {[
-                  { time: 'Period 1 (08:00 - 09:00)', sub: 'Mathematics', cls: '10th - A', room: 'Room 201' },
-                  { time: 'Period 2 (09:00 - 10:00)', sub: 'Mathematics', cls: '9th - B', room: 'Room 105' },
-                  { time: 'Break (10:00 - 10:15)', sub: 'Morning Recess', cls: 'Staff Room', room: 'Staff Room' },
-                  { time: 'Period 3 (10:15 - 11:15)', sub: 'Grading / Prep', cls: 'Library', room: 'Staff Lounge' },
-                  { time: 'Period 4 (11:15 - 12:15)', sub: 'Physics Lab', cls: '11th - Sci', room: 'Physics Lab 2' },
-                  { time: 'Period 5 (12:45 - 01:45)', sub: 'Mathematics', cls: '8th - A', room: 'Room 102' },
-                ].map((slot, idx) => (
-                  <React.Fragment key={idx}>
-                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, dIdx) => (
-                      <div key={dIdx} style={{
-                        padding: '10px 8px', borderRadius: '10px',
-                        background: slot.sub.includes('Recess') ? '#f8fafc' : (idx === 0 || idx === 1) ? 'rgba(79, 70, 229, 0.05)' : 'white',
-                        border: '1px solid #e2e8f0',
-                        fontSize: '0.75rem',
-                        display: 'flex', flexDirection: 'column', gap: '2px'
-                      }}>
-                        <div style={{ fontWeight: 700, color: slot.sub.includes('Recess') ? '#94a3b8' : '#1e293b' }}>
-                          {slot.sub}
+              {isTimetableLoading ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                  <RefreshCw size={24} className="spin" style={{ margin: '0 auto 8px' }} />
+                  <div>Loading live weekly faculty schedule from database...</div>
+                </div>
+              ) : facultyTimetable?.weeklySchedule ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', minWidth: '680px' }}>
+                  {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => {
+                    const lectures = facultyTimetable.weeklySchedule[day] || [];
+                    return (
+                      <div key={day} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{
+                          textAlign: 'center', fontWeight: 800, padding: '8px',
+                          background: '#1e3a8a', color: 'white', borderRadius: '8px',
+                          fontSize: '0.85rem'
+                        }}>
+                          {day}
+                          <div style={{ fontSize: '0.68rem', opacity: 0.85, fontWeight: 500 }}>
+                            {lectures.length} Lectures
+                          </div>
                         </div>
-                        <div style={{ color: '#4F46E5', fontWeight: 600 }}>{slot.cls}</div>
-                        <div style={{ color: '#94a3b8', fontSize: '0.7rem' }}>{slot.room}</div>
+
+                        {lectures.length === 0 ? (
+                          <div style={{ padding: '16px 8px', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', color: '#94a3b8', fontSize: '0.72rem', border: '1px dashed #cbd5e1' }}>
+                            Free / Prep
+                          </div>
+                        ) : (
+                          lectures.map((lec, idx) => (
+                            <div key={idx} style={{
+                              padding: '10px 10px',
+                              borderRadius: '10px',
+                              background: lec.type === 'Lab' ? '#ecfdf5' : lec.type === 'Tutorial' ? '#eff6ff' : '#f8fafc',
+                              border: `1px solid ${lec.type === 'Lab' ? '#a7f3d0' : lec.type === 'Tutorial' ? '#bfdbfe' : '#e2e8f0'}`,
+                              display: 'flex', flexDirection: 'column', gap: '2px'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
+                                  {lec.periodName || `P${lec.periodNumber || idx + 1}`}
+                                </span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'white', color: '#4F46E5', border: '1px solid #e2e8f0' }}>
+                                  {lec.startTime}-{lec.endTime}
+                                </span>
+                              </div>
+                              <div style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '0.82rem', marginTop: '2px' }}>
+                                {lec.subject}
+                              </div>
+                              <div style={{ color: '#4F46E5', fontWeight: 700, fontSize: '0.75rem' }}>
+                                🎓 {lec.className}
+                              </div>
+                              <div style={{ color: '#64748b', fontSize: '0.7rem' }}>
+                                📍 {lec.room || 'Room 101'}
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px', minWidth: '600px' }}>
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} style={{ textAlign: 'center', fontWeight: 800, padding: '8px', background: '#f1f5f9', borderRadius: '8px', fontSize: '0.85rem', color: '#334155' }}>
+                      {day}
+                    </div>
+                  ))}
+
+                  {[
+                    { time: 'Period 1 (08:30 - 09:20)', sub: 'Mathematics', cls: 'Class 10 - A', room: 'Room 201' },
+                    { time: 'Period 2 (09:20 - 10:10)', sub: 'Mathematics', cls: 'Class 9 - B', room: 'Room 105' },
+                    { time: 'Period 3 (10:25 - 11:15)', sub: 'Mathematics', cls: 'Class 10 - A', room: 'Room 201' },
+                    { time: 'Period 4 (11:15 - 12:05)', sub: 'Physics Lab', cls: 'Class 11 - Sci', room: 'Physics Lab 2' },
+                    { time: 'Period 5 (12:45 - 01:35)', sub: 'Mathematics', cls: 'Class 8 - A', room: 'Room 102' },
+                    { time: 'Period 6 (01:35 - 02:25)', sub: 'Remedial Prep', cls: 'Class 10 - A', room: 'Room 201' },
+                  ].map((slot, idx) => (
+                    <React.Fragment key={idx}>
+                      {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, dIdx) => (
+                        <div key={dIdx} style={{
+                          padding: '10px 8px', borderRadius: '10px',
+                          background: (idx === 0 || idx === 2) ? 'rgba(79, 70, 229, 0.05)' : 'white',
+                          border: '1px solid #e2e8f0',
+                          fontSize: '0.75rem',
+                          display: 'flex', flexDirection: 'column', gap: '2px'
+                        }}>
+                          <div style={{ fontWeight: 700, color: '#1e293b' }}>
+                            {slot.sub}
+                          </div>
+                          <div style={{ color: '#4F46E5', fontWeight: 600 }}>{slot.cls}</div>
+                          <div style={{ color: '#94a3b8', fontSize: '0.7rem' }}>{slot.room}</div>
+                        </div>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', background: '#f8fafc' }}>

@@ -20,6 +20,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import Login from './pages/Login';
 import TransportRoutes from './pages/TransportRoutes';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import Attendance from './pages/Attendance';
 import { AlertTriangle, ShieldAlert, Sparkles, X as CloseIcon } from 'lucide-react';
 import './index.css';
 
@@ -461,6 +462,8 @@ const AppRoutes = () => {
         <Route path="/:tenantSlug/staff" element={<Staff />} />
         <Route path="/:tenantSlug/teachers" element={<Staff />} />
         <Route path="/:tenantSlug/academics" element={<Academics />} />
+        <Route path="/:tenantSlug/timetable" element={<Academics />} />
+        <Route path="/:tenantSlug/attendance" element={<Attendance />} />
         <Route path="/:tenantSlug/finance" element={<Finance />} />
         <Route path="/:tenantSlug/reports" element={<Reports />} />
         <Route path="/:tenantSlug/communication" element={<Communication />} />

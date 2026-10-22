@@ -131,6 +131,7 @@ app.use(async (req, res, next) => {
 // Protected Application Routes
 app.use('/api/students', require('./routes/studentRoutes'));
 app.use('/api/staff', require('./routes/staffRoutes'));
+app.use('/api/staff-attendance', require('./routes/staffAttendanceRoutes'));
 app.use('/api/classes', require('./routes/classSectionRoutes'));
 app.use('/api/academics', require('./routes/academicRoutes'));
 app.use('/api/finance', require('./routes/financeRoutes'));
@@ -139,6 +140,8 @@ app.use('/api/library', require('./routes/libraryRoutes'));
 app.use('/api/transport', require('./routes/transportRoutes'));
 app.use('/api/communication', require('./routes/communicationRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/timetable', require('./routes/timetableRoutes'));
+app.use('/api/attendance', require('./routes/attendanceRoutes'));
 
 // 404 handler
 app.use((req, res) => {

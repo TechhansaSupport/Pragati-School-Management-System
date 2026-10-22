@@ -115,6 +115,8 @@ const Sidebar = () => {
         title: 'School Operations',
         items: [
           { id: 'Overview', label: 'Overview', icon: Activity },
+          { id: 'Attendance Register', label: 'Attendance', icon: Activity },
+          { id: 'Timetable Matrix', label: 'Timetable', icon: BookOpen },
           { id: 'Students & IDs', label: 'Students', icon: Users },
           { id: 'Teachers', label: 'Teachers & Staff', icon: UserCheck },
           { id: 'Academics & Exams', label: 'Academics', icon: BookOpen },
@@ -163,6 +165,10 @@ const Sidebar = () => {
         return path.includes('/reports');
       case 'Overview':
         return (path.endsWith('/dashboard') || path === `/${tenantSlug}` || path === `/${tenantSlug}/`) && !search.includes('tab=');
+      case 'Attendance Register':
+        return path.includes('/attendance');
+      case 'Timetable Matrix':
+        return path.includes('/academics') && search.includes('tab=timetable');
       case 'Students & IDs':
         return path.includes('/students') || (path.includes('/dashboard') && search.includes('tab=students'));
       case 'Teachers':
@@ -227,6 +233,12 @@ const Sidebar = () => {
         break;
       case 'Overview':
         navigate(isSuperAdmin ? `${base}/superadmin` : `${base}/dashboard`);
+        break;
+      case 'Attendance Register':
+        navigate(`${base}/attendance`);
+        break;
+      case 'Timetable Matrix':
+        navigate(`${base}/academics?tab=timetable`);
         break;
       case 'Students & IDs':
         navigate(`${base}/students`);

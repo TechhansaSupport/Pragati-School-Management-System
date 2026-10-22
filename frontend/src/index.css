@@ -26,6 +26,14 @@
   padding: 0;
 }
 
+button {
+  outline: none;
+  border: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+
 body, html {
   font-family: 'Outfit', sans-serif;
   background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
@@ -289,6 +297,62 @@ body.dark-mode .main-wrapper::before {
   border: 1px solid #e2e8f0;
   box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 }
+
+.chart-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.search-bar svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.search-bar input {
+  width: 100%;
+  padding: 9px 14px 9px 36px !important;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 0.88rem;
+  color: #1e293b;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.search-bar input:focus {
+  border-color: #4F46E5;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+body.dark-mode .search-bar input {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body.dark-mode .search-bar input:focus {
+  border-color: #6366f1;
+  background: #0f172a;
+}
+
 
 @keyframes fade-slide-up {
   0% { opacity: 0; transform: translateY(20px); }
@@ -1781,4 +1845,141 @@ body.compact-view .dashboard-sidebar-item:hover::after {
   pointer-events: none;
   z-index: 9999;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* =========================================
+   STAFF SEGMENTED NAVIGATION TABS & ANIMATIONS
+========================================= */
+.staff-tabs-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 4px 0 8px 0;
+  flex-shrink: 0;
+}
+
+.staff-tabs-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.04);
+  flex-shrink: 0;
+  overflow-x: auto;
+  max-width: 100%;
+  position: relative;
+}
+
+.staff-nav-tab {
+  position: relative;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #475569;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.25s ease,
+              color 0.2s ease,
+              box-shadow 0.25s ease;
+}
+
+.staff-nav-tab:hover:not(.active) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  transform: translateY(-1px);
+}
+
+.staff-nav-tab:active {
+  transform: scale(0.95);
+  transition-duration: 0.08s;
+}
+
+.staff-nav-tab.active {
+  font-weight: 700;
+  color: #ffffff !important;
+  transform: translateY(0);
+}
+
+.staff-nav-tab.active.tab-directory {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.staff-nav-tab.active.tab-punch-sheet {
+  background: linear-gradient(135deg, #065f46 0%, #059669 100%);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+}
+
+.staff-nav-tab.active.tab-clock {
+  background: linear-gradient(135deg, #3730a3 0%, #4f46e5 100%);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+.staff-nav-tab .tab-icon {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.staff-nav-tab:active .tab-icon {
+  transform: scale(0.9);
+}
+
+.staff-nav-tab .tab-badge {
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+}
+
+.staff-nav-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+}
+
+body.dark-mode .staff-tabs-bar {
+  background: #131c31;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .staff-nav-tab:not(.active) {
+  color: #94a3b8;
+}
+
+body.dark-mode .staff-nav-tab:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+@keyframes staffTabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.staff-tab-content {
+  animation: staffTabFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

@@ -34,6 +34,11 @@ router.get('/list', protect, async (req, res) => {
           name: u.name || u.schoolName || sSlug,
           slug: sSlug,
           address: u.address || '',
+          city: u.city || '',
+          state: u.state || '',
+          phone: u.phone || '',
+          email: u.email || '',
+          board: u.board || 'CBSE',
           entityId: u.entityId,
           status: u.status || 'active',
           academicYear: u.academicYear || '2026-2027',
@@ -41,7 +46,11 @@ router.get('/list', protect, async (req, res) => {
           timezone: u.timezone || 'Asia/Kolkata (IST)',
           isBranch: !!u.isBranch,
           branchName: u.branchName || '',
-          parentSchoolSlug: u.parentSchoolSlug || ''
+          parentSchoolSlug: u.parentSchoolSlug || '',
+          campusLatitude: u.campusLatitude != null ? u.campusLatitude : null,
+          campusLongitude: u.campusLongitude != null ? u.campusLongitude : null,
+          campusRadiusMeters: u.campusRadiusMeters != null ? u.campusRadiusMeters : 300,
+          geofenceEnabled: u.geofenceEnabled !== false
         });
       }
     }
@@ -58,6 +67,11 @@ router.get('/list', protect, async (req, res) => {
           name: store.name || store.slug,
           slug: store.slug,
           address: store.address || '',
+          city: store.city || '',
+          state: store.state || '',
+          phone: store.phone || '',
+          email: store.email || '',
+          board: 'CBSE',
           entityId: store.entityId,
           status: store.status || 'active',
           academicYear: store.academicYear || '2026-2027',
@@ -65,7 +79,11 @@ router.get('/list', protect, async (req, res) => {
           timezone: store.timezone || 'Asia/Kolkata (IST)',
           isBranch: false,
           branchName: '',
-          parentSchoolSlug: ''
+          parentSchoolSlug: '',
+          campusLatitude: store.campusLatitude != null ? store.campusLatitude : null,
+          campusLongitude: store.campusLongitude != null ? store.campusLongitude : null,
+          campusRadiusMeters: store.campusRadiusMeters != null ? store.campusRadiusMeters : 300,
+          geofenceEnabled: store.geofenceEnabled !== false
         });
       }
     }
@@ -1468,7 +1486,11 @@ const updateSchoolConfigHandler = async (req, res) => {
       maintenanceMode,
       phone,
       email,
-      affiliationNo
+      affiliationNo,
+      campusLatitude,
+      campusLongitude,
+      campusRadiusMeters,
+      geofenceEnabled
     } = req.body;
 
     const slug = req.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || req.tenant?.slug || req.pragatiTenant?.slug || req.user?.slug;
@@ -1489,6 +1511,10 @@ const updateSchoolConfigHandler = async (req, res) => {
     if (phone !== undefined) updateFields.phone = typeof phone === 'string' ? phone.trim() : phone;
     if (email !== undefined) updateFields.email = typeof email === 'string' ? email.trim() : email;
     if (affiliationNo !== undefined) updateFields.affiliationNo = typeof affiliationNo === 'string' ? affiliationNo.trim() : affiliationNo;
+    if (campusLatitude !== undefined) updateFields.campusLatitude = (campusLatitude !== null && campusLatitude !== '') ? Number(campusLatitude) : null;
+    if (campusLongitude !== undefined) updateFields.campusLongitude = (campusLongitude !== null && campusLongitude !== '') ? Number(campusLongitude) : null;
+    if (campusRadiusMeters !== undefined) updateFields.campusRadiusMeters = Number(campusRadiusMeters) || 300;
+    if (geofenceEnabled !== undefined) updateFields.geofenceEnabled = Boolean(geofenceEnabled);
 
     // 1. Update in User if school is stored there strictly for this entity
     let updatedSchool = await User.findOneAndUpdate(
@@ -1542,7 +1568,11 @@ const updateSchoolConfigHandler = async (req, res) => {
         academicYear: updatedSchool?.academicYear || academicYear || '2026-2027',
         currency: updatedSchool?.currency || currency || 'INR (₹)',
         timezone: updatedSchool?.timezone || timezone || 'Asia/Kolkata (IST)',
-        maintenanceMode: updatedSchool?.maintenanceMode || false
+        maintenanceMode: updatedSchool?.maintenanceMode || false,
+        campusLatitude: updatedSchool?.campusLatitude != null ? updatedSchool.campusLatitude : null,
+        campusLongitude: updatedSchool?.campusLongitude != null ? updatedSchool.campusLongitude : null,
+        campusRadiusMeters: updatedSchool?.campusRadiusMeters != null ? updatedSchool.campusRadiusMeters : 300,
+        geofenceEnabled: updatedSchool?.geofenceEnabled !== false
       }
     });
   } catch (error) {
@@ -1569,7 +1599,11 @@ router.put('/:slug', protect, authorize('admin', 'superadmin', 'principal'), asy
       board,
       currency,
       timezone,
-      affiliationNo
+      affiliationNo,
+      campusLatitude,
+      campusLongitude,
+      campusRadiusMeters,
+      geofenceEnabled
     } = req.body;
 
     if (!slug) {
@@ -1591,6 +1625,10 @@ router.put('/:slug', protect, authorize('admin', 'superadmin', 'principal'), asy
     if (currency) updateFields.currency = currency;
     if (timezone) updateFields.timezone = timezone;
     if (affiliationNo !== undefined) updateFields.affiliationNo = typeof affiliationNo === 'string' ? affiliationNo.trim() : '';
+    if (campusLatitude !== undefined) updateFields.campusLatitude = (campusLatitude !== null && campusLatitude !== '') ? Number(campusLatitude) : null;
+    if (campusLongitude !== undefined) updateFields.campusLongitude = (campusLongitude !== null && campusLongitude !== '') ? Number(campusLongitude) : null;
+    if (campusRadiusMeters !== undefined) updateFields.campusRadiusMeters = Number(campusRadiusMeters) || 300;
+    if (geofenceEnabled !== undefined) updateFields.geofenceEnabled = Boolean(geofenceEnabled);
 
     // 1. Find and update in User strictly for this entity
     let updatedSchool = await User.findOneAndUpdate(
@@ -1643,6 +1681,10 @@ router.put('/:slug', protect, authorize('admin', 'superadmin', 'principal'), asy
         email: updatedSchool.email || '',
         board: updatedSchool.board || '',
         academicYear: updatedSchool.academicYear || '2026-2027',
+        campusLatitude: updatedSchool.campusLatitude != null ? updatedSchool.campusLatitude : null,
+        campusLongitude: updatedSchool.campusLongitude != null ? updatedSchool.campusLongitude : null,
+        campusRadiusMeters: updatedSchool.campusRadiusMeters != null ? updatedSchool.campusRadiusMeters : 300,
+        geofenceEnabled: updatedSchool.geofenceEnabled !== false,
         entityId: updatedSchool.entityId || entityId
       }
     });
