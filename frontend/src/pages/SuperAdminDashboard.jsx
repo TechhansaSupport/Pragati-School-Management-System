@@ -96,6 +96,15 @@ const SuperAdminDashboard = () => {
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const tenantSlug = urlTenantSlug || sessionStorage.getItem('tenantSlug') || userInfo.slug || 'neel-public-school';
 
+  const userRole = (sessionStorage.getItem('userRole') || userInfo.role || '').toLowerCase();
+
+  // Route security: Only Super Admin can access the SuperAdmin Command Center
+  useEffect(() => {
+    if (userRole && userRole !== 'superadmin') {
+      navigate(`/${tenantSlug}/dashboard`, { replace: true });
+    }
+  }, [userRole, tenantSlug, navigate]);
+
   // State
   const [schoolsList, setSchoolsList] = useState([]);
   const [allStaffList, setAllStaffList] = useState([]);

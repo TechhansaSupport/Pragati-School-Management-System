@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
   Search, BookOpen, ChevronLeft, ChevronRight, Plus, X, 
@@ -37,6 +38,9 @@ const standardAssessmentSchedules = [
 ];
 
 const Academics = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // Authentication & Session Context
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || '';
@@ -102,16 +106,21 @@ const Academics = () => {
   });
   const [isPeriodSaving, setIsPeriodSaving] = useState(false);
 
-  // Sync tab with URL search params
+  // Sync tab with URL search params (redirect legacy timetable param to dedicated page)
   useEffect(() => {
-    const handleUrlChange = () => {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab');
-      if (tab) setMainTab(tab);
-    };
-    window.addEventListener('popstate', handleUrlChange);
-    return () => window.removeEventListener('popstate', handleUrlChange);
-  }, []);
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'timetable') {
+      navigate(`/${tenantSlug}/timetable`, { replace: true });
+      return;
+    }
+    setMainTab(tab || 'classes');
+  }, [location.search, tenantSlug]);
+
+  const handleTabChange = (tabId) => {
+    setMainTab(tabId);
+    navigate(tabId === 'classes' ? location.pathname : `${location.pathname}?tab=${tabId}`, { replace: true });
+  };
 
   // Fetch live timetable from MongoDB for selected class
   const fetchLiveTimetable = async (className, section) => {
@@ -652,6 +661,28 @@ const Academics = () => {
               </button>
             )}
 
+            <button
+              onClick={() => navigate(`/${tenantSlug}/timetable`)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                color: 'white',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                padding: '11px 18px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.86rem',
+                cursor: 'pointer',
+                backdropFilter: 'blur(10px)',
+                transition: 'all 0.2s',
+              }}
+              title="Open dedicated Timetable Scheduling Console"
+            >
+              <Calendar size={16} color="#93c5fd" /> Timetable Matrix ↗
+            </button>
+
             {classesList.length > 0 && (
               <button
                 onClick={() => setIsDeleteAllModalOpen(true)}
@@ -766,7 +797,6 @@ const Academics = () => {
         <div className="system-tabs-container">
           {[
             { id: 'classes', label: 'Classes & Sections Directory', count: classesList.length, icon: LayoutGrid },
-            { id: 'timetable', label: 'Smart Timetable Generator (10.5)', count: 'Conflict-Free', icon: Clock },
             { id: 'subjects', label: 'Subjects Catalog', count: institutionalSubjects.length, icon: BookOpen },
             { id: 'examinations', label: 'Assessment Schedules', count: standardAssessmentSchedules.length, icon: Calendar }
           ].map(tab => {
@@ -776,7 +806,7 @@ const Academics = () => {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setMainTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`system-tab-btn ${isActive ? 'active' : ''}`}
               >
                 <Icon size={16} />

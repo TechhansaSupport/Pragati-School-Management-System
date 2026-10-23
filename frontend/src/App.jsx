@@ -21,6 +21,7 @@ import Login from './pages/Login';
 import TransportRoutes from './pages/TransportRoutes';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import Attendance from './pages/Attendance';
+import Timetable from './pages/Timetable';
 import { AlertTriangle, ShieldAlert, Sparkles, X as CloseIcon } from 'lucide-react';
 import './index.css';
 
@@ -385,12 +386,20 @@ const AppRoutes = () => {
     }
   }
 
+  const userInfoObj = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+  const role = sessionStorage.getItem('userRole') || userInfoObj.role;
+  const branchSlug = userInfoObj.schoolSlug || userInfoObj.branchSlug;
+
+  // Strict Branch Isolation: Appointed branch admins and principals can only manage their appointed branch!
+  if ((role === 'admin' || role === 'principal') && branchSlug && pathSlug && pathSlug !== 'login' && pathSlug !== branchSlug) {
+    return <Navigate to={`/${branchSlug}/dashboard`} replace />;
+  }
+
   // Ensure this window operates strictly in the URL's school context
   if (pathSlug && pathSlug !== 'login') {
     sessionStorage.setItem('tenantSlug', pathSlug);
   }
 
-  const role = sessionStorage.getItem('userRole');
   const tenantSlug = sessionStorage.getItem('tenantSlug') || (pathSlug && pathSlug !== 'login' ? pathSlug : '');
 
   // Handle root /
@@ -447,8 +456,8 @@ const AppRoutes = () => {
       <Routes>
         <Route path="/:tenantSlug" element={getDashboardForRole()} />
         <Route path="/:tenantSlug/dashboard" element={getDashboardForRole()} />
-        <Route path="/:tenantSlug/superadmin" element={<SuperAdminDashboard />} />
-        <Route path="/:tenantSlug/schools" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Dashboard />} />
+        <Route path="/:tenantSlug/superadmin" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Navigate to={`/${tenantSlug}/dashboard`} replace />} />
+        <Route path="/:tenantSlug/schools" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Navigate to={`/${tenantSlug}/dashboard?tab=schools`} replace />} />
         <Route path="/:tenantSlug/library-dashboard" element={<LibraryDashboard />} />
         <Route path="/:tenantSlug/books" element={<LibraryBooks />} />
         <Route path="/:tenantSlug/transport-dashboard" element={<TransportDashboard />} />
@@ -462,7 +471,7 @@ const AppRoutes = () => {
         <Route path="/:tenantSlug/staff" element={<Staff />} />
         <Route path="/:tenantSlug/teachers" element={<Staff />} />
         <Route path="/:tenantSlug/academics" element={<Academics />} />
-        <Route path="/:tenantSlug/timetable" element={<Academics />} />
+        <Route path="/:tenantSlug/timetable" element={<Timetable />} />
         <Route path="/:tenantSlug/attendance" element={<Attendance />} />
         <Route path="/:tenantSlug/finance" element={<Finance />} />
         <Route path="/:tenantSlug/reports" element={<Reports />} />

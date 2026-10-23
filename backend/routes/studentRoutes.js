@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
+const User = require('../models/User');
 
 // Helper to verify admin authority
 const checkAdminAuthority = (req, res) => {
@@ -52,9 +53,24 @@ router.get('/', async (req, res) => {
     const { search, page = 1, limit = 50, grade, section, status, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
-    const effectiveSchoolSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const effectiveSchoolSlug = isSuperAdmin
+      ? (schoolSlug || req.schoolSlug || req.headers['x-school-slug'])
+      : req.schoolSlug;
+
     if (effectiveSchoolSlug && effectiveSchoolSlug !== 'all' && effectiveSchoolSlug !== 'central') {
-      query.schoolSlug = effectiveSchoolSlug;
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === effectiveSchoolSlug;
+      if (isPrimary) {
+        query.$or = [
+          { schoolSlug: effectiveSchoolSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        query.schoolSlug = effectiveSchoolSlug;
+      }
     }
 
     if (search) {
@@ -202,8 +218,14 @@ router.put('/:id', async (req, res) => {
   if (!checkAdminAuthority(req, res)) return;
 
   try {
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const filter = { _id: req.params.id, entityId: req.entityId };
+    if (!isSuperAdmin && req.schoolSlug) {
+      filter.$or = [{ schoolSlug: req.schoolSlug }, { schoolSlug: null }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
     const student = await Student.findOneAndUpdate(
-      { _id: req.params.id, entityId: req.entityId },
+      filter,
       req.body,
       { new: true, runValidators: true }
     );
@@ -231,7 +253,10 @@ router.delete('/', async (req, res) => {
 
   try {
     const { ids } = req.body || {};
-    const targetSlug = req.query.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || req.schoolSlug;
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const targetSlug = isSuperAdmin 
+      ? (req.query.schoolSlug || req.headers['x-school-slug'] || req.schoolSlug) 
+      : req.schoolSlug;
 
     // Strict isolation to entity
     const filter = { entityId: req.entityId };
@@ -310,7 +335,13 @@ router.delete('/:id', async (req, res) => {
   if (!checkAdminAuthority(req, res)) return;
 
   try {
-    const student = await Student.findOneAndDelete({ _id: req.params.id, entityId: req.entityId });
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const filter = { _id: req.params.id, entityId: req.entityId };
+    if (!isSuperAdmin && req.schoolSlug) {
+      filter.$or = [{ schoolSlug: req.schoolSlug }, { schoolSlug: null }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const student = await Student.findOneAndDelete(filter);
 
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });

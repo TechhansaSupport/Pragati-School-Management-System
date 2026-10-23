@@ -1,8 +1,9 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Activity, Users, UserCheck, BookOpen, CreditCard, 
-  Bus, Mail, Settings, Server, Key, ShieldCheck, Building2
+  LayoutDashboard, Users, UserCheck, BookOpen, CreditCard, 
+  Bus, Mail, Settings, Server, Key, ShieldCheck, Building2,
+  CalendarCheck, CalendarDays, GraduationCap, Library, Navigation
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -19,15 +20,15 @@ const Sidebar = () => {
         {
           title: 'Central Operations',
           items: [
-            { id: 'SuperAdmin Hub', label: 'Command Center', icon: Activity },
+            { id: 'SuperAdmin Hub', label: 'Command Center', icon: LayoutDashboard },
             { id: 'My Schools & Campuses', label: 'Schools & Campuses', icon: Building2 },
             { id: 'Staff Assignments', label: 'Role Assignments', icon: UserCheck },
             { id: 'Teachers', label: 'All Faculty & Staff', icon: Users },
-            { id: 'Students & IDs', label: 'All Students', icon: Users },
+            { id: 'Students & IDs', label: 'All Students', icon: GraduationCap },
             { id: 'Academics & Exams', label: 'Curriculum & Plans', icon: BookOpen },
             { id: 'Finance & Fees', label: 'Central Financials', icon: CreditCard },
             { id: 'Transport Dashboard', label: 'Fleet & Transport', icon: Bus },
-            { id: 'Library Dashboard', label: 'Library & Media', icon: BookOpen },
+            { id: 'Library Dashboard', label: 'Library & Media', icon: Library },
           ]
         },
         {
@@ -47,9 +48,9 @@ const Sidebar = () => {
         {
           title: 'Faculty Portal',
           items: [
-            { id: 'Teacher Dashboard', label: 'Dashboard', icon: Activity },
+            { id: 'Teacher Dashboard', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'Academics & Exams', label: 'Classes & Grading', icon: BookOpen },
-            { id: 'Students & IDs', label: 'My Students', icon: Users },
+            { id: 'Students & IDs', label: 'My Students', icon: GraduationCap },
             { id: 'Communication & Reports', label: 'Messages & Notices', icon: Mail },
           ]
         }
@@ -61,7 +62,7 @@ const Sidebar = () => {
         {
           title: 'Student Portal',
           items: [
-            { id: 'Student Dashboard', label: 'My Dashboard', icon: Activity },
+            { id: 'Student Dashboard', label: 'My Dashboard', icon: LayoutDashboard },
             { id: 'Academics & Exams', label: 'My Academics', icon: BookOpen },
             { id: 'Communication & Reports', label: 'Announcements', icon: Mail },
           ]
@@ -74,7 +75,7 @@ const Sidebar = () => {
         {
           title: 'Parent Portal',
           items: [
-            { id: 'Parent Dashboard', label: 'Parent Portal', icon: Activity },
+            { id: 'Parent Dashboard', label: 'Parent Portal', icon: LayoutDashboard },
             { id: 'Academics & Exams', label: 'Student Progress', icon: BookOpen },
             { id: 'Finance & Fees', label: 'Fee Payments', icon: CreditCard },
             { id: 'Communication & Reports', label: 'School Notices', icon: Mail },
@@ -88,7 +89,7 @@ const Sidebar = () => {
         {
           title: 'Library Portal',
           items: [
-            { id: 'Library Dashboard', label: 'Library Overview', icon: Activity },
+            { id: 'Library Dashboard', label: 'Library Overview', icon: Library },
             { id: 'Book Catalog', label: 'Books & Inventory', icon: BookOpen },
             { id: 'Communication & Reports', label: 'Announcements', icon: Mail },
           ]
@@ -102,7 +103,7 @@ const Sidebar = () => {
           title: 'Fleet & Transit',
           items: [
             { id: 'Transport Dashboard', label: 'Transport Hub', icon: Bus },
-            { id: 'Routes', label: 'Routes & Stops', icon: Activity },
+            { id: 'Routes', label: 'Routes & Stops', icon: Navigation },
             { id: 'Communication & Reports', label: 'Parent Alerts', icon: Mail },
           ]
         }
@@ -114,11 +115,11 @@ const Sidebar = () => {
       {
         title: 'School Operations',
         items: [
-          { id: 'Overview', label: 'Overview', icon: Activity },
-          { id: 'Attendance Register', label: 'Attendance', icon: Activity },
-          { id: 'Timetable Matrix', label: 'Timetable', icon: BookOpen },
-          { id: 'Students & IDs', label: 'Students', icon: Users },
-          { id: 'Teachers', label: 'Teachers & Staff', icon: UserCheck },
+          { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
+          { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
+          { id: 'Timetable Matrix', label: 'Timetable', icon: CalendarDays },
+          { id: 'Students & IDs', label: 'Students', icon: GraduationCap },
+          { id: 'Teachers', label: 'Teachers & Staff', icon: Users },
           { id: 'Academics & Exams', label: 'Academics', icon: BookOpen },
           { id: 'Finance & Fees', label: 'Finance', icon: CreditCard },
           { id: 'Facilities', label: 'Facilities & Fleet', icon: Bus },
@@ -128,7 +129,9 @@ const Sidebar = () => {
       {
         title: 'System Governance',
         items: [
-          { id: 'My Schools & Campuses', label: 'My Campuses', icon: Building2 },
+          (role === 'admin' || role === 'principal'
+            ? { id: 'Campus Profile', label: 'Branch Profile', icon: Building2 } 
+            : { id: 'My Schools & Campuses', label: 'My Campuses', icon: Building2 }),
           { id: 'System Configuration', label: 'Configuration', icon: Settings },
           { id: 'System Health & Infra', label: 'System Health', icon: Server },
           { id: 'RBAC (Access Control)', label: 'Access Control', icon: Key },
@@ -154,11 +157,11 @@ const Sidebar = () => {
       case 'Parent Dashboard':
         return path.includes('/parent-dashboard');
       case 'Library Dashboard':
-        return path.includes('/library-dashboard') || path.includes('/books') || (path.includes('/superadmin') && search.includes('tab=library'));
+        return (path.includes('/library-dashboard') && !path.includes('/books')) || (path.includes('/superadmin') && search.includes('tab=library'));
       case 'Book Catalog':
         return path.includes('/books');
       case 'Transport Dashboard':
-        return path.includes('/transport-dashboard') || path.includes('/routes') || (path.includes('/superadmin') && search.includes('tab=transport'));
+        return (path.includes('/transport-dashboard') && !path.includes('/routes')) || (path.includes('/superadmin') && search.includes('tab=transport'));
       case 'Routes':
         return path.includes('/routes');
       case 'Reports':
@@ -168,23 +171,25 @@ const Sidebar = () => {
       case 'Attendance Register':
         return path.includes('/attendance');
       case 'Timetable Matrix':
-        return path.includes('/academics') && search.includes('tab=timetable');
+        return path.includes('/timetable') || (path.includes('/academics') && search.includes('tab=timetable'));
       case 'Students & IDs':
-        return path.includes('/students') || (path.includes('/dashboard') && search.includes('tab=students'));
+        return (path.includes('/students') && !path.includes('/student-dashboard')) || (path.includes('/dashboard') && search.includes('tab=students'));
       case 'Teachers':
-        return path.includes('/staff') || path.includes('/teachers') || (path.includes('/dashboard') && search.includes('tab=teachers'));
+        return (path.includes('/staff') || (path.includes('/teachers') && !path.includes('/teacher-dashboard'))) || (path.includes('/dashboard') && search.includes('tab=teachers'));
       case 'Academics & Exams':
-        return path.includes('/academics') || (path.includes('/dashboard') && search.includes('tab=academics'));
+        return (path.includes('/academics') && !search.includes('tab=timetable') && !path.includes('/timetable')) || (path.includes('/dashboard') && search.includes('tab=academics'));
       case 'Finance & Fees':
         return path.includes('/finance') || (path.includes('/dashboard') && search.includes('tab=finance'));
       case 'Facilities':
-        return path.includes('/transport') || path.includes('/routes') || (path.includes('/dashboard') && search.includes('tab=facilities'));
+        return (path.includes('/transport') || path.includes('/routes')) || (path.includes('/dashboard') && search.includes('tab=facilities'));
       case 'Communication & Reports':
         return path.includes('/communication') || path.includes('/reports') || (path.includes('/dashboard') && search.includes('tab=communication'));
       case 'My Schools & Campuses':
         return (path.includes('/superadmin') && search.includes('tab=schools')) || 
-               (path.includes('/dashboard') && search.includes('tab=schools')) || 
+               (path.includes('/dashboard') && search.includes('tab=schools') && isSuperAdmin) || 
                path.endsWith('/schools');
+      case 'Campus Profile':
+        return path.includes('/dashboard') && search.includes('tab=schools') && !isSuperAdmin;
       case 'System Configuration':
         return search.includes('tab=config');
       case 'System Health & Infra':
@@ -238,7 +243,7 @@ const Sidebar = () => {
         navigate(`${base}/attendance`);
         break;
       case 'Timetable Matrix':
-        navigate(`${base}/academics?tab=timetable`);
+        navigate(`${base}/timetable`);
         break;
       case 'Students & IDs':
         navigate(`${base}/students`);
@@ -260,6 +265,9 @@ const Sidebar = () => {
         break;
       case 'My Schools & Campuses':
         navigate(isSuperAdmin ? `${base}/superadmin?tab=schools` : `${base}/dashboard?tab=schools`);
+        break;
+      case 'Campus Profile':
+        navigate(`${base}/dashboard?tab=schools`);
         break;
       case 'System Configuration':
         navigate(isSuperAdmin ? `${base}/superadmin?tab=config` : `${base}/dashboard?tab=config`);

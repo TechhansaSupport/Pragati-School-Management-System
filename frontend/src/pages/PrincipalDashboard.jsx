@@ -6,8 +6,10 @@ import {
 import { 
   TrendingUp, Users, AlertTriangle, MoreVertical, Activity, HeartPulse, 
   Briefcase, CheckCircle2, ShieldCheck, Award, Calendar, ArrowUpRight, 
-  FileText, Sparkles, AlertCircle, Clock, ChevronRight
+  FileText, Sparkles, AlertCircle, Clock, ChevronRight, BarChart3, CheckSquare, Target
 } from 'lucide-react';
+
+const API_BASE = 'http://localhost:5000/api';
 
 const PrincipalDashboard = () => {
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
@@ -65,10 +67,20 @@ const PrincipalDashboard = () => {
     if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
 
     setLoading(true);
-    fetch('http://localhost:5000/api/dashboard/principal-summary', { headers })
+    fetch(`${API_BASE}/dashboard/principal-summary`, { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data) setPrincipalSummary(prev => ({ ...prev, ...data }));
+        if (data) {
+          setPrincipalSummary(prev => ({
+            ...prev,
+            ...data,
+            academicTrend: (data.academicTrend && data.academicTrend.length > 0) ? data.academicTrend : prev.academicTrend,
+            attendanceData: (data.attendanceData && data.attendanceData.length > 0) ? data.attendanceData : prev.attendanceData,
+            riskStudents: (data.riskStudents && data.riskStudents.length > 0) ? data.riskStudents : prev.riskStudents,
+            teacherWorkloads: (data.teacherWorkloads && data.teacherWorkloads.length > 0) ? data.teacherWorkloads : prev.teacherWorkloads,
+            healthDashboard: data.healthDashboard || prev.healthDashboard,
+          }));
+        }
       })
       .catch(err => console.warn('Principal summary error:', err))
       .finally(() => setLoading(false));
@@ -109,7 +121,7 @@ const PrincipalDashboard = () => {
             }}>
               <HeartPulse size={14} color="#34D399" /> School Health Index
             </span>
-            <span style={{ fontSize: '0.82rem', opacity: 0.85 }}>Real-time Operational Telemetry</span>
+            <span style={{ fontSize: '0.82rem', opacity: 0.85 }}>Campus: {tenantSlug || 'Main Campus'}</span>
           </div>
           <h1 style={{ margin: '0 0 8px', fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
             {userInfo.name ? `${userInfo.name}'s Executive Overview` : 'Principal Executive Command'}
@@ -125,10 +137,10 @@ const PrincipalDashboard = () => {
           backdropFilter: 'blur(12px)',
           border: '1px solid rgba(255, 255, 255, 0.2)',
           padding: '16px 28px', 
-          borderRadius: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '20px'
+          borderRadius: '16px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '20px' 
         }}>
           <div>
             <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.85, fontWeight: 700, letterSpacing: '0.05em' }}>Composite Health</div>
@@ -147,7 +159,7 @@ const PrincipalDashboard = () => {
         </div>
       </div>
 
-      {/* 5-PILLAR SCHOOL HEALTH SCORECARDS (Section 10.6) */}
+      {/* 5-PILLAR SCHOOL HEALTH SCORECARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
         {(healthDashboard?.pillars || []).map((pillar, idx) => (
           <div 
@@ -203,69 +215,31 @@ const PrincipalDashboard = () => {
       </div>
 
       {/* NAVIGATION TABS FOR PRINCIPAL INTELLIGENCE MODULES */}
-      <div style={{ display: 'flex', gap: '8px', background: 'white', padding: '4px', borderRadius: '12px', border: '1px solid var(--color-border)', width: 'fit-content' }}>
-        <button 
-          onClick={() => setActiveTab('health')}
-          style={{ 
-            padding: '8px 20px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            fontWeight: 700, 
-            fontSize: '0.88rem', 
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            backgroundColor: activeTab === 'health' ? '#4F46E5' : 'transparent', 
-            color: activeTab === 'health' ? 'white' : 'var(--color-text-secondary)', 
-            transition: 'all 0.2s',
-            boxShadow: activeTab === 'health' ? '0 2px 8px rgba(79, 70, 229, 0.3)' : 'none'
-          }}
-        >
-          <Activity size={16} /> Academic & Attendance Health
-        </button>
-
-        <button 
-          onClick={() => setActiveTab('workload')}
-          style={{ 
-            padding: '8px 20px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            fontWeight: 700, 
-            fontSize: '0.88rem', 
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            backgroundColor: activeTab === 'workload' ? '#0F766E' : 'transparent', 
-            color: activeTab === 'workload' ? 'white' : 'var(--color-text-secondary)', 
-            transition: 'all 0.2s',
-            boxShadow: activeTab === 'workload' ? '0 2px 8px rgba(15, 118, 110, 0.3)' : 'none'
-          }}
-        >
-          <Briefcase size={16} /> Teacher Workload Analytics (10.9)
-        </button>
-
-        <button 
-          onClick={() => setActiveTab('risk')}
-          style={{ 
-            padding: '8px 20px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            fontWeight: 700, 
-            fontSize: '0.88rem', 
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            backgroundColor: activeTab === 'risk' ? '#DC2626' : 'transparent', 
-            color: activeTab === 'risk' ? 'white' : 'var(--color-text-secondary)', 
-            transition: 'all 0.2s',
-            boxShadow: activeTab === 'risk' ? '0 2px 8px rgba(220, 38, 38, 0.3)' : 'none'
-          }}
-        >
-          <AlertTriangle size={16} /> Early Academic-Risk Indicator (10.4)
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0 10px 0' }}>
+        <div className="system-tabs-container">
+          {[
+            { id: 'health', label: 'Academic & Attendance Health', icon: Activity, count: `${healthDashboard?.compositeScore || 93}% Health` },
+            { id: 'workload', label: 'Faculty Workload Analytics', icon: Briefcase, count: `${teacherWorkloads?.length || 0} Faculty` },
+            { id: 'risk', label: 'Early Academic-Risk Intervention', icon: AlertTriangle, count: `${riskStudents?.length || 0} At Risk` }
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button 
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`system-tab-btn ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={16} />
+                <span>{tab.label}</span>
+                <span className="system-tab-badge">
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* TAB 1: ACADEMIC & ATTENDANCE HEALTH */}
@@ -276,8 +250,9 @@ const PrincipalDashboard = () => {
           <div className="chart-card" style={{ padding: '22px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a' }}>
-                  📈 Academic Performance Trend (School Average)
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={18} color="#4F46E5" />
+                  Academic Performance Trend (School Average)
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                   Progressive term-over-term score progression across all classes
@@ -311,8 +286,9 @@ const PrincipalDashboard = () => {
           <div className="chart-card" style={{ padding: '22px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a' }}>
-                  📊 Smart Attendance Analytics by Grade
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <BarChart3 size={18} color="#4F46E5" />
+                  Smart Attendance Analytics by Grade
                 </h3>
                 <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                   Live attendance variance tracking with chronic absenteeism thresholds
@@ -345,14 +321,15 @@ const PrincipalDashboard = () => {
         </div>
       )}
 
-      {/* TAB 2: TEACHER WORKLOAD ANALYTICS (Section 10.9) */}
+      {/* TAB 2: TEACHER WORKLOAD ANALYTICS */}
       {activeTab === 'workload' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div className="chart-card" style={{ padding: '20px 24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#1e3a8a' }}>
-                👨‍🏫 Faculty Workload & Allocation Analytics
+              <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={19} color="#4F46E5" />
+                Faculty Workload & Allocation Analytics
               </h3>
               <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
                 Tracking teaching periods, active students, and evaluation queues to prevent burnout and ensure teaching quality.
@@ -503,8 +480,9 @@ const PrincipalDashboard = () => {
                       Recommended Intervention
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F766E' }}>
-                        🎯 {student.recommendedAction || 'Schedule Parent Conference'}
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F766E', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <Target size={15} color="#0F766E" />
+                        {student.recommendedAction || 'Schedule Parent Conference'}
                       </span>
                       <button 
                         onClick={() => alert(`Intervention protocol initiated for ${student.name}. Teacher coordinator alerted.`)}

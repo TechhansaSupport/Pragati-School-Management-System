@@ -51,13 +51,24 @@ router.get('/transactions', async (req, res) => {
     const { search, page = 1, limit = 50, type, status, category, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
-    const effectiveSchoolSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const effectiveSchoolSlug = isSuperAdmin 
+      ? (schoolSlug || req.schoolSlug || req.headers['x-school-slug']) 
+      : req.schoolSlug;
+
     if (effectiveSchoolSlug && effectiveSchoolSlug !== 'all' && effectiveSchoolSlug !== 'central') {
-      query.$or = [
-        { schoolSlug: effectiveSchoolSlug },
-        { schoolSlug: null },
-        { schoolSlug: { $exists: false } }
-      ];
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === effectiveSchoolSlug;
+      if (isPrimary) {
+        query.$or = [
+          { schoolSlug: effectiveSchoolSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        query.schoolSlug = effectiveSchoolSlug;
+      }
     }
 
     if (search) {
@@ -103,15 +114,22 @@ router.get('/transactions', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
-    const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    const targetSlug = isSuperAdmin ? (req.query.schoolSlug || req.schoolSlug) : req.schoolSlug;
     
     let scopeFilter = { entityId: req.entityId };
     if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
-      scopeFilter.$or = [
-        { schoolSlug: targetSlug },
-        { schoolSlug: null },
-        { schoolSlug: { $exists: false } }
-      ];
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === targetSlug;
+      if (isPrimary) {
+        scopeFilter.$or = [
+          { schoolSlug: targetSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        scopeFilter.schoolSlug = targetSlug;
+      }
     }
 
     const collectionsMatch = { $match: { ...scopeFilter, type: 'Fee Collection', status: 'Completed' } };
@@ -151,15 +169,23 @@ router.get('/stats', async (req, res) => {
 // GET /api/finance/analytics — Real Live MongoDB Aggregated Financial Intelligence
 router.get('/analytics', async (req, res) => {
   try {
-    const targetSlug = req.query.schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const targetSlug = isSuperAdmin ? (req.query.schoolSlug || req.schoolSlug) : req.schoolSlug;
     
     let scopeFilter = { entityId: req.entityId };
     if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
-      scopeFilter.$or = [
-        { schoolSlug: targetSlug },
-        { schoolSlug: null },
-        { schoolSlug: { $exists: false } }
-      ];
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === targetSlug;
+      if (isPrimary) {
+        scopeFilter.$or = [
+          { schoolSlug: targetSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        scopeFilter.schoolSlug = targetSlug;
+      }
     }
 
     // 1. Total Completed Collections

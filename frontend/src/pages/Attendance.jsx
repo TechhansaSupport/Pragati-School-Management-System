@@ -3,7 +3,8 @@ import {
   Calendar, CheckCircle2, XCircle, Clock, AlertCircle, 
   Search, Users, Save, RefreshCw, ChevronLeft, ChevronRight, 
   Filter, FileText, Check, ShieldCheck, UserCheck, ArrowRight,
-  TrendingUp, Award, AlertTriangle, Building, BookOpen
+  TrendingUp, Award, AlertTriangle, Building, BookOpen,
+  ClipboardCheck, FileSpreadsheet, BarChart3
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -439,44 +440,32 @@ const Attendance = () => {
         </div>
       </div>
 
-      {/* TAB BAR NAVIGATION */}
-      <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #e2e8f0', paddingBottom: '2px' }}>
-        {[
-          { id: 'mark', label: '📋 Mark Class Attendance', count: roster.length },
-          { id: 'school-sheet', label: '📊 School-Wide Daily Sheet', count: dailyStats.totalClasses },
-          { id: 'analytics', label: '📈 Absence Alerts & Analytics', count: dailyStats.overallAbsent }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              padding: '12px 20px',
-              background: 'none',
-              border: 'none',
-              borderBottom: activeTab === tab.id ? '3px solid #1e3a8a' : '3px solid transparent',
-              color: activeTab === tab.id ? '#1e3a8a' : '#64748b',
-              fontWeight: activeTab === tab.id ? 800 : 600,
-              fontSize: '0.95rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s',
-            }}
-          >
-            <span>{tab.label}</span>
-            <span style={{
-              background: activeTab === tab.id ? '#dbeafe' : '#f1f5f9',
-              color: activeTab === tab.id ? '#1e3a8a' : '#64748b',
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '0.75rem',
-              fontWeight: 700
-            }}>
-              {tab.count}
-            </span>
-          </button>
-        ))}
+      {/* SYSTEM NAVIGATION TABS TEMPLATE */}
+      <div style={{ display: 'flex', alignItems: 'center', margin: '2px 0 6px 0' }}>
+        <div className="system-tabs-container">
+          {[
+            { id: 'mark', label: 'Mark Class Attendance', icon: ClipboardCheck, count: roster.length },
+            { id: 'school-sheet', label: 'School-Wide Daily Sheet', icon: FileSpreadsheet, count: dailyStats.totalClasses },
+            { id: 'analytics', label: 'Absence Alerts & Analytics', icon: BarChart3, count: dailyStats.overallAbsent }
+          ].map(tab => {
+            const isActive = activeTab === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`system-tab-btn ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={16} />
+                <span>{tab.label}</span>
+                <span className="system-tab-badge">
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* TAB 1: MARK CLASS ATTENDANCE */}
@@ -517,11 +506,17 @@ const Attendance = () => {
                 <div style={{ display: 'flex', gap: '16px', paddingLeft: '16px', borderLeft: '1px solid #e2e8f0' }}>
                   <div>
                     <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Class Teacher</div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155' }}>👤 {currentClassObj.classTeacherName || 'Unassigned'}</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <UserCheck size={14} color="#4F46E5" />
+                      <span>{currentClassObj.classTeacherName || 'Unassigned'}</span>
+                    </div>
                   </div>
                   <div>
                     <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Room</div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155' }}>📍 {currentClassObj.roomNumber || 'Room 101'}</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Building size={14} color="#64748b" />
+                      <span>{currentClassObj.roomNumber || 'Room 101'}</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -966,10 +961,16 @@ const Attendance = () => {
                     {cls.className} - Section {cls.section}
                   </td>
                   <td style={{ padding: '14px 18px', color: '#475569', fontSize: '0.9rem' }}>
-                    👤 {cls.classTeacher}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <UserCheck size={14} color="#4F46E5" />
+                      {cls.classTeacher}
+                    </span>
                   </td>
                   <td style={{ padding: '14px 18px', color: '#64748b', fontSize: '0.85rem' }}>
-                    📍 {cls.room || 'TBD'}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <Building size={14} color="#64748b" />
+                      {cls.room || 'TBD'}
+                    </span>
                   </td>
                   <td style={{ padding: '14px 18px' }}>
                     <span style={{
@@ -1053,8 +1054,9 @@ const Attendance = () => {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {roster.filter(s => s.status === 'Absent').length === 0 ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: '#16a34a', fontWeight: 700, fontSize: '0.9rem' }}>
-                  🎉 No absent students in {selectedClass} on {selectedDate}!
+                <div style={{ padding: '30px', textAlign: 'center', color: '#16a34a', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <CheckCircle2 size={18} color="#16a34a" />
+                  <span>No absent students in {selectedClass} on {selectedDate}!</span>
                 </div>
               ) : (
                 roster.filter(s => s.status === 'Absent').map((s, i) => (

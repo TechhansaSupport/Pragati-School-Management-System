@@ -197,8 +197,22 @@ router.get('/', async (req, res) => {
 
     const query = { entityId: req.entityId };
 
-    if (schoolSlug && schoolSlug !== 'All' && schoolSlug !== 'all') {
-      query.schoolSlug = schoolSlug;
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const effectiveSlug = isSuperAdmin ? schoolSlug : req.schoolSlug;
+
+    if (effectiveSlug && effectiveSlug !== 'All' && effectiveSlug !== 'all') {
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === effectiveSlug;
+      if (isPrimary) {
+        query.$or = [
+          { schoolSlug: effectiveSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        query.schoolSlug = effectiveSlug;
+      }
     }
 
     if (search) {

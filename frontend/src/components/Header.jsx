@@ -276,13 +276,13 @@ const Header = () => {
                   transition: 'all 0.2s',
                   boxShadow: isSchoolDropdownOpen ? '0 0 0 2px rgba(79, 70, 229, 0.15)' : 'none'
                 }}
-                title="Click to switch school or open separate window"
+                title={role === 'superadmin' ? "Click to switch school or open separate window" : `${role === 'principal' ? 'Campus Principal' : 'Branch Administrator'} for ${schoolName || 'Main Campus'}`}
               >
                 <span>{role === 'superadmin' && location.pathname.includes('/superadmin') ? '🛡️' : '🏫'}</span>
                 <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {role === 'superadmin' && location.pathname.includes('/superadmin') ? 'Super Admin Console' : (schoolName || 'Main Campus')}
                 </span>
-                {schoolsList.length > 1 && (
+                {role === 'superadmin' && schoolsList.length > 1 && (
                   <span style={{ 
                     fontSize: '0.66rem', 
                     background: '#4F46E5', 
@@ -294,10 +294,36 @@ const Header = () => {
                     {schoolsList.length}
                   </span>
                 )}
+                {role === 'admin' && (
+                  <span style={{ 
+                    fontSize: '0.64rem', 
+                    background: 'rgba(124, 58, 237, 0.15)', 
+                    color: '#6d28d9', 
+                    borderRadius: '5px', 
+                    padding: '1px 6px', 
+                    fontWeight: 800,
+                    border: '1px solid rgba(124, 58, 237, 0.3)' 
+                  }}>
+                    Branch Admin
+                  </span>
+                )}
+                {role === 'principal' && (
+                  <span style={{ 
+                    fontSize: '0.64rem', 
+                    background: 'rgba(14, 165, 233, 0.15)', 
+                    color: '#0369a1', 
+                    borderRadius: '5px', 
+                    padding: '1px 6px', 
+                    fontWeight: 800,
+                    border: '1px solid rgba(14, 165, 233, 0.3)' 
+                  }}>
+                    Campus Principal
+                  </span>
+                )}
                 <ChevronDown size={13} style={{ transform: isSchoolDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </button>
 
-              {/* Multi-School Selector & Window Launcher Dropdown */}
+              {/* School Dropdown: Branch Admin Dedicated Hub OR Super Admin Multi-School Launcher */}
               {isSchoolDropdownOpen && (
                 <div 
                   className="school-selector-dropdown"
@@ -317,47 +343,108 @@ const Header = () => {
                     animation: 'fade-in-down 0.15s ease-out'
                   }}
                 >
-                  {/* Header */}
-                  <div style={{ 
-                    padding: '12px 14px', 
-                    background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(15, 118, 110, 0.08) 100%)', 
-                    borderBottom: '1px solid #e2e8f0',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Building2 size={15} color="#4F46E5" /> My Schools & Campuses
+                  {role === 'admin' || role === 'principal' ? (
+                    <div style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: role === 'principal' ? '#0369a1' : '#6d28d9', background: role === 'principal' ? '#e0f2fe' : '#ede9fe', padding: '2px 8px', borderRadius: '6px' }}>
+                          🛡️ {role === 'principal' ? 'Principal Authority Active' : 'Branch Authority Active'}
+                        </span>
+                        <span style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, background: '#dcfce7', padding: '2px 6px', borderRadius: '6px' }}>
+                          ● Active Campus
+                        </span>
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                        Open in separate windows or switch context
+
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '2px' }}>
+                        {schoolName || 'Main Campus'}
+                      </div>
+                      <div style={{ fontSize: '0.73rem', color: '#64748b', marginBottom: '12px' }}>
+                        Branch handle: <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', color: '#334155' }}>/{tenantSlug}</code>
+                      </div>
+
+                      <div style={{
+                        background: role === 'principal' ? 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)' : 'linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)',
+                        border: role === 'principal' ? '1px solid #bae6fd' : '1px solid #ddd6fe',
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        fontSize: '0.78rem',
+                        color: '#475569',
+                        lineHeight: 1.5,
+                        marginBottom: '14px'
+                      }}>
+                        <strong style={{ color: role === 'principal' ? '#0284c7' : '#6d28d9', display: 'block', marginBottom: '3px' }}>
+                          {role === 'principal' ? 'Campus Principal Authority' : 'Branch Administrator Authority'}
+                        </strong>
+                        You have dedicated authority to manage this school branch only. You oversee academic telemetry, enrolled students, faculty roster, schedules, and facilities for <strong>{schoolName || tenantSlug}</strong>. Cross-branch infrastructure is managed centrally by the Super Administrator.
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            navigate(`/${tenantSlug}/dashboard?tab=config`);
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: '#4F46E5',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <Settings size={13} /> Campus Settings & Geofence
+                        </button>
                       </div>
                     </div>
-                    {(role === 'admin' || role === 'superadmin') && (
-                      <button
-                        onClick={() => {
-                          setIsSchoolDropdownOpen(false);
-                          setIsCreateSchoolOpen(true);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: '#4F46E5',
-                          color: 'white',
-                          border: 'none',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <Plus size={12} /> New School
-                      </button>
-                    )}
-                  </div>
+                  ) : (
+                    <>
+                      {/* Super Admin Multi-School Header */}
+                      <div style={{ 
+                        padding: '12px 14px', 
+                        background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(15, 118, 110, 0.08) 100%)', 
+                        borderBottom: '1px solid #e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Building2 size={15} color="#4F46E5" /> My Schools & Campuses
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                            Open in separate windows or switch context
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            setIsCreateSchoolOpen(true);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#4F46E5',
+                            color: 'white',
+                            border: 'none',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Plus size={12} /> New School
+                        </button>
+                      </div>
 
                   {/* School Items List */}
                   <div style={{ maxHeight: '310px', overflowY: 'auto', padding: '6px' }}>
@@ -671,17 +758,19 @@ const Header = () => {
                       {schoolsList.length} Active {schoolsList.length === 1 ? 'School' : 'Schools'}
                     </span>
                   </div>
+                  </>
+                  )}
                 </div>
               )}
             </div>
 
-            {(role === 'admin' || role === 'superadmin' || role === 'principal') && (
+            {role === 'superadmin' && (
               <span 
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(tenantSlug ? `/${tenantSlug}/dashboard?tab=schools` : '/dashboard?tab=schools');
+                  navigate(tenantSlug ? `/${tenantSlug}/superadmin?tab=schools` : '/superadmin?tab=schools');
                 }}
-                title="Admin Authority: Open Multi-School & Campus Hub"
+                title="Super Admin Authority: Open Multi-School & Campus Hub"
                 style={{
                   fontSize: '0.67rem',
                   fontWeight: 600,

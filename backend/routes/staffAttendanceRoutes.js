@@ -515,7 +515,8 @@ router.get('/daily-sheet', async (req, res) => {
   try {
     const { date, department, search, schoolSlug } = req.query;
     const targetDate = date || getTodayDateString();
-    const targetSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const targetSlug = isSuperAdmin ? (schoolSlug || req.schoolSlug) : req.schoolSlug;
 
     // 1. Fetch all Staff members for this campus
     const staffQuery = { entityId: req.entityId, status: { $ne: 'Resigned' } };

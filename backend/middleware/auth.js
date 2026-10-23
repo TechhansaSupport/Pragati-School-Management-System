@@ -32,10 +32,38 @@ const protect = async (req, res, next) => {
     // 2. Multi-School Context Resolution strictly bounded to the user's entityId
     const requestedSlug = (req.headers['x-tenant-slug'] || req.headers['x-school-slug'] || '').trim();
     const userRole = (decoded.role || '').toLowerCase();
-    const isAdmin = ['admin', 'superadmin'].includes(userRole);
     const userEntityId = decoded.entityId;
 
-    let targetSlug = (isAdmin && requestedSlug) ? requestedSlug : (decoded.storeId || decoded.slug || decoded.tenantSlug || requestedSlug);
+    // Check if the user is an appointed Branch Admin or Principal
+    let assignedBranchSlug = decoded.schoolSlug || decoded.tenantSlug || decoded.slug;
+    if (userRole === 'admin' || userRole === 'principal') {
+      if (!assignedBranchSlug || assignedBranchSlug === 'central' || assignedBranchSlug === 'all') {
+        const uDoc = await User.findById(decoded.id || decoded.userId).select('schoolSlug slug').catch(() => null);
+        if (uDoc && (uDoc.schoolSlug || uDoc.slug)) {
+          assignedBranchSlug = uDoc.schoolSlug || uDoc.slug;
+        }
+      }
+    }
+
+    let targetSlug;
+    if (userRole === 'superadmin') {
+      targetSlug = (requestedSlug && requestedSlug !== 'central' && requestedSlug !== 'all')
+        ? requestedSlug
+        : (decoded.storeId || decoded.slug || decoded.tenantSlug || requestedSlug);
+    } else if ((userRole === 'admin' || userRole === 'principal') && assignedBranchSlug) {
+      // Branch Admin or Principal is strictly locked to their appointed branch only!
+      if (requestedSlug && requestedSlug !== 'all' && requestedSlug !== 'central' && requestedSlug !== assignedBranchSlug) {
+        return res.status(403).json({
+          error: `Access Denied: You are appointed to branch "${assignedBranchSlug}" only. You do not have authority to manage other branches.`,
+          code: 'BRANCH_FORBIDDEN',
+          message: `Access Denied: You are appointed to branch "${assignedBranchSlug}" only. You do not have authority to manage other branches.`
+        });
+      }
+      targetSlug = assignedBranchSlug;
+    } else {
+      targetSlug = assignedBranchSlug || decoded.storeId || decoded.slug || decoded.tenantSlug || requestedSlug;
+    }
+
     let tenant = null;
     let schoolUser = null;
 
@@ -171,12 +199,15 @@ const protect = async (req, res, next) => {
     };
 
     // Attach verified user, school and tenant context strictly isolated to user's entity
-    req.user = decoded;
+    req.user = {
+      ...decoded,
+      schoolSlug: (userRole === 'admin' && assignedBranchSlug) ? assignedBranchSlug : (decoded.schoolSlug || effectiveSlug)
+    };
     req.tenant = effectiveTenant;
     req.pragatiTenant = pragatiTenant;
     req.entityId = effectiveEntityId;
     req.school = schoolUser;
-    req.schoolSlug = schoolUser ? (schoolUser.slug || schoolUser.schoolSlug) : (effectiveSlug || effectiveTenant.slug);
+    req.schoolSlug = (userRole === 'admin' && assignedBranchSlug) ? assignedBranchSlug : (schoolUser ? (schoolUser.slug || schoolUser.schoolSlug) : (effectiveSlug || effectiveTenant.slug));
 
     next();
   } catch (error) {

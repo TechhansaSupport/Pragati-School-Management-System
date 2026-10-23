@@ -61,6 +61,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
+  const role = (sessionStorage.getItem('userRole') || 'admin').toLowerCase();
+  const isSuperAdmin = role === 'superadmin';
   const [activeModule, setActiveModule] = useState('Overview');
 
   // Multi-School & Campus Hub State
@@ -777,42 +779,46 @@ const Dashboard = () => {
                 alignItems: 'center',
                 gap: '6px'
               }}>
-                <ShieldCheck size={14} color="#93c5fd" /> Super Admin Multi-Branch Control Active
+                <ShieldCheck size={14} color="#93c5fd" /> {isSuperAdmin ? 'Super Admin Multi-Branch Control Active' : 'Branch Administrator Authority Active'}
               </span>
               <span style={{ fontSize: '0.8rem', color: '#bfdbfe' }}>
                 • Active Window: <strong style={{ color: 'white' }}>{schoolNameInput || tenantSlug || 'Default School'}</strong>
               </span>
             </div>
             <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-              Multi-School & Campus Control Center
+              {isSuperAdmin ? 'Multi-School & Campus Control Center' : 'Campus Branch Operations Center'}
             </h1>
             <p style={{ margin: '8px 0 0 0', fontSize: '0.95rem', color: '#e0e7ff', lineHeight: 1.5, opacity: 0.95 }}>
-              Create school branches without creating new licensed tenants. As Super Admin, appoint dedicated Branch Admins and Principals with isolated credentials for each campus.
+              {isSuperAdmin 
+                ? 'Create school branches without creating new licensed tenants. As Super Admin, appoint dedicated Branch Admins and Principals with isolated credentials for each campus.'
+                : `You are the appointed Branch Administrator for ${schoolNameInput || tenantSlug}. You have complete administrative authority to oversee students, faculty rosters, timetables, and campus facilities for this branch.`}
             </p>
           </div>
 
-          <button
-            onClick={() => setIsCreateSchoolOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#ffffff',
-              color: '#1e3a8a',
-              border: 'none',
-              padding: '12px 24px',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-              transition: 'transform 0.2s'
-            }}
-            onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            <Plus size={18} color="#4F46E5" /> Register New School / Branch
-          </button>
+          {isSuperAdmin && (
+            <button
+              onClick={() => setIsCreateSchoolOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: '#ffffff',
+                color: '#1e3a8a',
+                border: 'none',
+                padding: '12px 24px',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '0.92rem',
+                cursor: 'pointer',
+                boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                transition: 'transform 0.2s'
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <Plus size={18} color="#4F46E5" /> Register New School / Branch
+            </button>
+          )}
         </div>
 
         {/* Multi-Window Explainer Card */}
@@ -963,12 +969,18 @@ const Dashboard = () => {
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6d28d9', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <UserCog size={13} color="#7c3aed" /> Branch Administrator
                       </span>
-                      <button
-                        onClick={() => setTargetSchoolForAdmin(school)}
-                        style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
-                      >
-                        {a?.name ? '✎ Reassign Admin' : '+ Appoint Admin'}
-                      </button>
+                      {isSuperAdmin ? (
+                        <button
+                          onClick={() => setTargetSchoolForAdmin(school)}
+                          style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                        >
+                          {a?.name ? '✎ Reassign Admin' : '+ Appoint Admin'}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#6d28d9', background: '#ede9fe', padding: '1px 6px', borderRadius: '4px' }}>
+                          ● Assigned Leadership
+                        </span>
+                      )}
                     </div>
 
                     {a?.name ? (
@@ -1082,24 +1094,26 @@ const Dashboard = () => {
                       ⚙ Settings & Branding
                     </button>
 
-                    {schoolsList.length > 1 ? (
-                      <button
-                        type="button"
-                        onClick={() => setTargetSchoolForDelete(school)}
-                        style={{ padding: '8px 12px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                        title="Permanently delete this campus branch"
-                      >
-                        <Trash2 size={13} /> Delete
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled
-                        style={{ padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1', color: '#94a3b8', fontWeight: 500, fontSize: '0.74rem', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                        title="Cannot delete the only remaining school campus in your organization"
-                      >
-                        <Trash2 size={13} /> Only Campus (Protected)
-                      </button>
+                    {isSuperAdmin && (
+                      schoolsList.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => setTargetSchoolForDelete(school)}
+                          style={{ padding: '8px 12px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          title="Permanently delete this campus branch"
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          style={{ padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1', color: '#94a3b8', fontWeight: 500, fontSize: '0.74rem', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          title="Cannot delete the only remaining school campus in your organization"
+                        >
+                          <Trash2 size={13} /> Only Campus (Protected)
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

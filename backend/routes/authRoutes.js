@@ -269,6 +269,25 @@ router.post('/login', async (req, res) => {
       userRole = 'superadmin';
     }
 
+    let finalSlug = resolvedSlug;
+    let finalSchoolName = resolvedSchoolName;
+
+    // Appointed Branch Admin: locked to their specific assigned schoolSlug
+    if (!isPragatiUser && userRole === 'admin') {
+      const branchSlug = authenticatedUser.schoolSlug;
+      if (branchSlug) {
+        finalSlug = branchSlug;
+        const branchSchool = await User.findOne({
+          role: 'school',
+          entityId: resolvedEntityId,
+          $or: [{ slug: branchSlug }, { schoolSlug: branchSlug }, { uniqueId: branchSlug }]
+        });
+        if (branchSchool) {
+          finalSchoolName = branchSchool.name || branchSchool.schoolName || branchSlug;
+        }
+      }
+    }
+
     const resolvedUsername = isPragatiUser
       ? (authenticatedUser.username || username)
       : (authenticatedUser.uniqueId || username);
@@ -280,10 +299,10 @@ router.post('/login', async (req, res) => {
         username: resolvedUsername,
         role: userRole,
         entityId: resolvedEntityId,
-        slug: resolvedSlug,
-        storeId: resolvedSlug,
-        tenantSlug: resolvedSlug,
-        schoolSlug: resolvedSlug,
+        slug: finalSlug,
+        storeId: finalSlug,
+        tenantSlug: finalSlug,
+        schoolSlug: finalSlug,
       },
       process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024',
       { expiresIn: '30d' }
@@ -299,12 +318,14 @@ router.post('/login', async (req, res) => {
       profileImage: authenticatedUser.profileImage || authenticatedUser.avatar || '',
       role: userRole,
       isSuperAdmin: userRole === 'superadmin',
-      tenantSlug: resolvedSlug,
-      slug: resolvedSlug,
-      storeId: resolvedSlug,
-      schoolSlug: resolvedSlug,
+      isBranchAdmin: userRole === 'admin',
+      branchSlug: userRole === 'admin' ? finalSlug : null,
+      tenantSlug: finalSlug,
+      slug: finalSlug,
+      storeId: finalSlug,
+      schoolSlug: finalSlug,
       entityId: resolvedEntityId,
-      schoolName: resolvedSchoolName,
+      schoolName: finalSchoolName,
       token,
     });
   } catch (error) {
@@ -348,10 +369,17 @@ router.get('/me', protect, async (req, res) => {
     effectiveRole = 'superadmin';
   }
 
+  const isBranchAdmin = effectiveRole === 'admin';
+  const branchSlug = isBranchAdmin ? (fullUser?.schoolSlug || req.user?.schoolSlug || req.schoolSlug) : null;
+
   res.json({
     user: {
       ...req.user,
       role: effectiveRole || req.user?.role,
+      isSuperAdmin: effectiveRole === 'superadmin',
+      isBranchAdmin,
+      branchSlug,
+      schoolSlug: req.schoolSlug || req.user?.schoolSlug,
       name: fullUser?.name || '',
       email: fullUser?.email || '',
       profileImage: fullUser?.profileImage || fullUser?.avatar || ''

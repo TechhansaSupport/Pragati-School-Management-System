@@ -231,12 +231,23 @@ router.get('/list', protect, async (req, res) => {
       })
     );
 
+    let visibleSchools = enrichedSchools;
+    if (req.user?.role !== 'superadmin') {
+      const targetSlug = req.schoolSlug || req.user?.schoolSlug;
+      if (targetSlug) {
+        visibleSchools = enrichedSchools.filter(s => s.slug === targetSlug);
+        if (visibleSchools.length === 0 && enrichedSchools.length > 0) {
+          visibleSchools = [enrichedSchools.find(s => s.isCurrent) || enrichedSchools[0]];
+        }
+      }
+    }
+
     return res.json({
       success: true,
-      count: enrichedSchools.length,
+      count: visibleSchools.length,
       currentSchoolSlug: req.schoolSlug || req.tenant?.slug || req.user?.slug,
       currentEntityId: req.entityId,
-      schools: enrichedSchools
+      schools: visibleSchools
     });
   } catch (error) {
     console.error('Error fetching schools list:', error);
@@ -244,11 +255,11 @@ router.get('/list', protect, async (req, res) => {
   }
 });
 
-// @desc    Register a New School Campus / Branch (Admin Authority)
+// @desc    Register a New School Campus / Branch (Super Admin Authority)
 //          Schools are stored in `users` in `school_ms` DB. DO NOT create new tenants or touch `pragati` DB.
 // @route   POST /api/school/create
-// @access  Protected (Admin / Superadmin)
-router.post('/create', protect, authorize('admin', 'superadmin'), async (req, res) => {
+// @access  Protected (Superadmin)
+router.post('/create', protect, authorize('superadmin'), async (req, res) => {
   try {
     const { 
       name, 
@@ -444,11 +455,11 @@ router.post('/create', protect, authorize('admin', 'superadmin'), async (req, re
   }
 });
 
-// @desc    Delete a School Campus / Branch (Admin Authority)
+// @desc    Delete a School Campus / Branch (Super Admin Authority)
 //          Deletes from `users` (or local store) and cascade deletes data in school_ms. Zero writes to pragati DB.
 // @route   DELETE /api/school/:slug
-// @access  Protected (Admin / Superadmin)
-router.delete('/:slug', protect, authorize('admin', 'superadmin'), async (req, res) => {
+// @access  Protected (Superadmin)
+router.delete('/:slug', protect, authorize('superadmin'), async (req, res) => {
   try {
     const targetSlug = (req.params.slug || '').trim();
     if (!targetSlug) {
@@ -570,7 +581,7 @@ router.delete('/:slug', protect, authorize('admin', 'superadmin'), async (req, r
 // @desc    Appoint or Update the Branch Admin for a specific school (Super Admin Authority)
 // @route   POST /api/school/:slug/appoint-admin
 // @access  Protected (Superadmin)
-router.post('/:slug/appoint-admin', protect, authorize('superadmin', 'admin'), async (req, res) => {
+router.post('/:slug/appoint-admin', protect, authorize('superadmin'), async (req, res) => {
   try {
     const slug = (req.params.slug || '').trim();
     const { name, email, phone, qualification, portalUsername, portalPassword } = req.body;
@@ -704,6 +715,13 @@ router.post('/:slug/appoint-admin', protect, authorize('superadmin', 'admin'), a
 router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const slug = (req.params.slug || '').trim();
+
+    if (req.user?.role === 'admin' && req.schoolSlug && slug !== req.schoolSlug) {
+      return res.status(403).json({
+        error: `Access Denied: You are appointed to manage branch "${req.schoolSlug}" only. You cannot appoint a principal for branch "${slug}".`,
+        code: 'BRANCH_FORBIDDEN'
+      });
+    }
     const { 
       name, 
       email, 
@@ -908,6 +926,13 @@ router.post('/:slug/appoint-principal', protect, authorize('admin', 'superadmin'
 router.post('/:slug/assign-staff', protect, authorize('superadmin', 'admin'), async (req, res) => {
   try {
     const slug = (req.params.slug || '').trim();
+
+    if (req.user?.role === 'admin' && req.schoolSlug && slug !== req.schoolSlug) {
+      return res.status(403).json({
+        error: `Access Denied: You are appointed to manage branch "${req.schoolSlug}" only. You cannot assign staff for branch "${slug}".`,
+        code: 'BRANCH_FORBIDDEN'
+      });
+    }
     const {
       name,
       role = 'Teacher',
@@ -1587,6 +1612,14 @@ const updateSchoolConfigHandler = async (req, res) => {
 router.put('/:slug', protect, authorize('admin', 'superadmin', 'principal'), async (req, res) => {
   try {
     const slug = (req.params.slug || '').trim();
+
+    if (req.user?.role === 'admin' && req.schoolSlug && slug !== req.schoolSlug) {
+      return res.status(403).json({
+        error: `Access Denied: You are appointed to manage branch "${req.schoolSlug}" only. You cannot modify branch "${slug}".`,
+        code: 'BRANCH_FORBIDDEN'
+      });
+    }
+
     const entityId = req.entityId;
     const {
       name,

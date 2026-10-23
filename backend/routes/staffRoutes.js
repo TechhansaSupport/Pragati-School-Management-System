@@ -125,13 +125,24 @@ router.get('/', async (req, res) => {
     const { search, page = 1, limit = 50, role, department, status, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
-    const effectiveSchoolSlug = schoolSlug || (req.user?.role !== 'superadmin' ? (req.schoolSlug || req.headers['x-school-slug']) : null);
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const effectiveSchoolSlug = isSuperAdmin
+      ? (schoolSlug || req.schoolSlug || req.headers['x-school-slug'])
+      : req.schoolSlug;
+
     if (effectiveSchoolSlug && effectiveSchoolSlug !== 'all' && effectiveSchoolSlug !== 'central') {
-      query.$or = [
-        { schoolSlug: effectiveSchoolSlug },
-        { schoolSlug: null },
-        { schoolSlug: { $exists: false } }
-      ];
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === effectiveSchoolSlug;
+      if (isPrimary) {
+        query.$or = [
+          { schoolSlug: effectiveSchoolSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        query.schoolSlug = effectiveSchoolSlug;
+      }
     }
 
     if (search) {
@@ -364,7 +375,10 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Name, Role, and Department are required' });
     }
 
-    const assignedSchoolSlug = (schoolSlug || req.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || '').trim();
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const assignedSchoolSlug = isSuperAdmin
+      ? (schoolSlug || req.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || '').trim()
+      : req.schoolSlug;
 
     // Auto-generate employeeId if not supplied
     let empId = employeeId;
@@ -499,8 +513,14 @@ router.put('/:id', async (req, res) => {
           : [];
     }
 
+    const isSuperAdmin = !req.user || (req.user?.role || '').toLowerCase() === 'superadmin';
+    const filter = isSuperAdmin ? { _id: req.params.id } : { _id: req.params.id, entityId: req.entityId };
+    if (!isSuperAdmin && req.schoolSlug) {
+      filter.$or = [{ schoolSlug: req.schoolSlug }, { schoolSlug: null }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
     const member = await Staff.findOneAndUpdate(
-      { _id: req.params.id, entityId: req.entityId },
+      filter,
       otherData,
       { new: true, runValidators: true }
     );
@@ -534,6 +554,9 @@ router.delete('/:id', async (req, res) => {
   try {
     const isSuperAdmin = !req.user || (req.user?.role || '').toLowerCase() === 'superadmin';
     const filter = isSuperAdmin ? { _id: req.params.id } : { _id: req.params.id, entityId: req.entityId };
+    if (!isSuperAdmin && req.schoolSlug) {
+      filter.$or = [{ schoolSlug: req.schoolSlug }, { schoolSlug: null }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
     const member = await Staff.findOneAndDelete(filter);
 
     if (!member) {
