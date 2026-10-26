@@ -68,10 +68,7 @@ const TransportDashboard = () => {
         boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.4)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Fleet & Transport Management 🚌</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            Live fleet logistics tracking {transportStats.totalFleet || 5} active campus bus routes and {transportStats.mappedStudents || 188} enrolled students.
-          </p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Fleet & Transport Management 🚌</h2>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button 

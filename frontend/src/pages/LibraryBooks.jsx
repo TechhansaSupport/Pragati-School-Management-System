@@ -102,10 +102,7 @@ const LibraryBooks = () => {
         boxShadow: '0 10px 25px -5px rgba(14, 165, 233, 0.4)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Books Catalogue 📖</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            Live MongoDB library catalog for current school campus: <strong>{tenantSlug || 'Active School'}</strong>
-          </p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Books Catalogue 📖</h2>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <select 

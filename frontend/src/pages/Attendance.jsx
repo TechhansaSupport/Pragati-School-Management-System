@@ -250,7 +250,7 @@ const Attendance = () => {
   const currentClassObj = classesList.find(c => `${c.className} - ${c.section}` === selectedClass);
 
   return (
-    <div className="attendance-page" style={{ padding: '24px 32px', maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '22px' }}>
+    <div className="attendance-page" style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', fontFamily: "'Outfit', sans-serif" }}>
       
       {/* Toast Notification */}
       {notification.show && (
@@ -300,16 +300,13 @@ const Attendance = () => {
               letterSpacing: '0.04em',
               textTransform: 'uppercase'
             }}>
-              LIVE MONGODB ATTENDANCE REGISTER
+              ATTENDANCE REGISTER
             </span>
             <span style={{ fontSize: '0.8rem', opacity: 0.9 }}>• Campus: {tenantSlug}</span>
           </div>
           <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             Student Attendance Management & Roll Call
           </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '0.9rem', color: '#e0e7ff', opacity: 0.95 }}>
-            Mark daily roll call, inspect school-wide presence rates, and store verified attendance records directly in the database.
-          </p>
         </div>
 
         {/* Date Selector Quick Bar */}
@@ -1048,7 +1045,6 @@ const Attendance = () => {
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a' }}>Absence Watchlist</h3>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>Students requiring attendance intervention</p>
               </div>
             </div>
 
@@ -1082,7 +1078,6 @@ const Attendance = () => {
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a' }}>Institutional Attendance Policy</h3>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>Board & academic compliance standards</p>
               </div>
             </div>
 

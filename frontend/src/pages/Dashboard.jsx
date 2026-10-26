@@ -11,7 +11,7 @@ import {
   Activity, UserCheck, Shield, Clock, Plus, Filter, Download, MessageSquare, 
   QrCode, Settings, Key, ShieldCheck, Save, Server, Database, ShieldAlert, Check,
   Building2, ExternalLink, Award, Sparkles, Layers, ArrowRight, Trash2, MapPin,
-  CheckCircle2, Printer, RefreshCw, X, Play, UserCog
+  CheckCircle2, Printer, RefreshCw, X, Play, UserCog, CalendarDays
 } from 'lucide-react';
 import CreateSchoolModal from '../components/CreateSchoolModal';
 import AppointPrincipalModal from '../components/AppointPrincipalModal';
@@ -782,20 +782,15 @@ const Dashboard = () => {
                 <ShieldCheck size={14} color="#93c5fd" /> {isSuperAdmin ? 'Super Admin Multi-Branch Control Active' : 'Branch Administrator Authority Active'}
               </span>
               <span style={{ fontSize: '0.8rem', color: '#bfdbfe' }}>
-                • Active Window: <strong style={{ color: 'white' }}>{schoolNameInput || tenantSlug || 'Default School'}</strong>
+                • {isSuperAdmin ? 'Active Window:' : 'Branch Campus:'} <strong style={{ color: 'white' }}>{schoolNameInput || tenantSlug || 'Default School'}</strong>
               </span>
             </div>
             <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
               {isSuperAdmin ? 'Multi-School & Campus Control Center' : 'Campus Branch Operations Center'}
             </h1>
-            <p style={{ margin: '8px 0 0 0', fontSize: '0.95rem', color: '#e0e7ff', lineHeight: 1.5, opacity: 0.95 }}>
-              {isSuperAdmin 
-                ? 'Create school branches without creating new licensed tenants. As Super Admin, appoint dedicated Branch Admins and Principals with isolated credentials for each campus.'
-                : `You are the appointed Branch Administrator for ${schoolNameInput || tenantSlug}. You have complete administrative authority to oversee students, faculty rosters, timetables, and campus facilities for this branch.`}
-            </p>
           </div>
 
-          {isSuperAdmin && (
+          {isSuperAdmin ? (
             <button
               onClick={() => setIsCreateSchoolOpen(true)}
               style={{
@@ -818,53 +813,118 @@ const Dashboard = () => {
             >
               <Plus size={18} color="#4F46E5" /> Register New School / Branch
             </button>
+          ) : (
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => navigate(`/${tenantSlug}/dashboard?tab=config`)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  backdropFilter: 'blur(10px)',
+                  color: 'white',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  padding: '10px 18px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                ⚙ Branch Settings
+              </button>
+            </div>
           )}
         </div>
 
-        {/* Multi-Window Explainer Card */}
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(15, 118, 110, 0.05) 100%)',
-          border: '1px solid rgba(79, 70, 229, 0.2)',
-          borderRadius: '16px',
-          padding: '18px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-        }}>
+        {/* Explainer Card: SuperAdmin gets Multi-Window guide, Branch Admin gets Dedicated Scope notice */}
+        {isSuperAdmin ? (
           <div style={{
-            width: '44px',
-            height: '44px',
-            borderRadius: '12px',
-            background: 'white',
+            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(15, 118, 110, 0.05) 100%)',
             border: '1px solid rgba(79, 70, 229, 0.2)',
+            borderRadius: '16px',
+            padding: '18px 24px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: '#4F46E5',
-            flexShrink: 0
+            gap: '16px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
           }}>
-            <ExternalLink size={22} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '2px' }}>
-              Separate Windows for Separate Schools (Zero Cross-Contamination)
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'white',
+              border: '1px solid rgba(79, 70, 229, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#4F46E5',
+              flexShrink: 0
+            }}>
+              <ExternalLink size={22} />
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.4 }}>
-              Click <strong>"Open in Separate Window"</strong> on any school card below to run that school in its own dedicated browser window or tab. Each window retains its own school context (<code style={{ background: 'white', padding: '1px 5px', borderRadius: '4px' }}>x-tenant-slug</code>), allowing you to oversee multiple schools simultaneously.
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '2px' }}>
+                Separate Windows for Separate Schools (Zero Cross-Contamination)
+              </div>
+              <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.4 }}>
+                Click <strong>"Open in Separate Window"</strong> on any school card below to run that school in its own dedicated browser window or tab. Each window retains its own school context (<code style={{ background: 'white', padding: '1px 5px', borderRadius: '4px' }}>x-tenant-slug</code>), allowing you to oversee multiple schools simultaneously.
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.04) 0%, rgba(15, 118, 110, 0.04) 100%)',
+            border: '1px solid rgba(79, 70, 229, 0.18)',
+            borderRadius: '16px',
+            padding: '18px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '12px',
+              background: 'white',
+              border: '1px solid rgba(79, 70, 229, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#4F46E5',
+              flexShrink: 0
+            }}>
+              <Building2 size={22} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '2px' }}>
+                Dedicated Branch Operations Scope
+              </div>
+              <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.4 }}>
+                You have dedicated administrative authority over <strong>{schoolNameInput || tenantSlug}</strong>. You can appoint and oversee the campus Principal for academic duties, manage campus faculty rosters, student admissions, and campus facilities for this branch.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Executive KPI Summary */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-          {[
+          {(isSuperAdmin ? [
             { label: 'Registered Campuses', value: totalCampuses, icon: Building2, color: '#4F46E5', bg: '#eff6ff' },
             { label: 'Appointed Branch Admins', value: `${appointedAdminsCount} / ${totalCampuses}`, icon: UserCog, color: '#7c3aed', bg: '#f5f3ff' },
             { label: 'Appointed Principals', value: `${appointedPrincipalsCount} / ${totalCampuses}`, icon: UserCheck, color: '#0f766e', bg: '#ccfbf1' },
             { label: 'Active Faculty & Staff', value: totalStaffCount, icon: Users, color: '#2563eb', bg: '#dbeafe' },
             { label: 'Student Enrollments', value: totalStudentCount, icon: GraduationCap, color: '#d97706', bg: '#fef3c7' }
-          ].map((kpi, idx) => (
+          ] : [
+            { label: 'Campus Branch Handle', value: tenantSlug, icon: Building2, color: '#4F46E5', bg: '#eff6ff' },
+            { label: 'Campus Authority', value: 'Branch Administrator Active', icon: UserCog, color: '#7c3aed', bg: '#f5f3ff' },
+            { label: 'Appointed Principal', value: (schoolsList.find(s => s.slug === tenantSlug)?.principal?.name || schoolsList[0]?.principal?.name) || 'Needs Appointment', icon: UserCheck, color: '#0f766e', bg: '#ccfbf1' },
+            { label: 'Faculty & Staff Roster', value: (schoolsList.find(s => s.slug === tenantSlug)?.staffCount ?? teachers.length ?? 0), icon: Users, color: '#2563eb', bg: '#dbeafe' },
+            { label: 'Enrolled Students', value: (schoolsList.find(s => s.slug === tenantSlug)?.studentCount ?? studentsList.length ?? 0), icon: GraduationCap, color: '#d97706', bg: '#fef3c7' }
+          ]).map((kpi, idx) => (
             <div key={idx} className="card" style={{ padding: '18px 22px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>{kpi.label}</span>
@@ -872,14 +932,20 @@ const Dashboard = () => {
                   <kpi.icon size={18} />
                 </div>
               </div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e3a8a' }}>{kpi.value}</div>
+              <div style={{ fontSize: typeof kpi.value === 'string' && kpi.value.length > 12 ? '1.05rem' : '1.6rem', fontWeight: 800, color: '#1e3a8a' }}>{kpi.value}</div>
             </div>
           ))}
         </div>
 
         {/* School Cards Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '20px' }}>
-          {schoolsList.map((school) => {
+          {(isSuperAdmin ? schoolsList : (schoolsList.filter(s => s.slug === tenantSlug).length > 0 ? schoolsList.filter(s => s.slug === tenantSlug) : (schoolsList.length > 0 ? [schoolsList[0]] : [{
+            name: schoolNameInput || tenantSlug,
+            slug: tenantSlug,
+            address: schoolAddressInput,
+            staffCount: teachers.length,
+            studentCount: studentsList.length
+          }]))).map((school) => {
             const isCurrent = school.slug === tenantSlug;
             const a = school.admin;
             const p = school.principal;
@@ -985,7 +1051,7 @@ const Dashboard = () => {
 
                     {a?.name ? (
                       <div>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e293b' }}>{a.name}</div>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8b' }}>{a.name}</div>
                         <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '1px' }}>{a.qualification || 'Branch Administrator'}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px', fontSize: '0.72rem', color: '#475569', flexWrap: 'wrap' }}>
                           {a.email && <span>✉ {a.email}</span>}
@@ -1025,7 +1091,7 @@ const Dashboard = () => {
 
                     {p?.name ? (
                       <div>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e293b' }}>{p.name}</div>
+                        <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e3a8b' }}>{p.name}</div>
                         <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '1px' }}>{p.qualification || 'Principal & Head of School'}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '5px', fontSize: '0.72rem', color: '#475569', flexWrap: 'wrap' }}>
                           {p.email && <span>✉ {p.email}</span>}
@@ -1062,60 +1128,104 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                {/* Window Actions */}
+                {/* Actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '14px', marginTop: '8px' }}>
-                  <button
-                    type="button"
-                    onClick={() => window.open(`/${school.slug}/dashboard`, '_blank')}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '10px 14px', borderRadius: '10px', background: 'linear-gradient(135deg, #1e3a8a 0%, #4F46E5 100%)', color: 'white', border: 'none', fontWeight: 700, fontSize: '0.86rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)' }}
-                  >
-                    <ExternalLink size={15} /> Open in Separate Window
-                  </button>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {!isCurrent && (
+                  {isSuperAdmin ? (
+                    <>
                       <button
                         type="button"
-                        onClick={() => {
-                          sessionStorage.setItem('tenantSlug', school.slug);
-                          sessionStorage.setItem('schoolName', school.name);
-                          navigate(`/${school.slug}/dashboard`);
-                        }}
-                        style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
+                        onClick={() => window.open(`/${school.slug}/dashboard`, '_blank')}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%', padding: '10px 14px', borderRadius: '10px', background: 'linear-gradient(135deg, #1e3a8a 0%, #4F46E5 100%)', color: 'white', border: 'none', fontWeight: 700, fontSize: '0.86rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)' }}
                       >
-                        Switch Here
+                        <ExternalLink size={15} /> Open in Separate Window
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/${school.slug}/dashboard?tab=config`)}
-                      style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
-                    >
-                      ⚙ Settings & Branding
-                    </button>
 
-                    {isSuperAdmin && (
-                      schoolsList.length > 1 ? (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        {!isCurrent && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              sessionStorage.setItem('tenantSlug', school.slug);
+                              sessionStorage.setItem('schoolName', school.name);
+                              navigate(`/${school.slug}/dashboard`);
+                            }}
+                            style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
+                          >
+                            Switch Here
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => setTargetSchoolForDelete(school)}
-                          style={{ padding: '8px 12px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          title="Permanently delete this campus branch"
+                          onClick={() => {
+                            sessionStorage.setItem('tenantSlug', school.slug);
+                            navigate(`/${school.slug}/timetable`);
+                          }}
+                          style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          title="Setup & configure timetable for this campus"
                         >
-                          <Trash2 size={13} /> Delete
+                          <CalendarDays size={13} /> Timetable
                         </button>
-                      ) : (
                         <button
                           type="button"
-                          disabled
-                          style={{ padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1', color: '#94a3b8', fontWeight: 500, fontSize: '0.74rem', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          title="Cannot delete the only remaining school campus in your organization"
+                          onClick={() => navigate(`/${school.slug}/dashboard?tab=config`)}
+                          style={{ flex: 1, padding: '8px', borderRadius: '8px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
                         >
-                          <Trash2 size={13} /> Only Campus (Protected)
+                          ⚙ Settings & Branding
                         </button>
-                      )
-                    )}
-                  </div>
+
+                        {schoolsList.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setTargetSchoolForDelete(school)}
+                            style={{ padding: '8px 12px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                            title="Permanently delete this campus branch"
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            style={{ padding: '8px 12px', borderRadius: '8px', background: '#f8fafc', border: '1px dashed #cbd5e1', color: '#94a3b8', fontWeight: 500, fontSize: '0.74rem', cursor: 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                            title="Cannot delete the only remaining school campus in your organization"
+                          >
+                            <Trash2 size={13} /> Only Campus (Protected)
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/${tenantSlug}/dashboard?tab=config`)}
+                        style={{ flex: 1, minWidth: '150px', padding: '10px 14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        ⚙ Branch Settings
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/${tenantSlug}/timetable`)}
+                        style={{ flex: 1, minWidth: '140px', padding: '10px 14px', borderRadius: '10px', background: '#f5f3ff', border: '1px solid #ddd6fe', color: '#6d28d9', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        <CalendarDays size={14} /> Setup Timetable
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/${tenantSlug}/staff`)}
+                        style={{ flex: 1, minWidth: '120px', padding: '10px 14px', borderRadius: '10px', background: '#eef2ff', border: '1px solid #c7d2fe', color: '#4F46E5', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        <Users size={14} /> Manage Staff
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/${tenantSlug}/students`)}
+                        style={{ flex: 1, minWidth: '120px', padding: '10px 14px', borderRadius: '10px', background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                      >
+                        <GraduationCap size={14} /> View Students
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -2015,12 +2125,9 @@ const Dashboard = () => {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '4px' }}>
+            <label style={{ display: 'block', fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
               Assign Official School Name & Address
             </label>
-            <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
-              This updates the official school branding, campus location, and institutional credentials across portal headers, login screens, report cards, and receipts.
-            </p>
           </div>
           <span style={{
             fontSize: '0.75rem',

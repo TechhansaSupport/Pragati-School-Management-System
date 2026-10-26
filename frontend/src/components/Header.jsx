@@ -3,19 +3,20 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LogOut, User, Settings, HelpCircle, ChevronDown, Search, X, 
   ArrowRight, Key, Building2, ExternalLink, Plus, UserCheck, Layers, Trash2, MapPin,
-  ShieldCheck, Edit3
+  ShieldCheck, Edit3, BookOpen, Calendar
 } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import CreateSchoolModal from './CreateSchoolModal';
 import EditSchoolModal from './EditSchoolModal';
 import AppointPrincipalModal from './AppointPrincipalModal';
+import AppointAdminModal from './AppointAdminModal';
 import DeleteSchoolModal from './DeleteSchoolModal';
 
 const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const role = sessionStorage.getItem('userRole') || 'admin';
+  const role = (sessionStorage.getItem('userRole') || 'admin').toLowerCase();
   const [userInfo, setUserInfo] = useState(() => JSON.parse(sessionStorage.getItem('userInfo') || '{}'));
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   
@@ -28,6 +29,7 @@ const Header = () => {
   const [isSchoolDropdownOpen, setIsSchoolDropdownOpen] = useState(false);
   const [isCreateSchoolOpen, setIsCreateSchoolOpen] = useState(false);
   const [targetSchoolForPrincipal, setTargetSchoolForPrincipal] = useState(null);
+  const [targetSchoolForAdmin, setTargetSchoolForAdmin] = useState(null);
   const [targetSchoolForDelete, setTargetSchoolForDelete] = useState(null);
   const [targetSchoolForEdit, setTargetSchoolForEdit] = useState(null);
   const schoolDropdownRef = useRef(null);
@@ -177,22 +179,34 @@ const Header = () => {
   }, []);
 
   // Quick modules database for search
-  const searchableModules = [
-    { title: 'Student Directory & Profiles', category: 'Students', icon: '🎓', path: '/students', keywords: 'student students admission rolls directory roll' },
-    { title: 'Faculty & Staff Roster', category: 'Staff', icon: '👨‍🏫', path: '/staff', keywords: 'staff teachers faculty employee teachers provision' },
-    { title: 'Curriculum & Class Architecture', category: 'Academics', icon: '📚', path: '/academics', keywords: 'academics curriculum class classes exams subject section' },
-    { title: 'Fee Ledgers & Financials', category: 'Finance', icon: '💳', path: '/finance', keywords: 'finance fee fees ledger collections balance payment transactions' },
-    { title: 'Analytics & Generated Reports', category: 'Reports', icon: '📊', path: '/reports', keywords: 'reports export analytics attendance results pdf csv' },
-    { title: 'Notices & Messaging', category: 'Communication', icon: '💬', path: '/communication', keywords: 'communication notice messages announce chat inbox' },
-    { title: 'Fleet & Bus Route Tracking', category: 'Facilities', icon: '🚌', path: '/transport-dashboard', keywords: 'transport bus routes fleet facilities vehicle tracking' },
-    { title: 'Library Catalog & Books', category: 'Library', icon: '📖', path: '/library-dashboard', keywords: 'library book books circulation titles' },
-    { title: 'Executive Overview Dashboard', category: 'Dashboard', icon: '⚡', path: '/dashboard', keywords: 'dashboard overview home analytics kpi' },
-    { title: 'System Configuration', category: 'Settings', icon: '⚙️', path: '/dashboard?tab=config', keywords: 'configuration settings system tenant school' },
-    { title: 'System Health & Infrastructure', category: 'Governance', icon: '🖥️', path: '/dashboard?tab=health', keywords: 'health infrastructure server uptime logs' },
-    { title: 'Access Control & RBAC', category: 'Governance', icon: '🔑', path: '/dashboard?tab=rbac', keywords: 'rbac permissions access roles security' },
-    { title: 'Security & Compliance', category: 'Governance', icon: '🛡️', path: '/dashboard?tab=security', keywords: 'security audit logs compliance ssl firewall' },
-    { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
-  ];
+  const searchableModules = useMemo(() => {
+    if (role === 'accountant' || role === 'accounts') {
+      return [
+        { title: 'Financial Overview Ledger', category: 'Finance', icon: '⚡', path: '/finance?tab=ledger', keywords: 'finance overview ledger transactions balance records' },
+        { title: 'Fees Collection & Receipts', category: 'Finance', icon: '💳', path: '/finance?tab=collections', keywords: 'fees collection receipts student fee payments tuition bus' },
+        { title: 'Due & Overdue Student Fees', category: 'Finance', icon: '⚠️', path: '/finance?tab=pending', keywords: 'due fees overdue fees pending dues student arrears unpaid' },
+        { title: 'School & Campus Expenses', category: 'Finance', icon: '📈', path: '/finance?tab=expenses', keywords: 'expenses campus bills utilities purchases maintenance facilities' },
+        { title: 'Due Salaries & Staff Payroll', category: 'Finance', icon: '👥', path: '/finance?tab=salaries', keywords: 'due salaries salary payroll staff compensation faculty disburse' },
+        { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
+      ];
+    }
+    return [
+      { title: 'Student Directory & Profiles', category: 'Students', icon: '🎓', path: '/students', keywords: 'student students admission rolls directory roll' },
+      { title: 'Faculty & Staff Roster', category: 'Staff', icon: '👨‍🏫', path: '/staff', keywords: 'staff teachers faculty employee teachers provision' },
+      { title: 'Curriculum & Class Architecture', category: 'Academics', icon: '📚', path: '/academics', keywords: 'academics curriculum class classes exams subject section' },
+      { title: 'Fee Ledgers & Financials', category: 'Finance', icon: '💳', path: '/finance', keywords: 'finance fee fees ledger collections balance payment transactions' },
+      { title: 'Analytics & Generated Reports', category: 'Reports', icon: '📊', path: '/reports', keywords: 'reports export analytics attendance results pdf csv' },
+      { title: 'Notices & Messaging', category: 'Communication', icon: '💬', path: '/communication', keywords: 'communication notice messages announce chat inbox' },
+      { title: 'Fleet & Bus Route Tracking', category: 'Facilities', icon: '🚌', path: '/transport-dashboard', keywords: 'transport bus routes fleet facilities vehicle tracking' },
+      { title: 'Library Catalog & Books', category: 'Library', icon: '📖', path: '/library-dashboard', keywords: 'library book books circulation titles' },
+      { title: 'Executive Overview Dashboard', category: 'Dashboard', icon: '⚡', path: '/dashboard', keywords: 'dashboard overview home analytics kpi' },
+      { title: 'System Configuration', category: 'Settings', icon: '⚙️', path: '/dashboard?tab=config', keywords: 'configuration settings system tenant school' },
+      { title: 'System Health & Infrastructure', category: 'Governance', icon: '🖥️', path: '/dashboard?tab=health', keywords: 'health infrastructure server uptime logs' },
+      { title: 'Access Control & RBAC', category: 'Governance', icon: '🔑', path: '/dashboard?tab=rbac', keywords: 'rbac permissions access roles security' },
+      { title: 'Security & Compliance', category: 'Governance', icon: '🛡️', path: '/dashboard?tab=security', keywords: 'security audit logs compliance ssl firewall' },
+      { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
+    ];
+  }, [role]);
 
   const filteredSearchItems = useMemo(() => {
     if (!searchQuery.trim()) return searchableModules.slice(0, 5);
@@ -202,7 +216,7 @@ const Header = () => {
       item.category.toLowerCase().includes(q) ||
       item.keywords.toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, searchableModules]);
 
   const handleSearchSelect = (targetPath) => {
     if (targetPath === '__security_modal__') {
@@ -235,7 +249,7 @@ const Header = () => {
       {/* Product Branding with Full Name */}
       <div 
         className="brand" 
-        onClick={() => navigate(tenantSlug ? `/${tenantSlug}/dashboard` : '/dashboard')}
+        onClick={() => navigate(tenantSlug ? ((role === 'accountant' || role === 'accounts') ? `/${tenantSlug}/finance` : `/${tenantSlug}/dashboard`) : '/dashboard')}
         style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, cursor: 'pointer' }}
       >
         <img 
@@ -276,7 +290,7 @@ const Header = () => {
                   transition: 'all 0.2s',
                   boxShadow: isSchoolDropdownOpen ? '0 0 0 2px rgba(79, 70, 229, 0.15)' : 'none'
                 }}
-                title={role === 'superadmin' ? "Click to switch school or open separate window" : `${role === 'principal' ? 'Campus Principal' : 'Branch Administrator'} for ${schoolName || 'Main Campus'}`}
+                title={role === 'superadmin' ? "Click to switch school or open separate window" : `${role === 'principal' ? 'Campus Principal' : (role === 'accountant' || role === 'accounts') ? 'Accounts Officer' : 'Branch Administrator'} for ${schoolName || 'Main Campus'}`}
               >
                 <span>{role === 'superadmin' && location.pathname.includes('/superadmin') ? '🛡️' : '🏫'}</span>
                 <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -320,6 +334,19 @@ const Header = () => {
                     Campus Principal
                   </span>
                 )}
+                {(role === 'accountant' || role === 'accounts') && (
+                  <span style={{ 
+                    fontSize: '0.64rem', 
+                    background: 'rgba(16, 185, 129, 0.15)', 
+                    color: '#059669', 
+                    borderRadius: '5px', 
+                    padding: '1px 6px', 
+                    fontWeight: 800,
+                    border: '1px solid rgba(16, 185, 129, 0.3)' 
+                  }}>
+                    Accounts Officer
+                  </span>
+                )}
                 <ChevronDown size={13} style={{ transform: isSchoolDropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
               </button>
 
@@ -343,11 +370,11 @@ const Header = () => {
                     animation: 'fade-in-down 0.15s ease-out'
                   }}
                 >
-                  {role === 'admin' || role === 'principal' ? (
+                  {role === 'principal' ? (
                     <div style={{ padding: '16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: role === 'principal' ? '#0369a1' : '#6d28d9', background: role === 'principal' ? '#e0f2fe' : '#ede9fe', padding: '2px 8px', borderRadius: '6px' }}>
-                          🛡️ {role === 'principal' ? 'Principal Authority Active' : 'Branch Authority Active'}
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0369a1', background: '#e0f2fe', padding: '2px 8px', borderRadius: '6px' }}>
+                          🎓 Principal • Academic Authority Active
                         </span>
                         <span style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, background: '#dcfce7', padding: '2px 6px', borderRadius: '6px' }}>
                           ● Active Campus
@@ -362,8 +389,8 @@ const Header = () => {
                       </div>
 
                       <div style={{
-                        background: role === 'principal' ? 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)' : 'linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)',
-                        border: role === 'principal' ? '1px solid #bae6fd' : '1px solid #ddd6fe',
+                        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                        border: '1px solid #bae6fd',
                         borderRadius: '10px',
                         padding: '12px 14px',
                         fontSize: '0.78rem',
@@ -371,13 +398,123 @@ const Header = () => {
                         lineHeight: 1.5,
                         marginBottom: '14px'
                       }}>
-                        <strong style={{ color: role === 'principal' ? '#0284c7' : '#6d28d9', display: 'block', marginBottom: '3px' }}>
-                          {role === 'principal' ? 'Campus Principal Authority' : 'Branch Administrator Authority'}
+                        <strong style={{ color: '#0284c7', display: 'block', marginBottom: '3px' }}>
+                          Academic Leadership & Telemetry
                         </strong>
-                        You have dedicated authority to manage this school branch only. You oversee academic telemetry, enrolled students, faculty roster, schedules, and facilities for <strong>{schoolName || tenantSlug}</strong>. Cross-branch infrastructure is managed centrally by the Super Administrator.
+                        You have executive authority over all <strong>Academic Duties</strong> for <strong>{schoolName || tenantSlug}</strong>. You oversee curriculum, classes & sections, examinations, report cards, timetables, student growth, and teacher workload telemetry.
                       </div>
 
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            navigate(`/${tenantSlug}/academics`);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: '#4F46E5',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <BookOpen size={13} /> Academics, Classes & Exams
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            navigate(`/${tenantSlug}/timetable`);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: '#0F766E',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <Calendar size={13} /> Timetable & Period Matrix
+                        </button>
+                      </div>
+                    </div>
+                  ) : role === 'admin' ? (
+                    <div style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#6d28d9', background: '#ede9fe', padding: '2px 8px', borderRadius: '6px' }}>
+                          🏛️ Branch Administrator Authority Active
+                        </span>
+                        <span style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, background: '#dcfce7', padding: '2px 6px', borderRadius: '6px' }}>
+                          ● Active Campus
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '2px' }}>
+                        {schoolName || 'Main Campus'}
+                      </div>
+                      <div style={{ fontSize: '0.73rem', color: '#64748b', marginBottom: '12px' }}>
+                        Branch handle: <code style={{ background: '#f1f5f9', padding: '1px 5px', borderRadius: '4px', color: '#334155' }}>/{tenantSlug}</code>
+                      </div>
+
+                      <div style={{
+                        background: 'linear-gradient(135deg, #faf5ff 0%, #f5f3ff 100%)',
+                        border: '1px solid #ddd6fe',
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        fontSize: '0.78rem',
+                        color: '#475569',
+                        lineHeight: 1.5,
+                        marginBottom: '14px'
+                      }}>
+                        <strong style={{ color: '#6d28d9', display: 'block', marginBottom: '3px' }}>
+                          Branch Administration Authority
+                        </strong>
+                        You are appointed to manage all operational duties for <strong>{schoolName || tenantSlug}</strong> (Students, Staff, Academics, Finance, Facilities, Timetables, and Reports). Cross-branch infrastructure is managed centrally by the Super Administrator.
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            const currentSchool = schoolsList.find(s => s.slug === tenantSlug) || { slug: tenantSlug, name: schoolName };
+                            setTargetSchoolForPrincipal(currentSchool);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: '#0F766E',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <UserCheck size={13} /> Appoint / Manage Principal
+                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -385,7 +522,7 @@ const Header = () => {
                             navigate(`/${tenantSlug}/dashboard?tab=config`);
                           }}
                           style={{
-                            flex: 1,
+                            width: '100%',
                             padding: '8px 12px',
                             borderRadius: '8px',
                             background: '#4F46E5',
@@ -532,7 +669,7 @@ const Header = () => {
                               </div>
                             )}
 
-                            {/* Principal & Staff Info */}
+                            {/* Admin, Principal & Staff Info */}
                             <div style={{ 
                               display: 'flex', 
                               alignItems: 'center', 
@@ -542,6 +679,19 @@ const Header = () => {
                               margin: '6px 0',
                               flexWrap: 'wrap'
                             }}>
+                              <span style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '4px',
+                                background: s.admin ? 'rgba(109, 40, 217, 0.08)' : 'rgba(245, 158, 11, 0.1)',
+                                color: s.admin ? '#6d28d9' : '#b45309',
+                                padding: '2px 6px',
+                                borderRadius: '5px',
+                                fontWeight: 600
+                              }}>
+                                <ShieldCheck size={11} /> 
+                                {s.admin?.name ? `Admin: ${s.admin.name}` : 'Admin: Not appointed'}
+                              </span>
                               <span style={{ 
                                 display: 'inline-flex', 
                                 alignItems: 'center', 
@@ -617,44 +767,20 @@ const Header = () => {
                                 </button>
                               )}
 
-                              {/* Appoint Principal Trigger */}
-                              {(role === 'admin' || role === 'superadmin') && (
+                              {/* Appoint Branch Admin Trigger (Super Admin Authority) */}
+                              {role === 'superadmin' && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setTargetSchoolForPrincipal(s);
+                                    setTargetSchoolForAdmin(s);
                                     setIsSchoolDropdownOpen(false);
                                   }}
                                   style={{
                                     fontSize: '0.72rem',
                                     fontWeight: 600,
-                                    background: 'rgba(15, 118, 110, 0.08)',
-                                    color: '#0f766e',
-                                    border: '1px solid rgba(15, 118, 110, 0.2)',
-                                    padding: '4px 8px',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer'
-                                  }}
-                                  title="Appoint or change Principal for this school"
-                                >
-                                  👤 {s.principal ? 'Edit Principal' : 'Appoint Principal'}
-                                </button>
-                              )}
-
-                              {/* Edit School Details Trigger */}
-                              {(role === 'admin' || role === 'superadmin') && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setTargetSchoolForEdit(s);
-                                    setIsSchoolDropdownOpen(false);
-                                  }}
-                                  style={{
-                                    fontSize: '0.72rem',
-                                    fontWeight: 600,
-                                    background: 'rgba(79, 70, 229, 0.08)',
-                                    color: '#4F46E5',
-                                    border: '1px solid rgba(79, 70, 229, 0.25)',
+                                    background: 'rgba(109, 40, 217, 0.08)',
+                                    color: '#6d28d9',
+                                    border: '1px solid rgba(109, 40, 217, 0.25)',
                                     padding: '4px 8px',
                                     borderRadius: '6px',
                                     cursor: 'pointer',
@@ -662,15 +788,62 @@ const Header = () => {
                                     alignItems: 'center',
                                     gap: '3px'
                                   }}
-                                  title="Edit school name, address, and info"
+                                  title="Appoint or change Branch Administrator for this school"
                                 >
-                                  <Edit3 size={11} /> Edit Info
+                                  🛡️ {s.admin ? 'Edit Branch Admin' : 'Appoint Admin'}
                                 </button>
                               )}
 
-                              {/* Delete School Trigger */}
-                              {(role === 'admin' || role === 'superadmin') && (
-                                (schoolsList.length > 1 || role === 'superadmin') ? (
+                              {/* Appoint Principal Trigger */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTargetSchoolForPrincipal(s);
+                                  setIsSchoolDropdownOpen(false);
+                                }}
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  background: 'rgba(15, 118, 110, 0.08)',
+                                  color: '#0f766e',
+                                  border: '1px solid rgba(15, 118, 110, 0.2)',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer'
+                                }}
+                                title="Appoint or change Principal for this school"
+                              >
+                                👤 {s.principal ? 'Edit Principal' : 'Appoint Principal'}
+                              </button>
+
+                              {/* Edit School Details Trigger */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setTargetSchoolForEdit(s);
+                                  setIsSchoolDropdownOpen(false);
+                                }}
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  background: 'rgba(79, 70, 229, 0.08)',
+                                  color: '#4F46E5',
+                                  border: '1px solid rgba(79, 70, 229, 0.25)',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px'
+                                }}
+                                title="Edit school name, address, and info"
+                              >
+                                <Edit3 size={11} /> Edit Info
+                              </button>
+
+                              {/* Delete School Trigger (Strictly Super Admin Only) */}
+                              {role === 'superadmin' && (
+                                schoolsList.length > 1 ? (
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1111,6 +1284,17 @@ const Header = () => {
           if (updatedSchool?.slug === tenantSlug) {
             window.dispatchEvent(new CustomEvent('principalUpdated', { detail: updatedSchool.principal }));
           }
+        }}
+      />
+
+      {/* Appoint Branch Admin Modal (Super Admin Authority) */}
+      <AppointAdminModal
+        isOpen={!!targetSchoolForAdmin}
+        targetSchool={targetSchoolForAdmin}
+        onClose={() => setTargetSchoolForAdmin(null)}
+        onAdminAppointed={() => {
+          fetchSchoolsList();
+          window.dispatchEvent(new CustomEvent('schoolListUpdated'));
         }}
       />
 

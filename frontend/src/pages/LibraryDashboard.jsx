@@ -74,10 +74,7 @@ const LibraryDashboard = () => {
         boxShadow: '0 10px 25px -5px rgba(96, 165, 250, 0.4)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Library Management 📚</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            Live database catalog tracking {libraryStats.totalTitles || 7} unique titles and {libraryStats.totalCopies || 120} total volume copies.
-          </p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Library Management 📚</h2>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button 

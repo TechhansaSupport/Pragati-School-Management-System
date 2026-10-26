@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   BarChart, Bar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
@@ -6,12 +7,14 @@ import {
 import { 
   TrendingUp, Users, AlertTriangle, MoreVertical, Activity, HeartPulse, 
   Briefcase, CheckCircle2, ShieldCheck, Award, Calendar, ArrowUpRight, 
-  FileText, Sparkles, AlertCircle, Clock, ChevronRight, BarChart3, CheckSquare, Target
+  FileText, Sparkles, AlertCircle, Clock, ChevronRight, BarChart3, CheckSquare, Target,
+  BookOpen, GraduationCap
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
 
 const PrincipalDashboard = () => {
+  const navigate = useNavigate();
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
@@ -123,12 +126,9 @@ const PrincipalDashboard = () => {
             </span>
             <span style={{ fontSize: '0.82rem', opacity: 0.85 }}>Campus: {tenantSlug || 'Main Campus'}</span>
           </div>
-          <h1 style={{ margin: '0 0 8px', fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+          <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
             {userInfo.name ? `${userInfo.name}'s Executive Overview` : 'Principal Executive Command'}
           </h1>
-          <p style={{ margin: 0, fontSize: '0.92rem', opacity: 0.9, lineHeight: 1.5 }}>
-            Holistic governance across academics, attendance reliability, faculty workload distribution, and regulatory safety compliance.
-          </p>
         </div>
 
         {/* Health Score Pill */}
@@ -156,6 +156,120 @@ const PrincipalDashboard = () => {
               {healthDashboard?.status || 'Optimal Operations'}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* QUICK ACADEMIC DUTIES BAR */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '12px',
+        background: 'white',
+        padding: '14px 20px',
+        borderRadius: '14px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4F46E5' }}></div>
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a' }}>
+            Academic Duties Command Hub
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            onClick={() => navigate(`/${tenantSlug}/academics`)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#eef2ff',
+              color: '#4F46E5',
+              border: '1px solid #c7d2fe',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <BookOpen size={14} /> Academics & Exams
+          </button>
+          <button
+            onClick={() => navigate(`/${tenantSlug}/timetable`)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#f0fdf4',
+              color: '#15803d',
+              border: '1px solid #bbf7d0',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <Calendar size={14} /> Timetable Matrix
+          </button>
+          <button
+            onClick={() => navigate(`/${tenantSlug}/attendance`)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#f0f9ff',
+              color: '#0284c7',
+              border: '1px solid #bae6fd',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <CheckSquare size={14} /> Attendance Telemetry
+          </button>
+          <button
+            onClick={() => navigate(`/${tenantSlug}/students`)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#faf5ff',
+              color: '#7e22ce',
+              border: '1px solid #e9d5ff',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <GraduationCap size={14} /> Student 360° Profiles
+          </button>
+          <button
+            onClick={() => navigate(`/${tenantSlug}/reports`)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              background: '#f8fafc',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              cursor: 'pointer'
+            }}
+          >
+            <FileText size={14} /> Academic Reports
+          </button>
         </div>
       </div>
 
@@ -254,9 +368,6 @@ const PrincipalDashboard = () => {
                   <TrendingUp size={18} color="#4F46E5" />
                   Academic Performance Trend (School Average)
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Progressive term-over-term score progression across all classes
-                </p>
               </div>
               <span style={{ fontSize: '0.78rem', fontWeight: 800, background: '#e0e7ff', color: '#4338ca', padding: '4px 10px', borderRadius: '12px' }}>
                 Target: 80%
@@ -290,9 +401,6 @@ const PrincipalDashboard = () => {
                   <BarChart3 size={18} color="#4F46E5" />
                   Smart Attendance Analytics by Grade
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Live attendance variance tracking with chronic absenteeism thresholds
-                </p>
               </div>
               <div style={{ display: 'flex', gap: '10px', fontSize: '0.75rem', fontWeight: 700 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#4F46E5' }}>
@@ -331,9 +439,6 @@ const PrincipalDashboard = () => {
                 <Users size={19} color="#4F46E5" />
                 Faculty Workload & Allocation Analytics
               </h3>
-              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                Tracking teaching periods, active students, and evaluation queues to prevent burnout and ensure teaching quality.
-              </p>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <span style={{ background: '#dcfce7', color: '#166534', padding: '6px 12px', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 700 }}>
@@ -426,9 +531,6 @@ const PrincipalDashboard = () => {
                   Early Academic-Risk Decision Support
                 </h3>
               </div>
-              <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                Algorithmic flag based on attendance trends, missed assessments, and falling grades. This is a decision-support indicator for timely teacher intervention.
-              </p>
             </div>
           </div>
 

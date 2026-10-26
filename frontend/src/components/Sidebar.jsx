@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, UserCheck, BookOpen, CreditCard, 
   Bus, Mail, Settings, Server, Key, ShieldCheck, Building2,
-  CalendarCheck, CalendarDays, GraduationCap, Library, Navigation
+  CalendarCheck, CalendarDays, GraduationCap, Library, Navigation,
+  AlertCircle, TrendingUp
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -26,6 +27,7 @@ const Sidebar = () => {
             { id: 'Teachers', label: 'All Faculty & Staff', icon: Users },
             { id: 'Students & IDs', label: 'All Students', icon: GraduationCap },
             { id: 'Academics & Exams', label: 'Curriculum & Plans', icon: BookOpen },
+            { id: 'Timetable Matrix', label: 'Master Timetable', icon: CalendarDays },
             { id: 'Finance & Fees', label: 'Central Financials', icon: CreditCard },
             { id: 'Transport Dashboard', label: 'Fleet & Transport', icon: Bus },
             { id: 'Library Dashboard', label: 'Library & Media', icon: Library },
@@ -110,7 +112,68 @@ const Sidebar = () => {
       ];
     }
 
-    // Default: School Admin / Principal
+    if (role === 'principal') {
+      return [
+        {
+          title: 'Academic Leadership',
+          items: [
+            { id: 'Principal Command', label: 'Executive Health', icon: LayoutDashboard },
+            { id: 'Academics & Exams', label: 'Curriculum & Classes', icon: BookOpen },
+            { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: CalendarDays },
+            { id: 'Attendance Register', label: 'Attendance Telemetry', icon: CalendarCheck },
+            { id: 'Students & IDs', label: 'Student 360° Profiles', icon: GraduationCap },
+            { id: 'Teachers', label: 'Faculty & Workload', icon: Users },
+            { id: 'Communication & Reports', label: 'Academic Notices', icon: Mail },
+            { id: 'Reports', label: 'Academic Reports', icon: BookOpen },
+          ]
+        }
+      ];
+    }
+
+    if (role === 'accountant' || role === 'accounts') {
+      return [
+        {
+          title: 'Accounts & Finance',
+          items: [
+            { id: 'Finance Overview', label: 'Financial Overview', icon: LayoutDashboard },
+            { id: 'Fees Collection', label: 'Fees Collection', icon: CreditCard },
+            { id: 'Due Fees', label: 'Due / Overdue Fees', icon: AlertCircle },
+            { id: 'School Expenses', label: 'School Expenses', icon: TrendingUp },
+            { id: 'Due Salaries', label: 'Due Salaries & Payroll', icon: Users },
+          ]
+        }
+      ];
+    }
+
+    if (role === 'admin') {
+      return [
+        {
+          title: 'Branch Operations',
+          items: [
+            { id: 'Overview', label: 'Branch Dashboard', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
+            { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: CalendarDays },
+            { id: 'Students & IDs', label: 'Students & IDs', icon: GraduationCap },
+            { id: 'Teachers', label: 'Faculty & Staff', icon: Users },
+            { id: 'Academics & Exams', label: 'Academics & Classes', icon: BookOpen },
+            { id: 'Finance & Fees', label: 'Branch Financials', icon: CreditCard },
+            { id: 'Facilities', label: 'Facilities & Transit', icon: Bus },
+            { id: 'Library Dashboard', label: 'Library & Media', icon: Library },
+            { id: 'Communication & Reports', label: 'Communication', icon: Mail },
+            { id: 'Reports', label: 'Branch Reports', icon: BookOpen },
+          ]
+        },
+        {
+          title: 'Branch Administration',
+          items: [
+            { id: 'Campus Profile', label: 'Branch Profile', icon: Building2 },
+            { id: 'System Configuration', label: 'Branch Settings', icon: Settings },
+          ]
+        }
+      ];
+    }
+
+    // Default Fallback
     return [
       {
         title: 'School Operations',
@@ -124,18 +187,6 @@ const Sidebar = () => {
           { id: 'Finance & Fees', label: 'Finance', icon: CreditCard },
           { id: 'Facilities', label: 'Facilities & Fleet', icon: Bus },
           { id: 'Communication & Reports', label: 'Communication', icon: Mail },
-        ]
-      },
-      {
-        title: 'System Governance',
-        items: [
-          (role === 'admin' || role === 'principal'
-            ? { id: 'Campus Profile', label: 'Branch Profile', icon: Building2 } 
-            : { id: 'My Schools & Campuses', label: 'My Campuses', icon: Building2 }),
-          { id: 'System Configuration', label: 'Configuration', icon: Settings },
-          { id: 'System Health & Infra', label: 'System Health', icon: Server },
-          { id: 'RBAC (Access Control)', label: 'Access Control', icon: Key },
-          { id: 'Security & Compliance', label: 'Security', icon: ShieldCheck },
         ]
       }
     ];
@@ -166,6 +217,8 @@ const Sidebar = () => {
         return path.includes('/routes');
       case 'Reports':
         return path.includes('/reports');
+      case 'Principal Command':
+        return (path.endsWith('/dashboard') || path.includes('/principal-dashboard') || path === `/${tenantSlug}` || path === `/${tenantSlug}/`) && !search.includes('tab=');
       case 'Overview':
         return (path.endsWith('/dashboard') || path === `/${tenantSlug}` || path === `/${tenantSlug}/`) && !search.includes('tab=');
       case 'Attendance Register':
@@ -178,6 +231,16 @@ const Sidebar = () => {
         return (path.includes('/staff') || (path.includes('/teachers') && !path.includes('/teacher-dashboard'))) || (path.includes('/dashboard') && search.includes('tab=teachers'));
       case 'Academics & Exams':
         return (path.includes('/academics') && !search.includes('tab=timetable') && !path.includes('/timetable')) || (path.includes('/dashboard') && search.includes('tab=academics'));
+      case 'Finance Overview':
+        return (path.includes('/finance') || path.endsWith('/dashboard')) && (!search.includes('tab=') || search.includes('tab=ledger'));
+      case 'Fees Collection':
+        return (path.includes('/finance') || path.includes('/dashboard')) && search.includes('tab=collections');
+      case 'Due Fees':
+        return (path.includes('/finance') || path.includes('/dashboard')) && search.includes('tab=pending');
+      case 'School Expenses':
+        return (path.includes('/finance') || path.includes('/dashboard')) && search.includes('tab=expenses');
+      case 'Due Salaries':
+        return (path.includes('/finance') || path.includes('/dashboard')) && search.includes('tab=salaries');
       case 'Finance & Fees':
         return path.includes('/finance') || (path.includes('/dashboard') && search.includes('tab=finance'));
       case 'Facilities':
@@ -236,6 +299,9 @@ const Sidebar = () => {
       case 'Reports':
         navigate(`${base}/reports`);
         break;
+      case 'Principal Command':
+        navigate(`${base}/dashboard`);
+        break;
       case 'Overview':
         navigate(isSuperAdmin ? `${base}/superadmin` : `${base}/dashboard`);
         break;
@@ -253,6 +319,21 @@ const Sidebar = () => {
         break;
       case 'Academics & Exams':
         navigate(`${base}/academics`);
+        break;
+      case 'Finance Overview':
+        navigate(`${base}/finance?tab=ledger`);
+        break;
+      case 'Fees Collection':
+        navigate(`${base}/finance?tab=collections`);
+        break;
+      case 'Due Fees':
+        navigate(`${base}/finance?tab=pending`);
+        break;
+      case 'School Expenses':
+        navigate(`${base}/finance?tab=expenses`);
+        break;
+      case 'Due Salaries':
+        navigate(`${base}/finance?tab=salaries`);
         break;
       case 'Finance & Fees':
         navigate(`${base}/finance`);

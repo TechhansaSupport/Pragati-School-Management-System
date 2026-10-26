@@ -4,7 +4,7 @@ import {
   Building2, Users, UserPlus, UserCheck, ShieldCheck, Plus, ExternalLink, 
   MapPin, UserCog, RefreshCw, Key, Search, Filter, AlertCircle, 
   CheckCircle2, ArrowRight, Layers, Award, Trash2, Mail, Phone, 
-  Calendar, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
+  Calendar, CalendarDays, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
   Briefcase, BookOpen, Clock, HelpCircle, Check, Copy, X, Settings,
   AlertTriangle, Save, Database, Lock, Edit3, TrendingUp, TrendingDown,
   Wallet, CreditCard, Receipt, Percent, DollarSign, CheckCircle,
@@ -764,6 +764,46 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Card 6: Master Timetables Setup */}
+        <div 
+          className="card" 
+          onClick={() => navigate(`/${tenantSlug}/timetable`)}
+          style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '18px 22px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            cursor: 'pointer',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={e => { e.currentTarget.style.borderColor = '#4F46E5'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseOut={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          title="Click to manage & configure timetables across all campuses"
+        >
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <CalendarDays size={24} color="#4F46E5" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+              Master Timetable
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#4F46E5', lineHeight: 1.1 }}>
+              Setup Matrix →
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600, marginTop: '2px' }}>
+              All Campuses Active
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ─── EXECUTIVE FINANCIAL & FACULTY INTELLIGENCE HUB ─── */}
@@ -1132,9 +1172,6 @@ const SuperAdminDashboard = () => {
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <TrendingUp size={18} color="#4F46E5" /> Consolidated Financial Performance
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)' }}>
-                  Revenue generated, fee collections, and operational expenses
-                </p>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1214,9 +1251,6 @@ const SuperAdminDashboard = () => {
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <UserCheck size={18} color="#0284C7" /> Faculty & Teachers Attendance
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-muted, #64748b)' }}>
-                  Weekly trends, presence reliability, and department distribution
-                </p>
               </div>
 
               {/* View Switcher: Weekly vs Departments */}
@@ -1323,334 +1357,6 @@ const SuperAdminDashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* ─── ENTERPRISE FACILITIES & AUXILIARY OPERATIONS (TRANSPORT & LIBRARY) ─── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
-        <div className="card chart-card hub-telemetry-header" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          padding: '16px 22px',
-          borderRadius: '16px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                background: 'linear-gradient(135deg, #0F766E 0%, #0284C7 100%)',
-                color: 'white',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                padding: '3px 8px',
-                borderRadius: '6px',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase'
-              }}>
-                Auxiliary Operations
-              </span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
-                • Campus Transit Logistics & Library Circulation Telemetry
-              </span>
-            </div>
-            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.22rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
-              Fleet Tracking, Bus Routes & Library Resource Center
-            </h2>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => handleTabChange('transport')}
-              className="hover-lift"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                background: 'rgba(245, 158, 11, 0.12)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
-                color: '#d97706',
-                fontWeight: 700,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Bus size={15} /> Transport Console
-            </button>
-            <button
-              type="button"
-              onClick={() => handleTabChange('library')}
-              className="hover-lift"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                background: 'rgba(79, 70, 229, 0.1)',
-                border: '1px solid rgba(79, 70, 229, 0.25)',
-                color: '#4F46E5',
-                fontWeight: 700,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <BookOpen size={15} /> Library Console
-            </button>
-          </div>
-        </div>
-
-        {/* 2 Feature Cards Side-by-Side */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '18px' }}>
-          
-          {/* Card 1: Transport & Fleet Logistics */}
-          <div className="card hover-lift" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '18px',
-            padding: '24px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.02)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '18px'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '46px', height: '46px', borderRadius: '12px',
-                    background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <Bus size={24} color="#ea580c" />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
-                      Fleet & Transit Logistics
-                    </h3>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)', marginTop: '2px' }}>
-                      Real-time campus transit, bus schedules & passenger assignments
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/${tenantSlug}/transport-dashboard`)}
-                  className="hover-lift"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '5px 10px',
-                    borderRadius: '8px',
-                    background: 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid rgba(245, 158, 11, 0.25)',
-                    color: '#ea580c',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                  title="Open dedicated Transport Dashboard"
-                >
-                  Launch Hub <ArrowRight size={13} />
-                </button>
-              </div>
-
-              {/* 4 Mini KPI Tiles */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginTop: '18px' }}>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#4F46E5' }}>{transportOverviewStats.totalFleet || 5}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Buses</div>
-                </div>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16A34A' }}>{transportOverviewStats.activeRoutes || 5}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Routes</div>
-                </div>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7' }}>{transportOverviewStats.mappedStudents || 188}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Commuters</div>
-                </div>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#DC2626' }}>{transportOverviewStats.inMaintenance || 1}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>In Service</div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
-              <button
-                type="button"
-                onClick={() => handleTabChange('transport')}
-                style={{
-                  flex: 1,
-                  padding: '9px 14px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
-                  color: 'white',
-                  border: 'none',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 12px rgba(234, 88, 12, 0.25)'
-                }}
-              >
-                <Bus size={15} /> Transport Dashboard
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(`/${tenantSlug}/routes`)}
-                style={{
-                  padding: '9px 14px',
-                  borderRadius: '10px',
-                  background: 'var(--color-bg, #f8fafc)',
-                  color: 'var(--color-text-main, #334155)',
-                  border: '1px solid var(--color-border, #cbd5e1)',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Navigation size={14} /> Routes & Stops
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: Library & Media Resource Center */}
-          <div className="card hover-lift" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '18px',
-            padding: '24px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.02)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '18px'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '46px', height: '46px', borderRadius: '12px',
-                    background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.15) 0%, rgba(15, 118, 110, 0.15) 100%)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}>
-                    <BookOpen size={24} color="#4F46E5" />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
-                      Library & Media Resource Center
-                    </h3>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)', marginTop: '2px' }}>
-                      Volume cataloging, student lending history & book inventory
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/${tenantSlug}/library-dashboard`)}
-                  className="hover-lift"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '5px 10px',
-                    borderRadius: '8px',
-                    background: 'rgba(79, 70, 229, 0.1)',
-                    border: '1px solid rgba(79, 70, 229, 0.25)',
-                    color: '#4F46E5',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                  title="Open dedicated Library Dashboard"
-                >
-                  Launch Hub <ArrowRight size={13} />
-                </button>
-              </div>
-
-              {/* 4 Mini KPI Tiles */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginTop: '18px' }}>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#4F46E5' }}>{libraryOverviewStats.totalCopies || 120}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Copies</div>
-                </div>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0284c7' }}>{libraryOverviewStats.issuedCopies || 18}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Issued</div>
-                </div>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#16A34A' }}>{libraryOverviewStats.availableCopies || 102}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>On Shelf</div>
-                </div>
-                <div style={{ padding: '12px 10px', borderRadius: '12px', background: 'var(--color-bg, #f8fafc)', border: '1px solid var(--color-border, #e2e8f0)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#F59E0B' }}>{libraryOverviewStats.overdueCopies || 2}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginTop: '2px' }}>Overdue</div>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
-              <button
-                type="button"
-                onClick={() => handleTabChange('library')}
-                style={{
-                  flex: 1,
-                  padding: '9px 14px',
-                  borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #4F46E5 0%, #0F766E 100%)',
-                  color: 'white',
-                  border: 'none',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
-                }}
-              >
-                <BookOpen size={15} /> Library Dashboard
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate(`/${tenantSlug}/books`)}
-                style={{
-                  padding: '9px 14px',
-                  borderRadius: '10px',
-                  background: 'var(--color-bg, #f8fafc)',
-                  color: 'var(--color-text-main, #334155)',
-                  border: '1px solid var(--color-border, #cbd5e1)',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Book size={14} /> Catalog & Books
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
       {/* ─── MULTI-CAMPUS NETWORK OVERVIEW TABLE ─── */}
       <div className="card" style={{
         background: 'var(--color-surface, white)',
@@ -1664,9 +1370,6 @@ const SuperAdminDashboard = () => {
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Building2 size={20} color="#4F46E5" /> Multi-Campus Network Overview
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                  Live status of all registered institutions, active branch endpoints, and leadership appointments.
-                </p>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1913,9 +1616,6 @@ const SuperAdminDashboard = () => {
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
                 Schools & Campuses Ecosystem
               </h2>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.88rem', color: '#64748b' }}>
-                Manage main schools, branch campuses, multi-tenant handles, and assign campus leadership.
-              </p>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -2573,9 +2273,6 @@ const SuperAdminDashboard = () => {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
                   Master Role Assignment Center
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                  Assign Branch Admins, Principals, Teachers, Accountants, Librarians, and staff across all schools
-                </p>
               </div>
 
               {/* Action Buttons */}
@@ -2955,10 +2652,6 @@ const SuperAdminDashboard = () => {
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Independent Branch Routing Enabled</div>
               </div>
             </div>
-
-            <p style={{ fontSize: '0.85rem', color: '#64748b', lineHeight: 1.6, margin: 0 }}>
-              Campuses operate with full multi-window routing support. Admins and principals log in directly to their branch workspaces via dedicated handles (e.g. <code>/{tenantSlug}-branch</code>), while the Super Admin governs the ecosystem centrally without being tied to any specific branch.
-            </p>
           </div>
         </div>
       )}
@@ -2978,9 +2671,6 @@ const SuperAdminDashboard = () => {
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Settings size={22} color="#4F46E5" /> Global Institutional Configuration & Branding
                 </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: '#64748b' }}>
-                  Central authority to assign official school names, campus addresses, and institutional credentials across all portals and login windows.
-                </p>
               </div>
               <span style={{
                 display: 'inline-flex',
@@ -3219,9 +2909,6 @@ const SuperAdminDashboard = () => {
               <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Key size={20} color="#4F46E5" /> Role-Based Access Control (RBAC) Permission Matrix
               </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                Root Enterprise Authority to enforce least-privilege operational permissions across all campus tiers.
-              </p>
             </div>
             {rbacToast && (
               <div style={{ padding: '8px 14px', background: '#dcfce7', border: '1px solid #bbf7d0', color: '#166534', borderRadius: '8px', fontWeight: 700, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}>

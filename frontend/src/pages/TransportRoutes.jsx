@@ -117,10 +117,7 @@ const TransportRoutes = () => {
         boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.4)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Route Management 🗺️</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            Live MongoDB route management for campus: <strong>{tenantSlug || 'Active School'}</strong>
-          </p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Route Management 🗺️</h2>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button 

@@ -588,12 +588,9 @@ const Students = () => {
                   <div style={{ fontSize: '0.78rem', color: '#4F46E5', fontWeight: 700, textTransform: 'uppercase' }}>
                     Assigned Class Roster
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a8a', marginTop: '4px' }}>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a8a', margin: '4px 0 14px 0' }}>
                     {s.grade} - Section {s.section || 'A'}
                   </div>
-                  <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '4px 0 14px 0' }}>
-                    Enrolled under this campus branch workspace.
-                  </p>
                   {isAdmin && (
                     <button
                       onClick={(e) => handleOpenEditModal(s, e)}
@@ -715,7 +712,7 @@ const Students = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ padding: '16px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sparkles size={16} color="#4F46E5" /> 360° Holistic Growth Profile (Sec. 10.3)
+                    <Sparkles size={16} color="#4F46E5" /> 360° Holistic Growth Profile
                   </div>
                   <div style={{ height: '220px' }}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -739,7 +736,7 @@ const Students = () => {
                 {/* AI Performance Insights (Section 10.1) */}
                 <div style={{ padding: '14px', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '12px', border: '1px solid rgba(79, 70, 229, 0.2)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#4F46E5', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                    🤖 AI Performance Insights (Sec. 10.1)
+                    🤖 AI Performance Insights
                   </div>
                   <div style={{ fontSize: '0.85rem', color: '#1e293b', marginTop: '6px', lineHeight: 1.5 }}>
                     {s.name} demonstrates exemplary analytical aptitude in Mathematics and Science with an overall attendance standing of <strong>{s.attendance || 98}%</strong>.
@@ -766,7 +763,7 @@ const Students = () => {
             {activeTab === 'portfolio' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Award size={16} color="#F59E0B" /> Verified Certificates & Achievements (Sec. 10.10)
+                  <Award size={16} color="#F59E0B" /> Verified Certificates & Achievements
                 </div>
 
                 {[
@@ -943,9 +940,6 @@ const Students = () => {
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               <GraduationCap size={22} color="#4F46E5" /> Student Directory & Enrollment
             </h2>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-              Manage student admissions and class/section allocations
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1320,9 +1314,6 @@ const Students = () => {
                   <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
                     {editingStudent ? 'Edit Student & Class Assignment' : 'Student Admission & Class Enrollment'}
                   </h3>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                    {editingStudent ? 'Update details or reassign to another class section' : 'Admit a new student and allocate their class & section'}
-                  </p>
                 </div>
               </div>
               <button 
@@ -1563,7 +1554,6 @@ const Students = () => {
               </div>
               <div>
                 <h4 style={{ margin: 0, color: '#991b1b', fontSize: '1.2rem', fontWeight: 800 }}>Delete Student Record</h4>
-                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>Permanently remove student from campus</p>
               </div>
             </div>
 
@@ -1610,7 +1600,6 @@ const Students = () => {
               </div>
               <div>
                 <h4 style={{ margin: 0, color: '#991b1b', fontSize: '1.2rem', fontWeight: 800 }}>Delete All Student Records?</h4>
-                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>Permanently remove all students from campus</p>
               </div>
             </div>
 

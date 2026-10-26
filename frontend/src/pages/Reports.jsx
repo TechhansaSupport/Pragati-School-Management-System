@@ -159,10 +159,7 @@ const Reports = () => {
         boxShadow: '0 10px 25px -5px rgba(59, 130, 246, 0.4)'
       }}>
         <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Reports & Institutional Analytics 📊</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            Generate real-time exports compiled directly from live student, fee, attendance, and faculty records.
-          </p>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Reports & Institutional Analytics 📊</h2>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Total Live Campus Students</div>
@@ -173,10 +170,9 @@ const Reports = () => {
       </div>
 
       <div className="card" style={{ borderRadius: '20px', padding: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
-        <div className="card-header" style={{ marginBottom: '16px' }}>
+        <div className="card-header" style={{ marginBottom: '20px' }}>
           <div className="card-title">Live Data Reports Categories</div>
         </div>
-        <p className="text-muted" style={{ marginBottom: '20px' }}>Select any report category below to configure parameters and download live MongoDB records.</p>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
           {reportTypes.map((report) => (

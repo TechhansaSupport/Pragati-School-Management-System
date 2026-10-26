@@ -1422,8 +1422,8 @@ router.get('/', protect, async (req, res) => {
 
 // @desc    Assign / Update the School Name (Admin Authority only)
 // @route   PUT /api/school/name
-// @access  Protected (Admin / Superadmin / Principal)
-router.put('/name', protect, authorize('admin', 'superadmin', 'principal'), async (req, res) => {
+// @access  Protected (Admin / Superadmin)
+router.put('/name', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const { name, address } = req.body;
     if (!name || typeof name !== 'string' || !name.trim()) {
@@ -1608,8 +1608,8 @@ const updateSchoolConfigHandler = async (req, res) => {
 
 // @desc    Update specific school name, address, and details by slug
 // @route   PUT /api/school/:slug
-// @access  Protected (Admin / Superadmin / Principal)
-router.put('/:slug', protect, authorize('admin', 'superadmin', 'principal'), async (req, res) => {
+// @access  Protected (Admin / Superadmin)
+router.put('/:slug', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const slug = (req.params.slug || '').trim();
 
@@ -1729,8 +1729,8 @@ router.put('/:slug', protect, authorize('admin', 'superadmin', 'principal'), asy
 
 // @desc    Update Full School Global Configuration & Parameters (Admin Authority)
 // @route   PUT /api/school/config and PUT /api/school
-// @access  Protected (Admin / Superadmin / Principal)
-router.put('/config', protect, authorize('admin', 'superadmin', 'principal'), updateSchoolConfigHandler);
-router.put('/', protect, authorize('admin', 'superadmin', 'principal'), updateSchoolConfigHandler);
+// @access  Protected (Admin / Superadmin)
+router.put('/config', protect, authorize('admin', 'superadmin'), updateSchoolConfigHandler);
+router.put('/', protect, authorize('admin', 'superadmin'), updateSchoolConfigHandler);
 
 module.exports = router;

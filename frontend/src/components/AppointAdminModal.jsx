@@ -125,9 +125,6 @@ const AppointAdminModal = ({ isOpen, onClose, targetSchool, onAdminAppointed }) 
               <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
                 Appoint Branch Administrator
               </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                Assign dedicated Admin credentials to manage operations for this branch school.
-              </p>
             </div>
           </div>
           <button 

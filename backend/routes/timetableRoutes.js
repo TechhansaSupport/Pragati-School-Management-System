@@ -86,28 +86,61 @@ const generateDefaultSchedule = (className = 'Class 10', section = 'A', teachers
   return schedule;
 };
 
+// Helper to resolve effective target school slug
+const resolveSchoolSlug = (req) => {
+  return (req.query.schoolSlug || req.body?.schoolSlug || req.headers['x-school-slug'] || req.headers['x-tenant-slug'] || req.schoolSlug || '').trim();
+};
+
+// Check if user has administrative authority to setup/edit timetable
+const checkTimetableSetupAuthority = (req, res, next) => {
+  const role = (req.user?.role || '').toLowerCase();
+  // Super Admin, Admin (Branch Admin), and Principal have setup access
+  if (role && !['superadmin', 'admin', 'principal'].includes(role)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access Denied: Only Super Admin, Branch Admin, and Principal have authority to configure or set up timetables.'
+    });
+  }
+  next();
+};
+
 // GET /api/timetable — Fetch timetable for class & section (or create initial if missing)
 router.get('/', async (req, res) => {
   try {
     const { className, section } = req.query;
+    const schoolSlug = resolveSchoolSlug(req);
 
     if (!className || !section) {
-      // List all existing timetables for this school entity
-      const timetables = await Timetable.find({ entityId: req.entityId })
-        .select('className section academicSession status updatedAt')
+      // List all existing timetables for this school entity / campus
+      const query = { entityId: req.entityId };
+      if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+        query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+      }
+
+      const timetables = await Timetable.find(query)
+        .select('className section academicSession status updatedAt schoolSlug')
         .sort({ className: 1, section: 1 });
       return res.json({ timetables });
     }
 
-    let timetable = await Timetable.findOne({
+    const query = {
       className: className.trim(),
       section: section.trim().toUpperCase(),
       entityId: req.entityId,
-    });
+    };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    let timetable = await Timetable.findOne(query);
 
     if (!timetable) {
       // Look up teachers in this school to seed a personalized schedule
-      const teachers = await Staff.find({ entityId: req.entityId, role: { $regex: /teacher|faculty/i } }).limit(10);
+      const staffQuery = { entityId: req.entityId, role: { $regex: /teacher|faculty/i } };
+      if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+        staffQuery.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+      }
+      const teachers = await Staff.find(staffQuery).limit(10);
       const defaultSchedule = generateDefaultSchedule(className, section, teachers);
 
       timetable = new Timetable({
@@ -116,7 +149,7 @@ router.get('/', async (req, res) => {
         academicSession: '2026-2027',
         schedule: defaultSchedule,
         entityId: req.entityId,
-        schoolSlug: req.schoolSlug || req.query.schoolSlug || '',
+        schoolSlug: schoolSlug || req.schoolSlug || '',
         status: 'Active',
       });
 
@@ -133,10 +166,11 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/timetable — Upsert full timetable
-router.post('/', async (req, res) => {
+// POST /api/timetable — Upsert full timetable (Super Admin, Branch Admin, Principal)
+router.post('/', checkTimetableSetupAuthority, async (req, res) => {
   try {
     const { className, section, academicSession = '2026-2027', schedule, status = 'Active' } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
 
     if (!className || !section) {
       return res.status(400).json({ message: 'className and section are required' });
@@ -145,8 +179,13 @@ router.post('/', async (req, res) => {
     const cleanClass = className.trim();
     const cleanSection = section.trim().toUpperCase();
 
+    const query = { className: cleanClass, section: cleanSection, entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
     const timetable = await Timetable.findOneAndUpdate(
-      { className: cleanClass, section: cleanSection, entityId: req.entityId },
+      query,
       {
         $set: {
           className: cleanClass,
@@ -155,7 +194,7 @@ router.post('/', async (req, res) => {
           schedule: schedule || {},
           status,
           entityId: req.entityId,
-          schoolSlug: req.schoolSlug || '',
+          schoolSlug: schoolSlug || req.schoolSlug || '',
         }
       },
       { new: true, upsert: true, runValidators: true }
@@ -172,23 +211,29 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/timetable/period — Update or add a single period in a day
-router.put('/period', async (req, res) => {
+// POST /api/timetable/period — Add a new period (Super Admin, Branch Admin, Principal)
+router.post('/period', checkTimetableSetupAuthority, async (req, res) => {
   try {
-    const { className, section, day, periodIndex, periodData } = req.body;
+    const { className, section, day = 'Monday', periodData, applyToAllDays = false } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
 
-    if (!className || !section || !day || periodIndex === undefined || !periodData) {
-      return res.status(400).json({ message: 'className, section, day, periodIndex and periodData are required' });
+    if (!className || !section || !periodData) {
+      return res.status(400).json({ message: 'className, section, and periodData are required' });
     }
 
     const cleanClass = className.trim();
     const cleanSection = section.trim().toUpperCase();
 
-    let timetable = await Timetable.findOne({
+    const query = {
       className: cleanClass,
       section: cleanSection,
       entityId: req.entityId,
-    });
+    };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    let timetable = await Timetable.findOne(query);
 
     if (!timetable) {
       const defaultSchedule = generateDefaultSchedule(cleanClass, cleanSection);
@@ -197,32 +242,240 @@ router.put('/period', async (req, res) => {
         section: cleanSection,
         schedule: defaultSchedule,
         entityId: req.entityId,
-        schoolSlug: req.schoolSlug || '',
+        schoolSlug: schoolSlug || req.schoolSlug || '',
       });
     }
 
-    // Ensure day array exists
-    if (!timetable.schedule[day]) {
-      timetable.schedule[day] = [];
-    }
+    const isRecessType = periodData.isRecess || periodData.type === 'Recess' || periodData.type === 'Break';
+    const sanitizedPeriod = {
+      periodName: periodData.periodName || (isRecessType ? 'Recess' : 'New Period'),
+      startTime: periodData.startTime || '08:30',
+      endTime: periodData.endTime || '09:20',
+      subject: periodData.subject || (isRecessType ? 'Recess / Break' : 'General Study'),
+      teacher: periodData.teacher || (isRecessType ? 'Duty Staff' : 'Duty Faculty'),
+      room: periodData.room || (isRecessType ? 'Campus / Cafeteria' : 'Room 101'),
+      type: isRecessType ? (periodData.type === 'Break' ? 'Break' : 'Recess') : (periodData.type || 'Lecture'),
+      isRecess: isRecessType,
+    };
 
-    const dayList = [...timetable.schedule[day]];
-    if (periodIndex < dayList.length) {
-      dayList[periodIndex] = {
-        ...dayList[periodIndex]?.toObject?.() || dayList[periodIndex],
-        ...periodData,
+    const targetDays = applyToAllDays 
+      ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] 
+      : [day];
+
+    for (const d of targetDays) {
+      if (!timetable.schedule[d]) {
+        timetable.schedule[d] = [];
+      }
+      const dayList = [...timetable.schedule[d]];
+      
+      const newPeriodObj = {
+        ...sanitizedPeriod,
+        periodNumber: dayList.length + 1,
       };
-    } else {
-      dayList.push(periodData);
+
+      if (!sanitizedPeriod.periodName || sanitizedPeriod.periodName.startsWith('P')) {
+        newPeriodObj.periodName = isRecessType ? 'Recess' : `P${dayList.length + 1}`;
+      }
+
+      dayList.push(newPeriodObj);
+
+      // Re-index periods sequentially 1..N
+      dayList.forEach((p, idx) => {
+        p.periodNumber = idx + 1;
+      });
+
+      timetable.schedule[d] = dayList;
+      timetable.markModified(`schedule.${d}`);
     }
 
-    timetable.schedule[day] = dayList;
-    timetable.markModified(`schedule.${day}`);
     await timetable.save();
 
     res.json({
       success: true,
-      message: `Period updated successfully for ${day}`,
+      message: `Period "${sanitizedPeriod.periodName}" added successfully${applyToAllDays ? ' to all weekdays' : ` for ${day}`}`,
+      timetable,
+    });
+  } catch (error) {
+    console.error('Error adding period:', error);
+    res.status(500).json({ message: 'Error adding period', error: error.message });
+  }
+});
+
+// DELETE /api/timetable/period — Delete a period (Super Admin, Branch Admin, Principal)
+router.delete('/period', checkTimetableSetupAuthority, async (req, res) => {
+  try {
+    const { className, section, day = 'Monday', periodIndex, periodNumber, deleteFromAllDays = false } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!className || !section || (periodIndex === undefined && periodNumber === undefined)) {
+      return res.status(400).json({ message: 'className, section, and periodIndex/periodNumber are required' });
+    }
+
+    const cleanClass = className.trim();
+    const cleanSection = section.trim().toUpperCase();
+
+    const query = {
+      className: cleanClass,
+      section: cleanSection,
+      entityId: req.entityId,
+    };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const timetable = await Timetable.findOne(query);
+
+    if (!timetable) {
+      return res.status(404).json({ message: 'Timetable not found for class' });
+    }
+
+    const targetDays = deleteFromAllDays 
+      ? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] 
+      : [day];
+
+    let deletedCount = 0;
+
+    for (const d of targetDays) {
+      if (!timetable.schedule[d] || timetable.schedule[d].length === 0) continue;
+
+      let dayList = [...timetable.schedule[d]];
+      
+      let targetIdx = -1;
+      if (periodIndex !== undefined && periodIndex >= 0 && periodIndex < dayList.length) {
+        targetIdx = periodIndex;
+      } else if (periodNumber !== undefined) {
+        targetIdx = dayList.findIndex(p => p.periodNumber === Number(periodNumber));
+      }
+
+      if (targetIdx !== -1) {
+        dayList.splice(targetIdx, 1);
+        deletedCount++;
+
+        // Re-index remaining periods sequentially 1..N
+        dayList.forEach((p, idx) => {
+          const oldNum = p.periodNumber;
+          p.periodNumber = idx + 1;
+          // If name was standard P{oldNum}, re-label to P{newNum}
+          if (p.periodName && /^P\d+$/.test(p.periodName)) {
+            p.periodName = `P${idx + 1}`;
+          }
+        });
+
+        timetable.schedule[d] = dayList;
+        timetable.markModified(`schedule.${d}`);
+      }
+    }
+
+    await timetable.save();
+
+    res.json({
+      success: true,
+      message: `Period removed successfully${deleteFromAllDays ? ' across all weekdays' : ` from ${day}`}`,
+      timetable,
+      deletedCount,
+    });
+  } catch (error) {
+    console.error('Error deleting period:', error);
+    res.status(500).json({ message: 'Error deleting period', error: error.message });
+  }
+});
+
+// PUT /api/timetable/period — Update a single period or propagate timing to all days (Super Admin, Branch Admin, Principal)
+router.put('/period', checkTimetableSetupAuthority, async (req, res) => {
+  try {
+    const { className, section, day, periodIndex, periodData, applyToAllDays = false } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!className || !section || !day || periodIndex === undefined || !periodData) {
+      return res.status(400).json({ message: 'className, section, day, periodIndex and periodData are required' });
+    }
+
+    const cleanClass = className.trim();
+    const cleanSection = section.trim().toUpperCase();
+
+    const query = {
+      className: cleanClass,
+      section: cleanSection,
+      entityId: req.entityId,
+    };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    let timetable = await Timetable.findOne(query);
+
+    if (!timetable) {
+      const defaultSchedule = generateDefaultSchedule(cleanClass, cleanSection);
+      timetable = new Timetable({
+        className: cleanClass,
+        section: cleanSection,
+        schedule: defaultSchedule,
+        entityId: req.entityId,
+        schoolSlug: schoolSlug || req.schoolSlug || '',
+      });
+    }
+
+    const isRecessType = periodData.isRecess || periodData.type === 'Recess' || periodData.type === 'Break';
+    const payload = {
+      ...periodData,
+      isRecess: isRecessType,
+      type: isRecessType ? (periodData.type === 'Break' ? 'Break' : 'Recess') : (periodData.type || 'Lecture'),
+      subject: periodData.subject || (isRecessType ? 'Recess / Break' : 'General Study'),
+      teacher: periodData.teacher || (isRecessType ? 'Duty Staff' : 'Duty Faculty'),
+      room: periodData.room || (isRecessType ? 'Campus / Cafeteria' : 'Room 101'),
+    };
+
+    if (applyToAllDays) {
+      // Propagate timing, recess status, and optionally name to all weekdays
+      const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      for (const d of weekDays) {
+        if (!timetable.schedule[d]) timetable.schedule[d] = [];
+        const dayList = [...timetable.schedule[d]];
+        if (periodIndex < dayList.length) {
+          const current = dayList[periodIndex]?.toObject?.() || dayList[periodIndex];
+          dayList[periodIndex] = {
+            ...current,
+            startTime: payload.startTime || current.startTime,
+            endTime: payload.endTime || current.endTime,
+            periodName: payload.periodName || current.periodName,
+            type: payload.type || current.type,
+            isRecess: payload.isRecess !== undefined ? payload.isRecess : current.isRecess,
+            // If it is recess, also sync subject/teacher across days
+            ...(isRecessType ? {
+              subject: payload.subject,
+              teacher: payload.teacher,
+              room: payload.room,
+            } : {})
+          };
+          timetable.schedule[d] = dayList;
+          timetable.markModified(`schedule.${d}`);
+        }
+      }
+    } else {
+      // Single day update
+      if (!timetable.schedule[day]) {
+        timetable.schedule[day] = [];
+      }
+
+      const dayList = [...timetable.schedule[day]];
+      if (periodIndex < dayList.length) {
+        dayList[periodIndex] = {
+          ...dayList[periodIndex]?.toObject?.() || dayList[periodIndex],
+          ...payload,
+        };
+      } else {
+        dayList.push(payload);
+      }
+
+      timetable.schedule[day] = dayList;
+      timetable.markModified(`schedule.${day}`);
+    }
+
+    await timetable.save();
+
+    res.json({
+      success: true,
+      message: `Period updated successfully${applyToAllDays ? ' across all weekdays' : ` for ${day}`}`,
       timetable,
     });
   } catch (error) {
@@ -231,10 +484,89 @@ router.put('/period', async (req, res) => {
   }
 });
 
-// POST /api/timetable/auto-generate — Generate conflict-free timetable
-router.post('/auto-generate', async (req, res) => {
+// PUT /api/timetable/bell-schedule — Batch update all period timings and recess slots (Super Admin, Branch Admin, Principal)
+router.put('/bell-schedule', checkTimetableSetupAuthority, async (req, res) => {
+  try {
+    const { className, section, periods = [] } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!className || !section || !Array.isArray(periods)) {
+      return res.status(400).json({ message: 'className, section, and periods array are required' });
+    }
+
+    const cleanClass = className.trim();
+    const cleanSection = section.trim().toUpperCase();
+
+    const query = {
+      className: cleanClass,
+      section: cleanSection,
+      entityId: req.entityId,
+    };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    let timetable = await Timetable.findOne(query);
+
+    if (!timetable) {
+      const defaultSchedule = generateDefaultSchedule(cleanClass, cleanSection);
+      timetable = new Timetable({
+        className: cleanClass,
+        section: cleanSection,
+        schedule: defaultSchedule,
+        entityId: req.entityId,
+        schoolSlug: schoolSlug || req.schoolSlug || '',
+      });
+    }
+
+    const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+    for (const d of weekDays) {
+      if (!timetable.schedule[d]) timetable.schedule[d] = [];
+      const dayList = [...timetable.schedule[d]];
+
+      // Map over each period template provided
+      periods.forEach((pConfig, pIdx) => {
+        const isRecess = pConfig.isRecess || pConfig.type === 'Recess' || pConfig.type === 'Break';
+        if (pIdx < dayList.length) {
+          const existing = dayList[pIdx]?.toObject?.() || dayList[pIdx];
+          dayList[pIdx] = {
+            ...existing,
+            periodName: pConfig.periodName || existing.periodName || `P${pIdx + 1}`,
+            startTime: pConfig.startTime || existing.startTime,
+            endTime: pConfig.endTime || existing.endTime,
+            type: isRecess ? (pConfig.type === 'Break' ? 'Break' : 'Recess') : (pConfig.type || existing.type || 'Lecture'),
+            isRecess: isRecess,
+            subject: isRecess ? (pConfig.subject || 'Recess / Break') : existing.subject,
+            teacher: isRecess ? 'Duty Staff' : existing.teacher,
+            room: isRecess ? 'Campus / Cafeteria' : existing.room,
+          };
+        }
+      });
+
+      timetable.schedule[d] = dayList;
+      timetable.markModified(`schedule.${d}`);
+    }
+
+    await timetable.save();
+
+    res.json({
+      success: true,
+      message: 'Bell schedule & Recess timings applied successfully across all weekdays',
+      timetable,
+    });
+  } catch (error) {
+    console.error('Error updating bell schedule:', error);
+    res.status(500).json({ message: 'Error updating bell schedule', error: error.message });
+  }
+});
+
+// POST /api/timetable/auto-generate — Generate conflict-free timetable (Super Admin, Branch Admin, Principal)
+router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => {
   try {
     const { className, section } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
+
     if (!className || !section) {
       return res.status(400).json({ message: 'className and section are required' });
     }
@@ -242,15 +574,21 @@ router.post('/auto-generate', async (req, res) => {
     const cleanClass = className.trim();
     const cleanSection = section.trim().toUpperCase();
 
-    const staffList = await Staff.find({
-      entityId: req.entityId,
-      status: 'Active',
-    });
+    const staffQuery = { entityId: req.entityId, status: 'Active' };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      staffQuery.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
 
+    const staffList = await Staff.find(staffQuery);
     const newSchedule = generateDefaultSchedule(cleanClass, cleanSection, staffList);
 
+    const query = { className: cleanClass, section: cleanSection, entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
     const timetable = await Timetable.findOneAndUpdate(
-      { className: cleanClass, section: cleanSection, entityId: req.entityId },
+      query,
       {
         $set: {
           className: cleanClass,
@@ -258,7 +596,7 @@ router.post('/auto-generate', async (req, res) => {
           schedule: newSchedule,
           status: 'Active',
           entityId: req.entityId,
-          schoolSlug: req.schoolSlug || '',
+          schoolSlug: schoolSlug || req.schoolSlug || '',
         }
       },
       { new: true, upsert: true }
@@ -340,7 +678,13 @@ router.get('/teacher', async (req, res) => {
 // GET /api/timetable/conflicts — Run validation engine across all schedules
 router.get('/conflicts', async (req, res) => {
   try {
-    const timetables = await Timetable.find({ entityId: req.entityId });
+    const schoolSlug = resolveSchoolSlug(req);
+    const query = { entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const timetables = await Timetable.find(query);
     const teacherCollisions = [];
     const roomCollisions = [];
 

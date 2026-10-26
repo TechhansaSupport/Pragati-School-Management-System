@@ -22,7 +22,7 @@ import TransportRoutes from './pages/TransportRoutes';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import Attendance from './pages/Attendance';
 import Timetable from './pages/Timetable';
-import { AlertTriangle, ShieldAlert, Sparkles, X as CloseIcon } from 'lucide-react';
+import { AlertTriangle, ShieldAlert, X as CloseIcon } from 'lucide-react';
 import './index.css';
 
 const MainLayout = ({ children }) => {
@@ -108,12 +108,12 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="app-shell">
-      <div className="ambient-background" style={{ filter: 'blur(4px)' }}></div>
+      <div className="ambient-background no-print" style={{ filter: 'blur(4px)' }}></div>
       <Header />
 
       {/* Emergency Communication Mode Banner (Section 10.12) */}
       {emergencyAlert && emergencyAlert.id !== dismissedAlertId && (
-        <div style={{
+        <div className="emergency-banner no-print" style={{
           background: 'linear-gradient(90deg, #DC2626 0%, #B91C1C 50%, #991B1B 100%)',
           color: 'white',
           padding: '10px 24px',
@@ -210,20 +210,6 @@ const MainLayout = ({ children }) => {
               LIVE
             </span>
           </div>
-
-          {/* Official Core Motto from Project Report (Page 1) */}
-          <span style={{ color: 'var(--color-border)', margin: '0 8px', userSelect: 'none' }}>|</span>
-          <div style={{
-            fontSize: '0.78rem',
-            color: '#64748B',
-            fontStyle: 'italic',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px'
-          }}>
-            <Sparkles size={13} color="#4F46E5" />
-            <span>"Don't just manage the school. Understand it."</span>
-          </div>
         </div>
         <div className="sub-header-right">
           <div 
@@ -241,7 +227,7 @@ const MainLayout = ({ children }) => {
 
       <div className="main-wrapper">
         <Sidebar />
-        <div className="content-layer hide-scrollbar">
+        <div className="content-layer">
           {children}
         </div>
       </div>
@@ -436,6 +422,8 @@ const AppRoutes = () => {
     return <Navigate to="/login" replace />;
   }
 
+  const isAccountant = role === 'accountant' || role === 'accounts';
+
   const getDashboardForRole = () => {
     switch(role) {
       case 'superadmin': return <SuperAdminDashboard />;
@@ -445,7 +433,8 @@ const AppRoutes = () => {
       case 'parent': return <ParentDashboard />;
       case 'librarian': return <LibraryDashboard />;
       case 'transport': return <TransportDashboard />;
-      case 'accountant': return <Finance />;
+      case 'accountant':
+      case 'accounts': return <Finance />;
       case 'admin':
       default: return <Dashboard />;
     }
@@ -458,24 +447,42 @@ const AppRoutes = () => {
         <Route path="/:tenantSlug/dashboard" element={getDashboardForRole()} />
         <Route path="/:tenantSlug/superadmin" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Navigate to={`/${tenantSlug}/dashboard`} replace />} />
         <Route path="/:tenantSlug/schools" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Navigate to={`/${tenantSlug}/dashboard?tab=schools`} replace />} />
-        <Route path="/:tenantSlug/library-dashboard" element={<LibraryDashboard />} />
-        <Route path="/:tenantSlug/books" element={<LibraryBooks />} />
-        <Route path="/:tenantSlug/transport-dashboard" element={<TransportDashboard />} />
+        
+        {/* Academic Duties Routes (Restricted for Accounts; Managed by Super Admin, Branch Admin, and Principal) */}
+        <Route path="/:tenantSlug/academics" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Academics />} />
+        <Route path="/:tenantSlug/timetable" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Timetable />} />
+        <Route path="/:tenantSlug/attendance" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Attendance />} />
+        <Route path="/:tenantSlug/students" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Students />} />
+        <Route path="/:tenantSlug/staff" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
+        <Route path="/:tenantSlug/teachers" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
+        <Route path="/:tenantSlug/reports" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Reports />} />
+        <Route path="/:tenantSlug/communication" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Communication />} />
+        <Route path="/:tenantSlug/principal-dashboard" element={<PrincipalDashboard />} />
 
+        {/* Financial Operations (Accessible to Super Admin, Branch Admin, and Accountant; Restricted for Principal who manages Academic Duties) */}
+        <Route 
+          path="/:tenantSlug/finance" 
+          element={role === 'principal' ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <Finance />} 
+        />
 
-        <Route path="/:tenantSlug/routes" element={<TransportRoutes />} />
+        {/* Facilities & Fleet (Restricted for Principal & Accounts) */}
+        <Route 
+          path="/:tenantSlug/transport-dashboard" 
+          element={(role === 'principal' || isAccountant) ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <TransportDashboard />} 
+        />
+        <Route 
+          path="/:tenantSlug/routes" 
+          element={(role === 'principal' || isAccountant) ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <TransportRoutes />} 
+        />
+
+        {/* Library (Restricted for Accounts) */}
+        <Route path="/:tenantSlug/library-dashboard" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <LibraryDashboard />} />
+        <Route path="/:tenantSlug/books" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <LibraryBooks />} />
+
+        {/* Dedicated Role Portals */}
         <Route path="/:tenantSlug/teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="/:tenantSlug/student-dashboard" element={<StudentDashboard />} />
         <Route path="/:tenantSlug/parent-dashboard" element={<ParentDashboard />} />
-        <Route path="/:tenantSlug/students" element={<Students />} />
-        <Route path="/:tenantSlug/staff" element={<Staff />} />
-        <Route path="/:tenantSlug/teachers" element={<Staff />} />
-        <Route path="/:tenantSlug/academics" element={<Academics />} />
-        <Route path="/:tenantSlug/timetable" element={<Timetable />} />
-        <Route path="/:tenantSlug/attendance" element={<Attendance />} />
-        <Route path="/:tenantSlug/finance" element={<Finance />} />
-        <Route path="/:tenantSlug/reports" element={<Reports />} />
-        <Route path="/:tenantSlug/communication" element={<Communication />} />
         <Route path="*" element={getDashboardForRole()} />
       </Routes>
     </MainLayout>

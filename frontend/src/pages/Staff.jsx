@@ -660,9 +660,6 @@ const Staff = () => {
           <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             School Staff & Faculty Management
           </h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: '#e0e7ff', opacity: 0.9 }}>
-            Administrative console to recruit, provision credentials, and supervise teaching & administrative personnel.
-          </p>
         </div>
 
         {isAdmin ? (

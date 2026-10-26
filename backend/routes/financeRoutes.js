@@ -1,17 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const Transaction = require('../models/Transaction');
+const Staff = require('../models/Staff');
+const Fee = require('../models/Fee');
+const User = require('../models/User');
 
 // Helper to verify admin authority
 const checkAdminAuthority = (req, res) => {
-  const allowedRoles = ['admin', 'superadmin', 'principal', 'frontdesk'];
   const userRole = (req.user && req.user.role) ? req.user.role.toLowerCase() : '';
   
+  if (userRole === 'principal') {
+    res.status(403).json({
+      error: 'Access Denied: Principals are appointed for Academic Duties only. Financial management is restricted to School Administrators and Accountants.',
+      code: 'FORBIDDEN_ACADEMICS_ONLY',
+      message: 'Access Denied: Principals are appointed for Academic Duties only. Financial management is restricted to School Administrators and Accountants.'
+    });
+    return false;
+  }
+
+  const allowedRoles = ['admin', 'superadmin', 'accountant'];
   if (userRole && !allowedRoles.includes(userRole)) {
     res.status(403).json({
-      error: 'Access Denied: Only School Administrators have authority to manage financial records',
+      error: 'Access Denied: Only School Administrators and Accountants have authority to manage financial records',
       code: 'FORBIDDEN_ADMIN_ONLY',
-      message: 'Access Denied: Only School Administrators have authority to manage financial records'
+      message: 'Access Denied: Only School Administrators and Accountants have authority to manage financial records'
     });
     return false;
   }
@@ -47,6 +59,7 @@ const seedInitialTransactionsIfEmpty = async (entityId, force = false, schoolSlu
 
 // GET /api/finance/transactions — List all transactions
 router.get('/transactions', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
   try {
     const { search, page = 1, limit = 50, type, status, category, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
@@ -112,6 +125,7 @@ router.get('/transactions', async (req, res) => {
 
 // GET /api/finance/stats — Financial KPIs (Real Live Database Aggregate)
 router.get('/stats', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
   try {
     const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
     const targetSlug = isSuperAdmin ? (req.query.schoolSlug || req.schoolSlug) : req.schoolSlug;
@@ -151,14 +165,44 @@ router.get('/stats', async (req, res) => {
       { $group: { _id: null, total: { $sum: '$amount' } } },
     ]);
 
+    // Also check Fee model for active pending student fees
+    const feePendingAgg = await Fee.aggregate([
+      { $match: { ...scopeFilter, status: { $in: ['Overdue', 'Due this month'] } } },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const feeModelPending = feePendingAgg.length > 0 ? feePendingAgg[0].total : 0;
+    const totalPending = Math.max(pendingFees.length > 0 ? pendingFees[0].total : 0, feeModelPending);
+
+    // Calculate Due Salaries for current month
+    const staffMembers = await Staff.find({ ...scopeFilter, status: 'Active' });
+    const totalStaffPayroll = staffMembers.reduce((sum, s) => sum + Number(s.salary || 0), 0);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const payrollPaidAgg = await Transaction.aggregate([
+      { 
+        $match: { 
+          ...scopeFilter, 
+          type: 'Expense', 
+          category: { $in: ['Faculty Payroll', 'Staff Salary', 'Payroll'] },
+          status: 'Completed',
+          date: { $gte: startOfMonth, $lte: endOfMonth }
+        } 
+      },
+      { $group: { _id: null, total: { $sum: '$amount' } } }
+    ]);
+    const paidPayroll = payrollPaidAgg.length > 0 ? payrollPaidAgg[0].total : 0;
+    const dueSalaries = Math.max(0, totalStaffPayroll - paidPayroll);
+
     const totalCollections = collections.length > 0 ? collections[0].total : 0;
     const totalExpenses = expenses.length > 0 ? expenses[0].total : 0;
-    const totalPending = pendingFees.length > 0 ? pendingFees[0].total : 0;
 
     res.json({
       totalCollections,
       totalExpenses,
       pendingFees: totalPending,
+      dueSalaries,
+      totalStaffPayroll,
       availableBalance: totalCollections - totalExpenses,
     });
   } catch (error) {
@@ -166,8 +210,207 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// GET /api/finance/salaries — Live Staff Payroll & Due Salaries Register
+router.get('/salaries', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+  try {
+    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
+    const targetSlug = isSuperAdmin ? (req.query.schoolSlug || req.schoolSlug) : req.schoolSlug;
+    
+    let scopeFilter = { entityId: req.entityId, status: 'Active' };
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
+      const isPrimary = !primarySchool || primarySchool.slug === targetSlug;
+      if (isPrimary) {
+        scopeFilter.$or = [
+          { schoolSlug: targetSlug },
+          { schoolSlug: null },
+          { schoolSlug: { $exists: false } },
+          { schoolSlug: '' }
+        ];
+      } else {
+        scopeFilter.schoolSlug = targetSlug;
+      }
+    }
+
+    const staffMembers = await Staff.find(scopeFilter).sort({ role: 1, name: 1 });
+
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const payrollTxns = await Transaction.find({
+      entityId: req.entityId,
+      type: 'Expense',
+      category: { $in: ['Faculty Payroll', 'Staff Salary', 'Payroll'] },
+      status: 'Completed',
+      date: { $gte: startOfMonth, $lte: endOfMonth }
+    });
+
+    let totalPayroll = 0;
+    let disbursedTotal = 0;
+    let dueTotal = 0;
+    let dueCount = 0;
+    let paidCount = 0;
+
+    const payrollList = staffMembers.map(staff => {
+      const monthlySalary = Number(staff.salary || 0);
+      totalPayroll += monthlySalary;
+
+      const matchingTxn = payrollTxns.find(t => 
+        (t.studentName && t.studentName.toLowerCase().includes(staff.name.toLowerCase())) ||
+        (t.description && (t.description.toLowerCase().includes(staff.name.toLowerCase()) || (staff.employeeId && t.description.includes(staff.employeeId))))
+      );
+
+      const isPaid = !!matchingTxn;
+      if (isPaid) {
+        disbursedTotal += monthlySalary;
+        paidCount++;
+      } else {
+        dueTotal += monthlySalary;
+        dueCount++;
+      }
+
+      return {
+        _id: staff._id,
+        name: staff.name,
+        employeeId: staff.employeeId,
+        role: staff.role,
+        department: staff.department,
+        salary: monthlySalary,
+        status: isPaid ? 'Paid' : 'Due',
+        disbursedAt: matchingTxn?.date || null,
+        refId: matchingTxn?.refId || null,
+        paymentMethod: matchingTxn?.paymentMethod || null,
+        currentMonth: now.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+      };
+    });
+
+    res.json({
+      success: true,
+      currentMonth: now.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+      totalStaffCount: staffMembers.length,
+      totalPayroll,
+      disbursedTotal,
+      dueTotal,
+      paidCount,
+      dueCount,
+      staff: payrollList
+    });
+  } catch (error) {
+    console.error('Salaries endpoint error:', error);
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/finance/disburse-salary — Disburse staff monthly salary
+router.post('/disburse-salary', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+  try {
+    const { staffId, amount, paymentMethod, month, notes } = req.body;
+    if (!staffId) {
+      return res.status(400).json({ message: 'Staff ID is required' });
+    }
+
+    const staff = await Staff.findById(staffId);
+    if (!staff) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    const salaryAmount = amount ? Number(amount) : Number(staff.salary || 0);
+    if (salaryAmount <= 0) {
+      return res.status(400).json({ message: 'Salary amount must be greater than 0' });
+    }
+
+    const timestamp = Date.now().toString().slice(-6);
+    const count = await Transaction.countDocuments({ entityId: req.entityId });
+    const finalRefId = `SAL-${new Date().getFullYear()}-${timestamp}-${1000 + count + 1}`;
+    const targetMonth = month || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    const transaction = new Transaction({
+      refId: finalRefId,
+      type: 'Expense',
+      category: 'Faculty Payroll',
+      amount: salaryAmount,
+      studentName: `${staff.name} (${staff.role})`,
+      description: notes || `Monthly Salary Disbursement for ${targetMonth} - ID: ${staff.employeeId} - Dept: ${staff.department}`,
+      paymentMethod: paymentMethod || 'Bank Transfer',
+      status: 'Completed',
+      date: new Date(),
+      entityId: req.entityId || 'default-school',
+      schoolSlug: req.schoolSlug || req.headers['x-school-slug'] || staff.schoolSlug,
+    });
+
+    await transaction.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Salary of ₹${salaryAmount.toLocaleString()} successfully disbursed to ${staff.name}`,
+      transaction
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to disburse salary', error: error.message });
+  }
+});
+
+// POST /api/finance/collect-due-fee — Record payment for a pending fee
+router.post('/collect-due-fee', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+  try {
+    const { feeId, studentName, classSection, amount, paymentMethod, notes } = req.body;
+
+    let targetStudentName = studentName;
+    let targetClass = classSection;
+    let targetAmount = amount ? Number(amount) : 0;
+
+    if (feeId) {
+      const feeDoc = await Fee.findById(feeId);
+      if (feeDoc) {
+        targetStudentName = targetStudentName || feeDoc.studentName;
+        targetClass = targetClass || feeDoc.classSection;
+        targetAmount = targetAmount || feeDoc.amount;
+        feeDoc.status = 'Collected';
+        await feeDoc.save();
+      }
+    }
+
+    if (!targetAmount || targetAmount <= 0) {
+      return res.status(400).json({ message: 'A valid collection amount is required' });
+    }
+
+    const timestamp = Date.now().toString().slice(-6);
+    const count = await Transaction.countDocuments({ entityId: req.entityId });
+    const finalRefId = `FEE-${new Date().getFullYear()}-${timestamp}-${1000 + count + 1}`;
+
+    const transaction = new Transaction({
+      refId: finalRefId,
+      type: 'Fee Collection',
+      category: 'Tuition Fee',
+      amount: targetAmount,
+      studentName: targetStudentName || 'Student',
+      description: notes || `Fee payment received for ${targetClass || 'Academic Year'}`,
+      paymentMethod: paymentMethod || 'UPI',
+      status: 'Completed',
+      date: new Date(),
+      entityId: req.entityId || 'default-school',
+      schoolSlug: req.schoolSlug || req.headers['x-school-slug'],
+    });
+
+    await transaction.save();
+
+    res.status(201).json({
+      success: true,
+      message: `Fee of ₹${targetAmount.toLocaleString()} recorded successfully for ${targetStudentName}`,
+      transaction
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to record fee collection', error: error.message });
+  }
+});
+
 // GET /api/finance/analytics — Real Live MongoDB Aggregated Financial Intelligence
 router.get('/analytics', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
   try {
     const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
     const targetSlug = isSuperAdmin ? (req.query.schoolSlug || req.schoolSlug) : req.schoolSlug;

@@ -296,9 +296,6 @@ const AppointPrincipalModal = ({
                   Super Admin Authority
                 </span>
               </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: '#64748b' }}>
-                Promote an existing teaching faculty member to Principal or register a new executive leader.
-              </p>
             </div>
           </div>
           <button 

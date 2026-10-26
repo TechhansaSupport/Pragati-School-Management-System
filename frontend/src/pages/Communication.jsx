@@ -892,9 +892,6 @@ const Communication = () => {
               </div>
               <div>
                 <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a' }}>All Clear — Normal Campus Protocol</h4>
-                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                  No active emergency broadcasts. When activated, urgent banners will immediately flash on all student, parent, and faculty portals.
-                </p>
               </div>
             </div>
           )}
@@ -907,12 +904,9 @@ const Communication = () => {
             border: '1px solid #e2e8f0',
             boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
           }}>
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '18px' }}>
               🚨 Activate High-Visibility Emergency Broadcast
             </h3>
-            <p style={{ fontSize: '0.88rem', color: '#64748b', marginBottom: '20px' }}>
-              Select a quick emergency template or customize the broadcast fields below. Broadcasts appear instantly on all logged-in views.
-            </p>
 
             {/* Template Buttons */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginBottom: '24px' }}>
@@ -1695,9 +1689,6 @@ const Communication = () => {
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a' }}>
                   📢 Post Official Notice
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Publish real-time announcements to the campus bulletin
-                </p>
               </div>
               <button
                 onClick={() => setIsAnnounceModalOpen(false)}
@@ -1835,9 +1826,6 @@ const Communication = () => {
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f766e' }}>
                   📅 Schedule Campus Event
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Register sports meets, exams, PTMs, and cultural festivals
-                </p>
               </div>
               <button
                 onClick={() => setIsEventModalOpen(false)}
@@ -1984,9 +1972,6 @@ const Communication = () => {
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#b45309' }}>
                   🎫 Log Grievance / Support Ticket
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Formal ticket assignment and resolution tracking
-                </p>
               </div>
               <button
                 onClick={() => setIsGrievanceModalOpen(false)}

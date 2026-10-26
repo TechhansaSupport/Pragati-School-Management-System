@@ -14,7 +14,7 @@ const AiSchoolAssistant = () => {
     {
       id: 'welcome',
       sender: 'ai',
-      text: `Hello! I am your **Pragati AI School Assistant**.\n\n*"Don't just manage the school. Understand it."*\n\nI can provide intelligent, data-driven answers from your school database regarding **academic risk**, **attendance patterns**, **fee collections**, **teacher workloads**, and **executive summaries**.`,
+      text: `Hello! I am your **Pragati AI School Assistant**.\n\nI can provide intelligent, data-driven answers from your school database regarding **academic risk**, **attendance patterns**, **fee collections**, **teacher workloads**, and **executive summaries**.`,
       quickPrompts: [
         '⚠️ Flag at-risk students',
         '📊 Smart attendance analytics',
@@ -219,7 +219,7 @@ const AiSchoolAssistant = () => {
                   }}></span>
                 </div>
                 <div style={{ fontSize: '0.72rem', opacity: 0.88 }}>
-                  Natural language decision support (Sec. 10.7)
+                  Natural language decision support
                 </div>
               </div>
             </div>

@@ -599,9 +599,6 @@ const Academics = () => {
           <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             School Curriculum & Class Architecture
           </h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '0.9rem', color: '#e0e7ff', opacity: 0.9 }}>
-            Administrative console to configure classes, divide sections, assign class teachers, and supervise capacity.
-          </p>
         </div>
 
         {isAdmin ? (
@@ -1364,16 +1361,13 @@ const Academics = () => {
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
                 <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
-                  SECTION 10.5 CONFLICT ENGINE
+                  INTELLIGENT CONFLICT ENGINE
                 </span>
                 <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Live Constraint Validation</span>
               </div>
-              <h2 style={{ margin: '0 0 4px', fontSize: '1.3rem', fontWeight: 800, color: '#1e3a8a' }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1e3a8a' }}>
                 Smart Timetable Matrix & Constraint Validator
               </h2>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                Automated multi-constraint schedule engine resolving faculty availability, room allocations, and period quotas.
-              </p>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1531,127 +1525,181 @@ const Academics = () => {
           </div>
 
           {/* 5-DAY INTERACTIVE TIMETABLE MATRIX */}
-          <div className="chart-card" style={{ padding: '24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', overflowX: 'auto' }}>
-            <div style={{ minWidth: '920px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              {timetableLoading ? (
-                <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-                  <RefreshCw size={26} className="spin" style={{ margin: '0 auto 10px' }} />
-                  <div>Loading live timetable schedule from MongoDB...</div>
-                </div>
-              ) : Object.keys(timetableSchedule).length === 0 ? (
-                <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
-                  <p style={{ margin: '0 0 12px', fontWeight: 700 }}>No timetable schedule saved yet for {selectedTimetableClass}.</p>
-                  <button
-                    onClick={handleAutoGenerateTimetable}
-                    style={{
-                      background: '#4F46E5', color: 'white', border: 'none', padding: '10px 20px',
-                      borderRadius: '10px', fontWeight: 700, cursor: 'pointer'
-                    }}
-                  >
-                    Auto-Generate Schedule for {selectedTimetableClass}
-                  </button>
-                </div>
-              ) : (
-                /* Day Rows */
-                Object.entries(timetableSchedule).filter(([day]) => day !== 'Saturday' || (timetableSchedule[day] && timetableSchedule[day].length > 0)).map(([day, periods]) => (
-                  <div key={day} style={{ display: 'grid', gridTemplateColumns: '120px repeat(6, 1fr)', gap: '10px', alignItems: 'stretch' }}>
-                    
-                    {/* Day Label Header */}
-                    <div style={{ 
-                      background: '#1e3a8a', 
-                      color: 'white', 
-                      borderRadius: '12px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      padding: '12px 8px',
-                      fontWeight: 800,
-                      fontSize: '0.95rem'
-                    }}>
-                      <span>{day}</span>
-                      <span style={{ fontSize: '0.72rem', opacity: 0.8, fontWeight: 500, marginTop: '2px' }}>
-                        {periods?.length || 0} Periods
-                      </span>
-                    </div>
-
-                    {/* Period Cards */}
-                    {(periods || []).map((p, pIdx) => {
-                      const isLab = p.type === 'Lab';
-                      const isTutorial = p.type === 'Tutorial';
-                      const isActivity = p.type === 'Activity';
-                      const isAssess = p.type === 'Assessment';
-
-                      const cardBg = isLab ? '#f0fdf4' : isTutorial ? '#eff6ff' : isActivity ? '#fefce8' : isAssess ? '#fef2f2' : '#f8fafc';
-                      const cardBorder = isLab ? '#bbf7d0' : isTutorial ? '#bfdbfe' : isActivity ? '#fef08a' : isAssess ? '#fecaca' : '#e2e8f0';
-                      const subjectColor = isLab ? '#166534' : isTutorial ? '#1e40af' : isActivity ? '#854d0e' : isAssess ? '#991b1b' : '#1e3a8a';
-                      const periodLabel = p.periodName || (p.period ? p.period.split(' ')[0] : `P${pIdx + 1}`);
-
-                      return (
-                        <div 
-                          key={pIdx}
-                          style={{
-                            background: cardBg,
-                            border: `1px solid ${cardBorder}`,
-                            borderRadius: '12px',
-                            padding: '12px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
-                            transition: 'transform 0.15s, box-shadow 0.15s',
-                            cursor: 'pointer',
-                            position: 'relative'
-                          }}
-                          onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.08)'; }}
-                          onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.02)'; }}
-                          onClick={() => setEditPeriodModal({
-                            open: true,
-                            day,
-                            periodIndex: pIdx,
-                            data: {
-                              periodNumber: p.periodNumber || pIdx + 1,
-                              periodName: periodLabel,
-                              startTime: p.startTime || '08:30',
-                              endTime: p.endTime || '09:20',
-                              subject: p.subject || '',
-                              teacher: p.teacher || '',
-                              room: p.room || 'Room 201',
-                              type: p.type || 'Lecture'
-                            }
-                          })}
-                          title="Click to edit subject, faculty or room in MongoDB"
-                        >
-                          <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
-                                {periodLabel}
-                              </span>
-                              <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', background: 'white', color: subjectColor, border: `1px solid ${cardBorder}` }}>
-                                {p.type}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 800, color: subjectColor, lineHeight: 1.25, marginBottom: '6px' }}>
-                              {p.subject}
-                            </div>
-                          </div>
-
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '4px' }}>
-                            <span style={{ fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              👤 {p.teacher}
-                            </span>
-                            <span style={{ color: '#94a3b8' }}>
-                              📍 {p.room}
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
+          <div className="chart-card" style={{ padding: '24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
+            <div className="timetable-scroll-container" style={{ overflowX: 'auto', paddingBottom: '8px' }}>
+              <div style={{ minWidth: '880px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                
+                {/* Period Column Headers */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '110px repeat(6, minmax(125px, 1fr))',
+                  gap: '10px',
+                  paddingBottom: '2px'
+                }}>
+                  <div style={{
+                    background: '#f1f5f9',
+                    borderRadius: '10px',
+                    padding: '8px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '0.75rem',
+                    color: '#475569',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Day
                   </div>
-                ))
-              )}
 
+                  {[
+                    { p: 'P1', time: '08:30 - 09:20' },
+                    { p: 'P2', time: '09:20 - 10:10' },
+                    { p: 'P3', time: '10:25 - 11:15' },
+                    { p: 'P4', time: '11:15 - 12:05' },
+                    { p: 'P5', time: '12:45 - 01:35' },
+                    { p: 'P6', time: '01:35 - 02:25' }
+                  ].map((ph, idx) => (
+                    <div key={idx} style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '10px',
+                      padding: '8px 10px',
+                      textAlign: 'center'
+                    }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a' }}>
+                        {ph.p}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
+                        {ph.time}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {timetableLoading ? (
+                  <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+                    <RefreshCw size={26} className="spin" style={{ margin: '0 auto 10px' }} />
+                    <div>Loading live timetable schedule from MongoDB...</div>
+                  </div>
+                ) : Object.keys(timetableSchedule).length === 0 ? (
+                  <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
+                    <p style={{ margin: '0 0 12px', fontWeight: 700 }}>No timetable schedule saved yet for {selectedTimetableClass}.</p>
+                    <button
+                      onClick={handleAutoGenerateTimetable}
+                      style={{
+                        background: '#4F46E5', color: 'white', border: 'none', padding: '10px 20px',
+                        borderRadius: '10px', fontWeight: 700, cursor: 'pointer'
+                      }}
+                    >
+                      Auto-Generate Schedule for {selectedTimetableClass}
+                    </button>
+                  </div>
+                ) : (
+                  /* Day Rows */
+                  Object.entries(timetableSchedule).filter(([day]) => day !== 'Saturday' || (timetableSchedule[day] && timetableSchedule[day].length > 0)).map(([day, periods]) => (
+                    <div key={day} style={{ display: 'grid', gridTemplateColumns: '110px repeat(6, minmax(125px, 1fr))', gap: '10px', alignItems: 'stretch' }}>
+                      
+                      {/* Sticky Day Label Header */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)', 
+                        color: 'white', 
+                        borderRadius: '12px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        padding: '12px 6px',
+                        fontWeight: 800,
+                        fontSize: '0.92rem',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 3,
+                        boxShadow: '2px 0 8px rgba(0,0,0,0.08)'
+                      }}>
+                        <span>{day}</span>
+                        <span style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 500, marginTop: '2px' }}>
+                          {periods?.length || 0} Periods
+                        </span>
+                      </div>
+
+                      {/* Period Cards */}
+                      {(periods || []).map((p, pIdx) => {
+                        const isLab = p.type === 'Lab';
+                        const isTutorial = p.type === 'Tutorial';
+                        const isActivity = p.type === 'Activity';
+                        const isAssess = p.type === 'Assessment';
+
+                        const cardBg = isLab ? '#f0fdf4' : isTutorial ? '#eff6ff' : isActivity ? '#fefce8' : isAssess ? '#fef2f2' : '#f8fafc';
+                        const cardBorder = isLab ? '#bbf7d0' : isTutorial ? '#bfdbfe' : isActivity ? '#fef08a' : isAssess ? '#fecaca' : '#e2e8f0';
+                        const subjectColor = isLab ? '#166534' : isTutorial ? '#1e40af' : isActivity ? '#854d0e' : isAssess ? '#991b1b' : '#1e3a8a';
+                        const periodNumberLabel = `P${p.periodNumber || pIdx + 1}`;
+
+                        return (
+                          <div 
+                            key={pIdx}
+                            style={{
+                              background: cardBg,
+                              border: `1px solid ${cardBorder}`,
+                              borderRadius: '12px',
+                              padding: '10px 12px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
+                              transition: 'transform 0.15s, box-shadow 0.15s',
+                              cursor: 'pointer',
+                              position: 'relative'
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.08)'; }}
+                            onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.02)'; }}
+                            onClick={() => setEditPeriodModal({
+                              open: true,
+                              day,
+                              periodIndex: pIdx,
+                              data: {
+                                periodNumber: p.periodNumber || pIdx + 1,
+                                periodName: p.periodName || periodNumberLabel,
+                                startTime: p.startTime || '08:30',
+                                endTime: p.endTime || '09:20',
+                                subject: p.subject || '',
+                                teacher: p.teacher || '',
+                                room: p.room || 'Room 201',
+                                type: p.type || 'Lecture'
+                              }
+                            })}
+                            title="Click to edit subject, faculty or room in MongoDB"
+                          >
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b' }}>
+                                  {periodNumberLabel}
+                                </span>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'white', color: subjectColor, border: `1px solid ${cardBorder}` }}>
+                                  {p.type}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.86rem', fontWeight: 800, color: subjectColor, lineHeight: 1.25, marginBottom: '8px', wordBreak: 'break-word' }}>
+                                {p.subject}
+                              </div>
+                            </div>
+
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '6px' }}>
+                              <span style={{ fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.teacher}>
+                                👤 {p.teacher}
+                              </span>
+                              <span style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.room}>
+                                📍 {p.room}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
+
+              </div>
             </div>
           </div>
 
@@ -1855,8 +1903,7 @@ const Academics = () => {
         <div className="card" style={{ padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: '0 0 4px 0' }}>Institutional Subjects Catalog</h2>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Standard subjects taught across primary, middle, and senior secondary grades.</p>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>Institutional Subjects Catalog</h2>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
@@ -1879,8 +1926,7 @@ const Academics = () => {
         <div className="card" style={{ padding: '24px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: '0 0 4px 0' }}>Academic Assessment Schedules</h2>
-              <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0 }}>Mid-term assessments, term-end evaluations, and report card timelines.</p>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>Academic Assessment Schedules</h2>
             </div>
             {isAdmin && (
               <button style={{ padding: '8px 16px', background: '#2563eb', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>

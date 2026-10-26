@@ -205,9 +205,6 @@ const CreateSchoolModal = ({
               <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
                 Register New School Branch
               </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                Create a branch campus under your licensed organization. Appoint dedicated Branch Admin and Principal.
-              </p>
             </div>
           </div>
           <button 

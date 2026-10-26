@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, MoreVertical, CreditCard, ChevronLeft, ChevronRight, Download, X, 
   DollarSign, User, AlertCircle, FileText, CheckCircle, Briefcase, TrendingUp, 
-  Plus, RefreshCw, Layers, ArrowUpRight, ArrowDownLeft, Calendar, Filter
+  Plus, RefreshCw, Layers, ArrowUpRight, ArrowDownLeft, Calendar, Filter,
+  Users, Check, Wallet, Send, Receipt, Clock
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -14,26 +16,57 @@ const Finance = () => {
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
-  const isAdmin = ['admin', 'superadmin', 'principal', 'accountant'].includes(userRole);
+  const isPrincipal = userRole === 'principal';
+  const isAdmin = ['admin', 'superadmin', 'accountant', 'accounts'].includes(userRole);
+
+  // Tabs & URL synchronization
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const validTabs = ['ledger', 'collections', 'pending', 'expenses', 'salaries'];
+  const [activeTab, setActiveTab] = useState(validTabs.includes(urlTab) ? urlTab : 'ledger');
+
+  useEffect(() => {
+    if (urlTab && validTabs.includes(urlTab) && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+    setCurrentPage(1);
+  };
 
   // Data States
   const [transactions, setTransactions] = useState([]);
   const [totalTxns, setTotalTxns] = useState(0);
   const [pendingFeesList, setPendingFeesList] = useState([]);
   const [totalPendingFees, setTotalPendingFees] = useState(0);
+  const [salariesData, setSalariesData] = useState({
+    currentMonth: '',
+    totalPayroll: 0,
+    disbursedTotal: 0,
+    dueTotal: 0,
+    paidCount: 0,
+    dueCount: 0,
+    staff: []
+  });
   const [stats, setStats] = useState({
     totalCollections: 0,
     totalExpenses: 0,
     pendingFees: 0,
+    dueSalaries: 0,
+    totalStaffPayroll: 0,
     availableBalance: 0
   });
+
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   // UI States
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('ledger'); // 'ledger', 'pending', 'payroll'
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTxn, setSelectedTxn] = useState(null);
   const itemsPerPage = 10;
@@ -52,6 +85,21 @@ const Finance = () => {
   const [formData, setFormData] = useState(initialForm);
   const [formError, setFormError] = useState('');
 
+  // Salary Disbursement Modal State
+  const [disburseModalStaff, setDisburseModalStaff] = useState(null);
+  const [disburseAmount, setDisburseAmount] = useState('');
+  const [disbursePaymentMethod, setDisbursePaymentMethod] = useState('Bank Transfer');
+  const [disburseMonth, setDisburseMonth] = useState('');
+  const [disburseNotes, setDisburseNotes] = useState('');
+  const [disburseError, setDisburseError] = useState('');
+
+  // Collect Due Fee Modal State
+  const [collectFeeTarget, setCollectFeeTarget] = useState(null);
+  const [collectFeeAmount, setCollectFeeAmount] = useState('');
+  const [collectFeeMethod, setCollectFeeMethod] = useState('UPI');
+  const [collectFeeNotes, setCollectFeeNotes] = useState('');
+  const [collectFeeError, setCollectFeeError] = useState('');
+
   const getAuthHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -59,12 +107,15 @@ const Finance = () => {
     return headers;
   };
 
-  // Fetch Financial Transactions & Stats
+  // Fetch Financial Transactions, Stats, Pending Fees, & Salaries
   const fetchFinanceData = async () => {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const typeParam = activeTab === 'payroll' ? 'Expense' : '';
+      let typeParam = '';
+      if (activeTab === 'collections') typeParam = 'Fee Collection';
+      if (activeTab === 'expenses') typeParam = 'Expense';
+
       const params = new URLSearchParams({
         page: currentPage,
         limit: itemsPerPage,
@@ -72,10 +123,11 @@ const Finance = () => {
         ...(typeParam ? { type: typeParam } : {})
       });
 
-      const [txnsRes, statsRes, pendingRes] = await Promise.all([
+      const [txnsRes, statsRes, pendingRes, salariesRes] = await Promise.all([
         fetch(`${API_BASE}/finance/transactions?${params.toString()}`, { headers: getAuthHeaders() }),
         fetch(`${API_BASE}/finance/stats`, { headers: getAuthHeaders() }),
-        fetch(`${API_BASE}/dashboard/pending-fees?limit=50`, { headers: getAuthHeaders() })
+        fetch(`${API_BASE}/dashboard/pending-fees?limit=100`, { headers: getAuthHeaders() }),
+        fetch(`${API_BASE}/finance/salaries`, { headers: getAuthHeaders() })
       ]);
 
       if (txnsRes.ok) {
@@ -91,8 +143,15 @@ const Finance = () => {
 
       if (pendingRes.ok) {
         const pendingData = await pendingRes.json();
-        setPendingFeesList(pendingData.fees || []);
-        setTotalPendingFees(pendingData.total || 0);
+        const rawFees = pendingData.fees || [];
+        const filteredPending = rawFees.filter(f => f.status !== 'Collected');
+        setPendingFeesList(filteredPending);
+        setTotalPendingFees(filteredPending.length);
+      }
+
+      if (salariesRes.ok) {
+        const salObj = await salariesRes.json();
+        setSalariesData(salObj);
       }
     } catch (err) {
       setErrorMsg('Failed to connect to financial ledgers: ' + err.message);
@@ -135,6 +194,8 @@ const Finance = () => {
       if (res.ok) {
         setIsAddModalOpen(false);
         setFormData(initialForm);
+        setSuccessMsg(`Transaction recorded successfully (${formData.refId || 'Ref generated'})`);
+        setTimeout(() => setSuccessMsg(''), 5000);
         fetchFinanceData();
       } else {
         setFormError(data.message || 'Failed to record transaction');
@@ -146,8 +207,116 @@ const Finance = () => {
     }
   };
 
+  // Submit Salary Disbursement
+  const handleDisburseSalary = async (e) => {
+    e.preventDefault();
+    if (!disburseModalStaff) return;
+    if (!disburseAmount || Number(disburseAmount) <= 0) {
+      setDisburseError('Please enter a valid salary amount');
+      return;
+    }
+
+    setActionLoading(true);
+    setDisburseError('');
+
+    try {
+      const res = await fetch(`${API_BASE}/finance/disburse-salary`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          staffId: disburseModalStaff._id,
+          amount: Number(disburseAmount),
+          paymentMethod: disbursePaymentMethod,
+          month: disburseMonth || salariesData.currentMonth,
+          notes: disburseNotes
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setDisburseModalStaff(null);
+        setSuccessMsg(data.message || `Salary successfully disbursed to ${disburseModalStaff.name}`);
+        setTimeout(() => setSuccessMsg(''), 5000);
+        fetchFinanceData();
+      } else {
+        setDisburseError(data.message || 'Failed to disburse salary');
+      }
+    } catch (err) {
+      setDisburseError('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Submit Fee Collection
+  const handleCollectFee = async (e) => {
+    e.preventDefault();
+    if (!collectFeeTarget) return;
+    if (!collectFeeAmount || Number(collectFeeAmount) <= 0) {
+      setCollectFeeError('Please enter a valid collection amount');
+      return;
+    }
+
+    setActionLoading(true);
+    setCollectFeeError('');
+
+    try {
+      const res = await fetch(`${API_BASE}/finance/collect-due-fee`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          feeId: collectFeeTarget._id,
+          studentName: collectFeeTarget.studentName,
+          classSection: collectFeeTarget.classSection,
+          amount: Number(collectFeeAmount),
+          paymentMethod: collectFeeMethod,
+          notes: collectFeeNotes
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setCollectFeeTarget(null);
+        setSuccessMsg(data.message || `Fee collected successfully for ${collectFeeTarget.studentName}`);
+        setTimeout(() => setSuccessMsg(''), 5000);
+        fetchFinanceData();
+      } else {
+        setCollectFeeError(data.message || 'Failed to collect due fee');
+      }
+    } catch (err) {
+      setCollectFeeError('Network error: ' + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatCurrency = (val) => `₹${Number(val || 0).toLocaleString()}`;
   const totalPages = Math.ceil(totalTxns / itemsPerPage) || 1;
+
+  // Filtered staff list for search in salaries tab
+  const filteredStaffList = useMemo(() => {
+    if (!salariesData.staff) return [];
+    if (!searchQuery.trim()) return salariesData.staff;
+    const q = searchQuery.toLowerCase().trim();
+    return salariesData.staff.filter(s => 
+      s.name.toLowerCase().includes(q) ||
+      (s.employeeId && s.employeeId.toLowerCase().includes(q)) ||
+      (s.role && s.role.toLowerCase().includes(q)) ||
+      (s.department && s.department.toLowerCase().includes(q))
+    );
+  }, [salariesData.staff, searchQuery]);
+
+  // Filtered pending fees for search
+  const filteredPendingFees = useMemo(() => {
+    if (!pendingFeesList) return [];
+    if (!searchQuery.trim()) return pendingFeesList;
+    const q = searchQuery.toLowerCase().trim();
+    return pendingFeesList.filter(f => 
+      f.studentName.toLowerCase().includes(q) ||
+      (f.classSection && f.classSection.toLowerCase().includes(q)) ||
+      (f.parentContact && f.parentContact.includes(q))
+    );
+  }, [pendingFeesList, searchQuery]);
 
   // Transaction Receipt / Details Drawer
   const renderTransactionDrawer = () => {
@@ -204,7 +373,7 @@ const Finance = () => {
 
               {t.studentName && (
                 <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Student / Payee</div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Student / Payee / Faculty</div>
                   <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', marginTop: '2px' }}>{t.studentName}</div>
                 </div>
               )}
@@ -242,68 +411,153 @@ const Finance = () => {
     );
   };
 
+  if (isPrincipal) {
+    return (
+      <div style={{ padding: '40px 20px', maxWidth: '650px', margin: '40px auto', textAlign: 'center' }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '20px',
+          padding: '36px',
+          boxShadow: '0 10px 25px rgba(0,0,0,0.05)',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'rgba(79, 70, 229, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 20px'
+          }}>
+            <CreditCard size={32} color="#4F46E5" />
+          </div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '10px' }}>
+            Academic Scope Governance
+          </h2>
+          <p style={{ fontSize: '0.92rem', color: '#64748b', lineHeight: 1.6, marginBottom: '24px' }}>
+            As <strong>Campus Principal</strong>, you have dedicated executive access to all <strong>Academic Duties</strong> (Curriculum, Examinations, Report Cards, Timetables, Student Growth Profiles, and Teacher Workload). Financial and fee operations are managed by Accounts Personnel and School Administrators.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+            <button
+              onClick={() => window.location.href = `/${tenantSlug}/dashboard`}
+              style={{
+                padding: '10px 20px',
+                background: '#4F46E5',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              Go to Academic Command Hub
+            </button>
+            <button
+              onClick={() => window.location.href = `/${tenantSlug}/academics`}
+              style={{
+                padding: '10px 20px',
+                background: '#f8fafc',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '10px',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              View Academics & Exams
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%' }}>
       {renderTransactionDrawer()}
 
-      {/* Financial KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
-        <div className="card" style={{ padding: '20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+      {/* Financial KPI Cards — Collections, Expenses, Due Fees, Due Salaries, Balance */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+        {/* Total Collections */}
+        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Collections</span>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Collections</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ArrowDownLeft size={16} color="#16a34a" />
             </div>
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e3a8a', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e3a8a', marginTop: '6px' }}>
             {formatCurrency(stats.totalCollections)}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, marginTop: '4px' }}>
+          <div style={{ fontSize: '0.74rem', color: '#16a34a', fontWeight: 600, marginTop: '4px' }}>
             ● Recorded fee receipts
           </div>
         </div>
 
-        <div className="card" style={{ padding: '20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        {/* Total Expenses */}
+        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Expenses</span>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Expenses</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <ArrowUpRight size={16} color="#dc2626" />
             </div>
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#991b1b', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#991b1b', marginTop: '6px' }}>
             {formatCurrency(stats.totalExpenses)}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, marginTop: '4px' }}>
+          <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 500, marginTop: '4px' }}>
             Payroll, utilities & facilities
           </div>
         </div>
 
-        <div className="card" style={{ padding: '20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        {/* Pending / Overdue Fees */}
+        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Pending / Overdue Fees</span>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Due / Overdue Fees</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <AlertCircle size={16} color="#d97706" />
             </div>
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#d97706', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#d97706', marginTop: '6px' }}>
             {formatCurrency(stats.pendingFees)}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, marginTop: '4px' }}>
+          <div style={{ fontSize: '0.74rem', color: '#d97706', fontWeight: 600, marginTop: '4px' }}>
             {totalPendingFees} student accounts pending
           </div>
         </div>
 
-        <div className="card" style={{ padding: '20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        {/* Due Salaries */}
+        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Net Operating Balance</span>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Due Salaries</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Users size={16} color="#7c3aed" />
+            </div>
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#7c3aed', marginTop: '6px' }}>
+            {formatCurrency(stats.dueSalaries !== undefined ? stats.dueSalaries : (salariesData.dueTotal || 0))}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: '#7c3aed', fontWeight: 600, marginTop: '4px' }}>
+            {salariesData.dueCount || 0} staff awaiting disbursement
+          </div>
+        </div>
+
+        {/* Net Operating Balance */}
+        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Net Operating Balance</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <CreditCard size={16} color="#4F46E5" />
             </div>
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#4F46E5', marginTop: '8px' }}>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#4F46E5', marginTop: '6px' }}>
             {formatCurrency(stats.availableBalance)}
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#4F46E5', fontWeight: 600, marginTop: '4px' }}>
+          <div style={{ fontSize: '0.74rem', color: '#4F46E5', fontWeight: 600, marginTop: '4px' }}>
             Live cash balance
           </div>
         </div>
@@ -318,27 +572,44 @@ const Finance = () => {
         {/* Table Top Controls & Tabs */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: '8px', background: '#f1f5f9', padding: '4px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '10px', flexWrap: 'wrap' }}>
             {[
-              { id: 'ledger', label: 'All Transactions' },
-              { id: 'pending', label: 'Pending Dues' },
-              { id: 'payroll', label: 'Expenses & Payroll' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setCurrentPage(1); }}
-                style={{
-                  padding: '7px 16px', borderRadius: '8px', border: 'none',
-                  fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer',
-                  background: activeTab === tab.id ? 'white' : 'transparent',
-                  color: activeTab === tab.id ? '#1e3a8a' : '#64748b',
-                  boxShadow: activeTab === tab.id ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                  transition: 'all 0.15s'
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
+              { id: 'ledger', label: 'All Transactions', icon: Layers },
+              { id: 'collections', label: 'Fees Collection', icon: CreditCard },
+              { id: 'pending', label: 'Due / Overdue Fees', icon: AlertCircle },
+              { id: 'expenses', label: 'School Expenses', icon: TrendingUp },
+              { id: 'salaries', label: 'Due Salaries & Payroll', icon: Users }
+            ].map(tab => {
+              const TabIcon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                    padding: '7px 14px', borderRadius: '8px', border: 'none',
+                    fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                    background: activeTab === tab.id ? 'white' : 'transparent',
+                    color: activeTab === tab.id ? '#1e3a8a' : '#64748b',
+                    boxShadow: activeTab === tab.id ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <TabIcon size={14} color={activeTab === tab.id ? '#4F46E5' : '#94a3b8'} />
+                  {tab.label}
+                  {tab.id === 'pending' && totalPendingFees > 0 && (
+                    <span style={{ fontSize: '0.68rem', background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: '8px', fontWeight: 800 }}>
+                      {totalPendingFees}
+                    </span>
+                  )}
+                  {tab.id === 'salaries' && (salariesData.dueCount || 0) > 0 && (
+                    <span style={{ fontSize: '0.68rem', background: '#ede9fe', color: '#6d28d9', padding: '1px 6px', borderRadius: '8px', fontWeight: 800 }}>
+                      {salariesData.dueCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Action Bar */}
@@ -348,16 +619,20 @@ const Finance = () => {
               <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input 
                 type="text" 
-                placeholder="Search voucher or name..." 
+                placeholder={
+                  activeTab === 'salaries' ? "Search staff name, ID, role..." :
+                  activeTab === 'pending' ? "Search student, class..." :
+                  "Search voucher, name, category..."
+                }
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 style={{
                   padding: '9px 12px 9px 34px',
                   borderRadius: '10px',
                   border: '1px solid #cbd5e1',
-                  fontSize: '0.85rem',
+                  fontSize: '0.84rem',
                   outline: 'none',
-                  width: '210px'
+                  width: '230px'
                 }}
               />
             </div>
@@ -375,27 +650,42 @@ const Finance = () => {
               <RefreshCw size={15} />
             </button>
 
-            {/* Record Transaction Button */}
+            {/* Contextual Action Button */}
             {isAdmin && (
               <button
-                onClick={() => { setFormError(''); setFormData(initialForm); setIsAddModalOpen(true); }}
+                onClick={() => {
+                  setFormError('');
+                  const initialType = activeTab === 'expenses' ? 'Expense' : 'Fee Collection';
+                  const initialCat = activeTab === 'expenses' ? 'Campus Maintenance' : 'Tuition Fee';
+                  setFormData({ ...initialForm, type: initialType, category: initialCat });
+                  setIsAddModalOpen(true);
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
                   background: 'linear-gradient(135deg, #4F46E5 0%, #1e40af 100%)',
                   color: 'white', border: 'none', padding: '9px 18px',
-                  borderRadius: '10px', fontSize: '0.86rem', fontWeight: 700,
+                  borderRadius: '10px', fontSize: '0.84rem', fontWeight: 700,
                   cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
                 }}
               >
-                <Plus size={16} /> Record Transaction
+                <Plus size={16} />
+                {activeTab === 'collections' ? 'Record Fee Receipt' :
+                 activeTab === 'expenses' ? 'Record School Expense' :
+                 'Record Transaction'}
               </button>
             )}
           </div>
         </div>
 
+        {/* Global Notifications */}
         {errorMsg && (
           <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '16px' }}>
             {errorMsg}
+          </div>
+        )}
+        {successMsg && (
+          <div style={{ padding: '12px 16px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', color: '#047857', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle size={16} /> {successMsg}
           </div>
         )}
 
@@ -404,30 +694,160 @@ const Finance = () => {
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
               <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 10px', color: '#4F46E5' }} />
-              <p style={{ margin: 0, fontWeight: 600 }}>Loading ledger records...</p>
+              <p style={{ margin: 0, fontWeight: 600 }}>Loading financial records...</p>
+            </div>
+          ) : activeTab === 'salaries' ? (
+            /* ================= DUE SALARIES & STAFF PAYROLL VIEW ================= */
+            <div>
+              {/* Payroll Month Summary Bar */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px',
+                padding: '14px 18px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0',
+                marginBottom: '18px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Payroll Cycle</div>
+                  <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
+                    📅 {salariesData.currentMonth || 'Current Month'}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Staff Commitment</div>
+                  <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#1e293b', marginTop: '2px' }}>
+                    {formatCurrency(salariesData.totalPayroll)}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, textTransform: 'uppercase' }}>Disbursed So Far</div>
+                  <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
+                    {formatCurrency(salariesData.disbursedTotal)} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>({salariesData.paidCount} staff)</span>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600, textTransform: 'uppercase' }}>Due Salaries Pending</div>
+                  <div style={{ fontSize: '0.98rem', fontWeight: 800, color: '#d97706', marginTop: '2px' }}>
+                    {formatCurrency(salariesData.dueTotal)} <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b' }}>({salariesData.dueCount} staff)</span>
+                  </div>
+                </div>
+              </div>
+
+              {filteredStaffList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '50px 0', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
+                  <Users size={38} style={{ margin: '0 auto 10px', color: '#94a3b8' }} />
+                  <h4 style={{ margin: '0 0 4px', color: '#1e3a8a', fontSize: '1.05rem', fontWeight: 700 }}>No Staff Records Found</h4>
+                  <p style={{ margin: 0, fontSize: '0.84rem' }}>No active faculty or employees matched the current filters.</p>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
+                      <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Staff Member</th>
+                      <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Role / Designation</th>
+                      <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Department</th>
+                      <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly Salary</th>
+                      <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status ({salariesData.currentMonth})</th>
+                      <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Disbursement Details</th>
+                      <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredStaffList.map((staff) => (
+                      <tr key={staff._id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.88rem' }}>{staff.name}</div>
+                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>ID: <code>{staff.employeeId || '—'}</code></div>
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{
+                            padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700,
+                            background: '#e0e7ff', color: '#3730a3'
+                          }}>
+                            {staff.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.84rem' }}>
+                          {staff.department || 'General'}
+                        </td>
+                        <td style={{ padding: '12px 14px', fontWeight: 800, color: '#1e293b', fontSize: '0.9rem' }}>
+                          {formatCurrency(staff.salary)}
+                        </td>
+                        <td style={{ padding: '12px 14px' }}>
+                          <span style={{
+                            padding: '3px 9px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700,
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            background: staff.status === 'Paid' ? '#dcfce7' : '#fef3c7',
+                            color: staff.status === 'Paid' ? '#15803d' : '#b45309'
+                          }}>
+                            {staff.status === 'Paid' ? <Check size={12} /> : <Clock size={12} />}
+                            {staff.status === 'Paid' ? 'Paid' : 'Due this month'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 14px', fontSize: '0.8rem', color: '#64748b' }}>
+                          {staff.status === 'Paid' ? (
+                            <div>
+                              <div>Ref: <code style={{ color: '#334155', fontWeight: 700 }}>{staff.refId}</code></div>
+                              <div style={{ fontSize: '0.72rem' }}>Via {staff.paymentMethod || 'Bank Transfer'} • {staff.disbursedAt ? new Date(staff.disbursedAt).toLocaleDateString() : ''}</div>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Awaiting disbursement</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          {staff.status === 'Due' ? (
+                            <button
+                              onClick={() => {
+                                setDisburseError('');
+                                setDisburseModalStaff(staff);
+                                setDisburseAmount(staff.salary || '');
+                                setDisburseMonth(salariesData.currentMonth);
+                                setDisbursePaymentMethod('Bank Transfer');
+                                setDisburseNotes(`Salary disbursement for ${salariesData.currentMonth}`);
+                              }}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                background: 'linear-gradient(135deg, #4F46E5 0%, #1e40af 100%)',
+                                color: 'white', border: 'none', padding: '6px 14px',
+                                borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700,
+                                cursor: 'pointer', boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
+                              }}
+                            >
+                              <Wallet size={13} /> Disburse Salary
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                              <CheckCircle size={14} /> Completed
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           ) : activeTab === 'pending' ? (
-            /* PENDING FEES TABLE VIEW */
-            pendingFeesList.length === 0 ? (
+            /* ================= DUE / OVERDUE FEES VIEW ================= */
+            filteredPendingFees.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
                 <CheckCircle size={40} style={{ margin: '0 auto 10px', color: '#16a34a' }} />
                 <h4 style={{ margin: '0 0 4px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>No Pending Fee Accounts</h4>
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>All active student dues have been reconciled.</p>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>All active student dues have been reconciled and cleared.</p>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Student Name</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Class & Section</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Guardian Contact</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Due Date</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Amount Due</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Student Name</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Class & Section</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Guardian Contact</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Due Date</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Amount Due</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingFeesList.map((f, i) => (
+                  {filteredPendingFees.map((f, i) => (
                     <tr key={f._id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '12px 14px', fontWeight: 700, color: '#1e293b' }}>{f.studentName}</td>
                       <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.84rem' }}>{f.classSection || 'General'}</td>
@@ -447,30 +867,54 @@ const Finance = () => {
                       <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>
                         {formatCurrency(f.amount)}
                       </td>
+                      <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                        <button
+                          onClick={() => {
+                            setCollectFeeError('');
+                            setCollectFeeTarget(f);
+                            setCollectFeeAmount(f.amount || '');
+                            setCollectFeeMethod('UPI');
+                            setCollectFeeNotes(`Fee payment for ${f.studentName} (${f.classSection})`);
+                          }}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '5px',
+                            background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                            color: 'white', border: 'none', padding: '6px 14px',
+                            borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700,
+                            cursor: 'pointer', boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)'
+                          }}
+                        >
+                          <CreditCard size={13} /> Collect Fee
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             )
           ) : (
-            /* GENERAL TRANSACTIONS LEDGER TABLE VIEW */
+            /* ================= GENERAL TRANSACTIONS LEDGER / COLLECTIONS / EXPENSES ================= */
             transactions.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
                 <CreditCard size={40} style={{ margin: '0 auto 10px', color: '#cbd5e1' }} />
-                <h4 style={{ margin: '0 0 4px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>No Transactions Recorded</h4>
+                <h4 style={{ margin: '0 0 4px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>
+                  {activeTab === 'collections' ? 'No Fee Receipts Recorded' :
+                   activeTab === 'expenses' ? 'No School Expenses Recorded' :
+                   'No Transactions Recorded'}
+                </h4>
                 <p style={{ margin: 0, fontSize: '0.85rem' }}>Record the first transaction using the button above.</p>
               </div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Ref ID</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Type</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Category / Memo</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Party / Student</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Date</th>
-                    <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
-                    <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Amount</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Ref ID</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Type</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Category / Memo</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Party / Student / Payee</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Date</th>
+                    <th style={{ padding: '12px 14px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
+                    <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Amount</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -490,7 +934,7 @@ const Finance = () => {
                       <td style={{ padding: '12px 14px' }}>
                         <span style={{
                           display: 'inline-flex', alignItems: 'center', gap: '4px',
-                          padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700,
+                          padding: '3px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700,
                           background: t.type === 'Fee Collection' ? '#dcfce7' : '#fee2e2',
                           color: t.type === 'Fee Collection' ? '#15803d' : '#b91c1c'
                         }}>
@@ -531,7 +975,11 @@ const Finance = () => {
         {/* Pagination */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
           <div style={{ fontSize: '0.82rem', color: '#64748b' }}>
-            Showing <strong>{activeTab === 'pending' ? pendingFeesList.length : transactions.length}</strong> entries
+            Showing <strong>
+              {activeTab === 'salaries' ? filteredStaffList.length :
+               activeTab === 'pending' ? filteredPendingFees.length :
+               transactions.length}
+            </strong> entries
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button 
@@ -542,10 +990,10 @@ const Finance = () => {
               <ChevronLeft size={16} />
             </button>
             <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#334155' }}>
-              Page {currentPage} of {totalPages}
+              Page {currentPage} of {activeTab === 'salaries' || activeTab === 'pending' ? 1 : totalPages}
             </span>
             <button 
-              disabled={currentPage >= totalPages} 
+              disabled={currentPage >= (activeTab === 'salaries' || activeTab === 'pending' ? 1 : totalPages)} 
               onClick={() => setCurrentPage(p => p + 1)} 
               style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 10px', cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer', color: '#475569', opacity: currentPage >= totalPages ? 0.5 : 1 }}
             >
@@ -580,9 +1028,6 @@ const Finance = () => {
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
                     Record Financial Transaction
                   </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                    Post payment receipts or campus expenditures into database
-                  </p>
                 </div>
               </div>
               <button 
@@ -707,6 +1152,289 @@ const Finance = () => {
                     style={{ padding: '9px 20px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.86rem', fontWeight: 700, cursor: 'pointer' }}
                   >
                     {actionLoading ? 'Recording...' : 'Save to Ledger'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Disburse Staff Salary Modal */}
+      {disburseModalStaff && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+          zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '24px', width: '500px', maxWidth: '95vw',
+            maxHeight: '92vh', overflowY: 'auto', padding: '30px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(226, 232, 240, 0.8)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '14px',
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <Wallet size={22} color="#7c3aed" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
+                    Disburse Staff Salary
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+                    Record monthly payroll compensation in the school ledger
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setDisburseModalStaff(null)}
+                style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Staff Summary Pill */}
+            <div style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>{disburseModalStaff.name}</div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                    {disburseModalStaff.role} • Dept: {disburseModalStaff.department || 'General'} • ID: {disburseModalStaff.employeeId || '—'}
+                  </div>
+                </div>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: '#fef3c7', color: '#b45309' }}>
+                  Due for {disburseMonth || salariesData.currentMonth}
+                </span>
+              </div>
+            </div>
+
+            {disburseError && (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#b91c1c', fontSize: '0.84rem', marginBottom: '16px' }}>
+                {disburseError}
+              </div>
+            )}
+
+            <form onSubmit={handleDisburseSalary}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Disbursement Amount (₹) *
+                    </label>
+                    <input 
+                      type="number"
+                      required
+                      min="1"
+                      value={disburseAmount}
+                      onChange={e => setDisburseAmount(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Payment Method *
+                    </label>
+                    <select
+                      value={disbursePaymentMethod}
+                      onChange={e => setDisbursePaymentMethod(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                    >
+                      <option value="Bank Transfer">Bank Transfer (NEFT/IMPS)</option>
+                      <option value="Cheque">Bank Cheque</option>
+                      <option value="UPI">UPI Transfer</option>
+                      <option value="Cash">Cash Voucher</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Payroll Month
+                  </label>
+                  <input 
+                    type="text"
+                    value={disburseMonth}
+                    onChange={e => setDisburseMonth(e.target.value)}
+                    placeholder="e.g. October 2026"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Disbursement Notes / Reference
+                  </label>
+                  <textarea 
+                    rows={2}
+                    value={disburseNotes}
+                    onChange={e => setDisburseNotes(e.target.value)}
+                    placeholder="e.g. Standard monthly salary compensation via corporate bank transfer"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setDisburseModalStaff(null)}
+                    style={{ padding: '9px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.86rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    style={{
+                      padding: '9px 20px',
+                      background: 'linear-gradient(135deg, #4F46E5 0%, #1e40af 100%)',
+                      color: 'white', border: 'none', borderRadius: '8px',
+                      fontSize: '0.86rem', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    {actionLoading ? 'Disbursing...' : 'Confirm & Disburse'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Collect Due Fee Modal */}
+      {collectFeeTarget && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+          zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '24px', width: '500px', maxWidth: '95vw',
+            maxHeight: '92vh', overflowY: 'auto', padding: '30px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid rgba(226, 232, 240, 0.8)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px', height: '44px', borderRadius: '14px',
+                  background: 'linear-gradient(135deg, rgba(22, 163, 74, 0.1) 0%, rgba(15, 118, 110, 0.1) 100%)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <CreditCard size={22} color="#16a34a" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
+                    Collect Due Student Fee
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
+                    Reconcile student fee balance and generate official receipt
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setCollectFeeTarget(null)}
+                style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Student Summary Pill */}
+            <div style={{ padding: '14px 18px', background: '#f8fafc', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>{collectFeeTarget.studentName}</div>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b' }}>
+                    Class: {collectFeeTarget.classSection || 'General'} • Guardian: {collectFeeTarget.parentContact || '—'}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Total Due</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#b91c1c' }}>
+                    {formatCurrency(collectFeeTarget.amount)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {collectFeeError && (
+              <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#b91c1c', fontSize: '0.84rem', marginBottom: '16px' }}>
+                {collectFeeError}
+              </div>
+            )}
+
+            <form onSubmit={handleCollectFee}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Collection Amount (₹) *
+                    </label>
+                    <input 
+                      type="number"
+                      required
+                      min="1"
+                      value={collectFeeAmount}
+                      onChange={e => setCollectFeeAmount(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Payment Method *
+                    </label>
+                    <select
+                      value={collectFeeMethod}
+                      onChange={e => setCollectFeeMethod(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                    >
+                      <option value="UPI">UPI / QR</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                      <option value="Cheque">Cheque</option>
+                      <option value="Online">Online Gateway</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Receipt Notes / Reference
+                  </label>
+                  <textarea 
+                    rows={2}
+                    value={collectFeeNotes}
+                    onChange={e => setCollectFeeNotes(e.target.value)}
+                    placeholder="e.g. Term 1 Tuition Fee installment received via UPI"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCollectFeeTarget(null)}
+                    style={{ padding: '9px 16px', background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.86rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    style={{
+                      padding: '9px 20px',
+                      background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                      color: 'white', border: 'none', borderRadius: '8px',
+                      fontSize: '0.86rem', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    {actionLoading ? 'Collecting...' : 'Collect & Issue Receipt'}
                   </button>
                 </div>
               </div>

@@ -1767,29 +1767,45 @@ MOBILE
 }
 
 
-/* Hide scrollbars across the application while preserving smooth scrollability */
-*::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-* {
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-}
-
-.content-layer,
+/* Modern sleek scrollbar styling across the application */
 .hide-scrollbar {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
 }
 
-.content-layer::-webkit-scrollbar,
 .hide-scrollbar::-webkit-scrollbar {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+/* Custom modern scrollbar for content layer & timetable */
+.content-layer,
+.timetable-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
+.content-layer::-webkit-scrollbar,
+.timetable-scroll-container::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+.content-layer::-webkit-scrollbar-track,
+.timetable-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content-layer::-webkit-scrollbar-thumb,
+.timetable-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+}
+
+.content-layer::-webkit-scrollbar-thumb:hover,
+.timetable-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 70, 229, 0.7);
 }
 
 
@@ -1983,3 +1999,489 @@ body.dark-mode .staff-nav-tab:hover:not(.active) {
 .staff-tab-content {
   animation: staffTabFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   ACADEMIC PRINT SYSTEM & TIMETABLE PRINT STYLES
+   ========================================================================== */
+.print-only {
+  display: none !important;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm 10mm;
+  }
+
+  /* 1. Global Reset & Elimination of All Background Images / Gradient Overlays */
+  *,
+  *::before,
+  *::after {
+    background-image: none !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    filter: none !important;
+  }
+
+  /* Strictly remove any dashboard background images or pseudo elements */
+  .main-wrapper::before,
+  .main-wrapper::after,
+  .ambient-background,
+  .ambient-background::before,
+  .ambient-background::after,
+  body::before,
+  body::after,
+  #root::before,
+  #root::after,
+  .app-shell::before,
+  .app-shell::after {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+    background-image: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* Force clean white canvas across all layout shells */
+  html,
+  body,
+  #root,
+  .app-shell,
+  .main-wrapper,
+  .content-layer {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. Hide all non-printable chrome and interactive elements */
+  .top-header,
+  .sub-header,
+  .dashboard-sidebar,
+  .ambient-background,
+  .layout-drawer,
+  .emergency-banner,
+  .no-print,
+  button,
+  select,
+  input {
+    display: none !important;
+  }
+
+  /* 3. Reveal formal print elements */
+  .print-only {
+    display: block !important;
+  }
+
+  /* 4. Main chart-card wrapper */
+  .chart-card,
+  .timetable-main-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* 5. Official Academic Timetable Print Header */
+  .timetable-print-header {
+    margin-bottom: 6px !important;
+    border-bottom: 2px solid #1e3a8a !important;
+    padding-bottom: 4px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-header-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 4px !important;
+  }
+
+  .print-header-brand {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  .print-school-logo {
+    width: 36px !important;
+    height: 36px !important;
+    object-fit: contain !important;
+  }
+
+  .print-school-details {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .print-school-name {
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
+    color: #1e3a8a !important;
+    margin: 0 !important;
+    letter-spacing: -0.01em !important;
+    text-transform: uppercase !important;
+    line-height: 1.1 !important;
+  }
+
+  .print-school-sub {
+    font-size: 0.65rem !important;
+    color: #475569 !important;
+    margin: 2px 0 0 !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+  }
+
+  .print-doc-title {
+    font-size: 0.70rem !important;
+    font-weight: 800 !important;
+    color: #0f766e !important;
+    margin: 2px 0 0 !important;
+    letter-spacing: 0.4px !important;
+    text-transform: uppercase !important;
+    line-height: 1 !important;
+  }
+
+  .print-meta-badge {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    gap: 3px !important;
+  }
+
+  .print-meta-session {
+    background: #1e3a8a !important;
+    color: white !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-meta-stamp {
+    font-size: 0.60rem !important;
+    font-weight: 700 !important;
+    color: #059669 !important;
+    border: 1px solid #10b981 !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    letter-spacing: 0.3px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-info-strip {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 4px !important;
+    padding: 3px 8px !important;
+    margin-top: 4px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-info-item {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 0.65rem !important;
+    line-height: 1 !important;
+  }
+
+  .print-info-item .info-lbl {
+    font-weight: 700 !important;
+    color: #64748b !important;
+  }
+
+  .print-info-item .info-val {
+    font-weight: 800 !important;
+    color: #0f172a !important;
+  }
+
+  /* 6. Dynamic Grid Columns & Timetable Matrix in Print */
+  .timetable-scroll-container,
+  .timetable-print-container {
+    overflow: visible !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .timetable-inner-matrix {
+    min-width: 0 !important;
+    width: 100% !important;
+    gap: 3.5px !important; /* override inline gap: 12px */
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .timetable-header-row {
+    display: grid !important;
+    grid-template-columns: 80px repeat(var(--period-count, 6), minmax(0, 1fr)) !important;
+    gap: 4px !important; /* override inline gap: 10px */
+    padding-bottom: 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .timetable-header-row > div {
+    padding: 3px 4px !important; /* override inline padding: 8px 10px */
+    border-radius: 5px !important;
+  }
+
+  .timetable-header-row > div:first-child {
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    padding: 3px 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .timetable-header-row > div > div:first-child {
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .timetable-header-row > div > div:nth-child(2) {
+    font-size: 0.60rem !important;
+    margin-top: 1px !important;
+    line-height: 1 !important;
+  }
+
+  .timetable-grid-row {
+    display: grid !important;
+    grid-template-columns: 80px repeat(var(--period-count, 6), minmax(0, 1fr)) !important;
+    gap: 4px !important; /* override inline gap: 10px */
+    align-items: stretch !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .timetable-day-header {
+    position: static !important;
+    box-shadow: none !important;
+    background: #1e3a8a !important;
+    color: white !important;
+    padding: 4px 5px !important; /* override inline padding: 12px 6px */
+    border-radius: 5px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    min-height: 0 !important;
+  }
+
+  .timetable-day-header .day-name,
+  .timetable-day-header span:first-child {
+    font-size: 0.78rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+  }
+
+  .timetable-day-header .day-periods-count,
+  .timetable-day-header span:nth-child(2) {
+    font-size: 0.58rem !important;
+    opacity: 0.85 !important;
+    margin-top: 2px !important;
+    line-height: 1 !important;
+  }
+
+  /* Well-proportioned Period Cards */
+  .timetable-card {
+    box-shadow: none !important;
+    border-radius: 5px !important;
+    padding: 4px 6px !important; /* override inline padding: 10px 12px */
+    min-height: 0 !important;
+    height: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .timetable-card.regular-card {
+    border: 1px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+  }
+
+  .timetable-card.recess-card {
+    border: 1.5px dashed #d97706 !important;
+    background: #fffbeb !important;
+  }
+
+  /* Inner Card Formatting */
+  .card-top-row,
+  .recess-top-row {
+    margin-bottom: 2px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    line-height: 1 !important;
+  }
+
+  .card-period-tag,
+  .recess-tag {
+    font-size: 0.62rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+  }
+
+  .card-type-tag,
+  .recess-pill {
+    font-size: 0.55rem !important;
+    font-weight: 700 !important;
+    padding: 1px 4px !important;
+    line-height: 1 !important;
+    border-radius: 3px !important;
+  }
+
+  .card-subject-title,
+  .recess-subject-title {
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    margin: 2px 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .card-footer-meta,
+  .recess-footer-meta {
+    padding-top: 2px !important;
+    margin-top: 2px !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+    font-size: 0.58rem !important;
+    line-height: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.5px !important;
+  }
+
+  .card-teacher-meta {
+    font-weight: 600 !important;
+    color: #334155 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 0.58rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .card-room-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    font-size: 0.55rem !important;
+    line-height: 1 !important;
+  }
+
+  .card-room-meta {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 0.55rem !important;
+  }
+
+  .card-time-meta {
+    font-size: 0.55rem !important;
+    font-weight: 600 !important;
+  }
+
+  .recess-time-meta,
+  .recess-room-meta {
+    font-size: 0.58rem !important;
+    line-height: 1.1 !important;
+  }
+
+  /* 7. Official Signature Footer & Accreditation */
+  .timetable-print-footer {
+    margin-top: 6px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .print-signature-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 25px !important;
+    padding: 8px 15px 2px !important;
+  }
+
+  .print-signature-block {
+    text-align: center !important;
+  }
+
+  .print-signature-block .sig-line {
+    border-top: 1.5px solid #0f172a !important;
+    margin-bottom: 3px !important;
+    width: 65% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+
+  .print-signature-block .sig-title {
+    font-weight: 800 !important;
+    font-size: 0.68rem !important;
+    color: #0f172a !important;
+    line-height: 1.1 !important;
+  }
+
+  .print-signature-block .sig-sub {
+    font-size: 0.56rem !important;
+    color: #64748b !important;
+    margin-top: 1px !important;
+    line-height: 1 !important;
+  }
+
+  .print-footer-notice {
+    display: flex !important;
+    justify-content: space-between !important;
+    border-top: 1px solid #e2e8f0 !important;
+    padding-top: 3px !important;
+    margin-top: 4px !important;
+    font-size: 0.55rem !important;
+    color: #64748b !important;
+    line-height: 1 !important;
+  }
+}
+
+

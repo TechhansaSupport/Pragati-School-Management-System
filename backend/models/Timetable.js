@@ -19,7 +19,7 @@ const periodSchema = new mongoose.Schema({
   },
   subject: {
     type: String,
-    required: true,
+    default: 'General Study',
     trim: true,
   },
   subjectCode: {
@@ -28,7 +28,7 @@ const periodSchema = new mongoose.Schema({
   },
   teacher: {
     type: String,
-    required: true,
+    default: 'Duty Faculty',
     trim: true,
   },
   teacherId: {
@@ -43,8 +43,12 @@ const periodSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['Lecture', 'Lab', 'Tutorial', 'Activity', 'Assessment', 'Break', 'Self Study'],
+    enum: ['Lecture', 'Lab', 'Tutorial', 'Activity', 'Assessment', 'Break', 'Recess', 'Assembly', 'Zero Period', 'Self Study'],
     default: 'Lecture',
+  },
+  isRecess: {
+    type: Boolean,
+    default: false,
   },
 }, { _id: true });
 
