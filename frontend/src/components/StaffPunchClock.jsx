@@ -346,7 +346,10 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
       boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02)',
       padding: compact ? '16px' : '22px',
       position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      width: '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box'
     }}>
       {/* Decorative top accent line */}
       <div style={{
@@ -561,6 +564,8 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
             <div style={{ fontSize: '0.82rem', fontWeight: 800, color: geoState.isWithinCampus ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '6px' }}>
               {geoState.loading ? (
                 'Verifying Campus Geofence GPS...'
+              ) : !geofenceConfig.isConfigured ? (
+                <>🟢 Inside Campus Area • GPS Active</>
               ) : geoState.isWithinCampus ? (
                 <>🟢 Inside Campus Area {geoState.distance !== null ? `(${geoState.distance}m from center)` : '• GPS Active'}</>
               ) : (

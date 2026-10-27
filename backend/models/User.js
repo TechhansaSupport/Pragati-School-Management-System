@@ -19,7 +19,10 @@ const userSchema = new mongoose.Schema({
       'transport', 
       'frontdesk',
       'school',
-      'school_admin'
+      'school_admin',
+      'lab_assistant',
+      'support_staff',
+      'support'
     ] 
   },
   referenceId: { 

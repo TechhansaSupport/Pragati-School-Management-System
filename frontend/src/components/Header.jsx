@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LogOut, User, Settings, HelpCircle, ChevronDown, Search, X, 
   ArrowRight, Key, Building2, ExternalLink, Plus, UserCheck, Layers, Trash2, MapPin,
-  ShieldCheck, Edit3, BookOpen, Calendar
+  ShieldCheck, Edit3, BookOpen, Calendar, Users, CreditCard
 } from 'lucide-react';
 import SettingsModal from './SettingsModal';
 import CreateSchoolModal from './CreateSchoolModal';
@@ -19,6 +19,20 @@ const Header = () => {
   const role = (sessionStorage.getItem('userRole') || 'admin').toLowerCase();
   const [userInfo, setUserInfo] = useState(() => JSON.parse(sessionStorage.getItem('userInfo') || '{}'));
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
+  
+  const isLabAssistant = role === 'lab_assistant' || 
+    (userInfo.role || '').toLowerCase() === 'lab_assistant' || 
+    (userInfo.staffRole || '').toLowerCase() === 'lab assistant' || 
+    (userInfo.designation || '').toLowerCase() === 'lab assistant' || 
+    userInfo.uniqueId === 'assistant';
+
+  const isSupportStaff = role === 'support_staff' || 
+    role === 'support' || 
+    role === 'frontdesk' ||
+    (userInfo.role || '').toLowerCase() === 'support_staff' || 
+    (userInfo.staffRole || '').toLowerCase() === 'support staff' || 
+    (userInfo.designation || '').toLowerCase() === 'support staff' || 
+    userInfo.uniqueId === 'support';
   
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -190,6 +204,27 @@ const Header = () => {
         { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
       ];
     }
+    if (isSupportStaff) {
+      return [
+        { title: 'Support Desk Command Center', category: 'Support', icon: '🏢', path: '/support-dashboard?tab=overview', keywords: 'support overview desk reception front sonu' },
+        { title: 'Reception & Visitor Check-In', category: 'Reception', icon: '🎫', path: '/support-dashboard?tab=reception', keywords: 'visitor reception checkin pass badge guest parent entry' },
+        { title: 'Fee Submission Counter Window', category: 'Accounts Window', icon: '💳', path: '/support-dashboard?tab=fees', keywords: 'fee fees submission collect payment receipt window dues student' },
+        { title: 'Admissions & Inquiries Helpdesk', category: 'Helpdesk', icon: '📝', path: '/support-dashboard?tab=inquiries', keywords: 'inquiry admissions prospective parent call walkin follow' },
+        { title: 'Student Movement & Gate Passes', category: 'Gate Pass', icon: '🚪', path: '/support-dashboard?tab=gatepasses', keywords: 'gate pass student departure exit leave late permission' },
+        { title: 'Couriers & Dispatch Registry', category: 'Dispatch', icon: '📦', path: '/support-dashboard?tab=parcels', keywords: 'parcel courier post dispatch delivery speedpost' },
+        { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
+      ];
+    }
+    if (isLabAssistant) {
+      return [
+        { title: 'Lab Command Center', category: 'Laboratories', icon: '🔬', path: '/teacher-dashboard?tab=overview', keywords: 'lab dashboard overview science assistant sujal' },
+        { title: 'Scheduled Practical Classes', category: 'Laboratories', icon: '📅', path: '/teacher-dashboard?tab=schedule', keywords: 'classes scheduled practicals students batch timetable lab schedule' },
+        { title: 'Equipments & Apparatus Registry', category: 'Laboratories', icon: '🔬', path: '/teacher-dashboard?tab=equipments', keywords: 'equipments apparatus microscope glassware instruments physics optics' },
+        { title: 'Chemicals & Reagents Catalog', category: 'Laboratories', icon: '🧪', path: '/teacher-dashboard?tab=chemicals', keywords: 'chemicals reagents acid base solutions bottles inventory stock' },
+        { title: 'Lab Safety & Inspection Protocol', category: 'Laboratories', icon: '🛡️', path: '/teacher-dashboard?tab=safety', keywords: 'safety audit checklist inspection eyewash fume hood hazard' },
+        { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
+      ];
+    }
     return [
       { title: 'Student Directory & Profiles', category: 'Students', icon: '🎓', path: '/students', keywords: 'student students admission rolls directory roll' },
       { title: 'Faculty & Staff Roster', category: 'Staff', icon: '👨‍🏫', path: '/staff', keywords: 'staff teachers faculty employee teachers provision' },
@@ -206,7 +241,7 @@ const Header = () => {
       { title: 'Security & Compliance', category: 'Governance', icon: '🛡️', path: '/dashboard?tab=security', keywords: 'security audit logs compliance ssl firewall' },
       { title: 'Change Password & Username', category: 'Security', icon: '🔑', path: '__security_modal__', keywords: 'password username credentials change login security reset credentials' },
     ];
-  }, [role]);
+  }, [role, isLabAssistant, isSupportStaff]);
 
   const filteredSearchItems = useMemo(() => {
     if (!searchQuery.trim()) return searchableModules.slice(0, 5);
@@ -308,7 +343,19 @@ const Header = () => {
                     {schoolsList.length}
                   </span>
                 )}
-                {role === 'admin' && (
+                {isSupportStaff ? (
+                  <span style={{ 
+                    fontSize: '0.64rem', 
+                    background: 'rgba(234, 88, 12, 0.15)', 
+                    color: '#c2410c', 
+                    borderRadius: '5px', 
+                    padding: '1px 6px', 
+                    fontWeight: 800,
+                    border: '1px solid rgba(234, 88, 12, 0.3)' 
+                  }}>
+                    Support Staff
+                  </span>
+                ) : role === 'admin' ? (
                   <span style={{ 
                     fontSize: '0.64rem', 
                     background: 'rgba(124, 58, 237, 0.15)', 
@@ -320,7 +367,7 @@ const Header = () => {
                   }}>
                     Branch Admin
                   </span>
-                )}
+                ) : null}
                 {role === 'principal' && (
                   <span style={{ 
                     fontSize: '0.64rem', 
@@ -452,6 +499,91 @@ const Header = () => {
                           }}
                         >
                           <Calendar size={13} /> Timetable & Period Matrix
+                        </button>
+                      </div>
+                    </div>
+                  ) : isSupportStaff ? (
+                    <div style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#c2410c', background: '#ffedd5', padding: '2px 8px', borderRadius: '6px' }}>
+                          🏢 Campus Support & Front Desk Active
+                        </span>
+                        <span style={{ fontSize: '0.68rem', color: '#15803d', fontWeight: 700, background: '#dcfce7', padding: '2px 6px', borderRadius: '6px' }}>
+                          ● Shift Active
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '2px' }}>
+                        {schoolName || 'Main Campus'}
+                      </div>
+                      <div style={{ fontSize: '0.73rem', color: '#64748b', marginBottom: '12px' }}>
+                        Front Desk Operator: <strong>{userDisplayName}</strong> (Support Staff)
+                      </div>
+
+                      <div style={{
+                        background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)',
+                        border: '1px solid #fed7aa',
+                        borderRadius: '10px',
+                        padding: '12px 14px',
+                        fontSize: '0.78rem',
+                        color: '#9a3412',
+                        lineHeight: 1.5,
+                        marginBottom: '14px'
+                      }}>
+                        <strong style={{ color: '#c2410c', display: 'block', marginBottom: '3px' }}>
+                          Support & Front Desk Operations
+                        </strong>
+                        Assigned to Reception & Visitor Logs, Accounts Counter for Student Fee Submissions, Admission Inquiries, and Gate Pass authorizations. Administrative settings are managed by School Administrators.
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            navigate(`/${tenantSlug}/support-dashboard?tab=reception`);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: '#2563eb',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <Users size={13} /> Reception & Visitor Gate Passes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSchoolDropdownOpen(false);
+                            navigate(`/${tenantSlug}/support-dashboard?tab=fees`);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            background: '#059669',
+                            color: 'white',
+                            border: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '5px'
+                          }}
+                        >
+                          <CreditCard size={13} /> Open Fee Submission Window
                         </button>
                       </div>
                     </div>
@@ -975,14 +1107,16 @@ const Header = () => {
         style={{
           position: 'relative',
           flex: 1,
-          maxWidth: '520px',
-          margin: '0 auto'
+          maxWidth: '560px',
+          minWidth: '240px',
+          margin: '0 24px'
         }}
       >
         <div style={{
           position: 'relative',
           display: 'flex',
-          alignItems: 'center'
+          alignItems: 'center',
+          width: '100%'
         }}>
           <Search 
             size={16} 
@@ -999,10 +1133,19 @@ const Header = () => {
             }}
             onFocus={() => setIsSearchOpen(true)}
             onKeyDown={handleSearchKeyDown}
-            placeholder="Search students, faculty, records, modules... (Press ↵ to jump)"
+            placeholder={
+              isSupportStaff
+                ? "Search visitors, fee submission receipts, inquiries, passes... (Press ↵)"
+                : isLabAssistant 
+                ? "Search lab apparatus, chemicals, classes, safety... (Press ↵)"
+                : role === 'accountant' || role === 'accounts'
+                ? "Search ledgers, fees, expenses, payroll... (Press ↵)"
+                : "Search students, faculty, records, modules... (Press ↵ to jump)"
+            }
             style={{
               width: '100%',
-              padding: '9px 40px 9px 38px',
+              boxSizing: 'border-box',
+              padding: '9px 44px 9px 38px',
               borderRadius: '12px',
               border: isSearchOpen ? '1px solid #4F46E5' : '1px solid rgba(226, 232, 240, 0.9)',
               background: 'rgba(255, 255, 255, 0.85)',
@@ -1027,7 +1170,7 @@ const Header = () => {
           ) : (
             <div style={{
               position: 'absolute',
-              right: '10px',
+              right: '12px',
               fontSize: '0.7rem',
               padding: '2px 6px',
               borderRadius: '6px',

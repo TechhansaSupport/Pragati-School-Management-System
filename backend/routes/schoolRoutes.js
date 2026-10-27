@@ -1066,7 +1066,8 @@ router.post('/:slug/assign-staff', protect, authorize('superadmin', 'admin'), as
         'Librarian': 'librarian',
         'Transport Incharge': 'transport',
         'Frontdesk': 'frontdesk',
-        'Support Staff': 'admin'
+        'Support Staff': 'support_staff',
+        'Lab Assistant': 'lab_assistant'
       };
       const systemRole = roleMap[role] || 'teacher';
 

@@ -6,9 +6,8 @@ import {
 } from 'recharts';
 import { 
   TrendingUp, Users, AlertTriangle, MoreVertical, Activity, HeartPulse, 
-  Briefcase, CheckCircle2, ShieldCheck, Award, Calendar, ArrowUpRight, 
-  FileText, Sparkles, AlertCircle, Clock, ChevronRight, BarChart3, CheckSquare, Target,
-  BookOpen, GraduationCap
+  Briefcase, CheckCircle2, ShieldCheck, Award, ArrowUpRight, 
+  Sparkles, AlertCircle, Clock, ChevronRight, BarChart3, Target
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -156,120 +155,6 @@ const PrincipalDashboard = () => {
               {healthDashboard?.status || 'Optimal Operations'}
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* QUICK ACADEMIC DUTIES BAR */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px',
-        background: 'white',
-        padding: '14px 20px',
-        borderRadius: '14px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4F46E5' }}></div>
-          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e3a8a' }}>
-            Academic Duties Command Hub
-          </span>
-        </div>
-
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => navigate(`/${tenantSlug}/academics`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: '#eef2ff',
-              color: '#4F46E5',
-              border: '1px solid #c7d2fe',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <BookOpen size={14} /> Academics & Exams
-          </button>
-          <button
-            onClick={() => navigate(`/${tenantSlug}/timetable`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: '#f0fdf4',
-              color: '#15803d',
-              border: '1px solid #bbf7d0',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <Calendar size={14} /> Timetable Matrix
-          </button>
-          <button
-            onClick={() => navigate(`/${tenantSlug}/attendance`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: '#f0f9ff',
-              color: '#0284c7',
-              border: '1px solid #bae6fd',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <CheckSquare size={14} /> Attendance Telemetry
-          </button>
-          <button
-            onClick={() => navigate(`/${tenantSlug}/students`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: '#faf5ff',
-              color: '#7e22ce',
-              border: '1px solid #e9d5ff',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <GraduationCap size={14} /> Student 360° Profiles
-          </button>
-          <button
-            onClick={() => navigate(`/${tenantSlug}/reports`)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              background: '#f8fafc',
-              color: '#334155',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer'
-            }}
-          >
-            <FileText size={14} /> Academic Reports
-          </button>
         </div>
       </div>
 

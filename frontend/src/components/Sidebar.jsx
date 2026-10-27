@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, UserCheck, BookOpen, CreditCard, 
   Bus, Mail, Settings, Server, Key, ShieldCheck, Building2,
   CalendarCheck, CalendarDays, GraduationCap, Library, Navigation,
-  AlertCircle, TrendingUp
+  AlertCircle, TrendingUp, FlaskConical, Microscope, TestTube, Package
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -40,6 +40,39 @@ const Sidebar = () => {
             { id: 'System Health & Infra', label: 'Infra & Licensing', icon: Server },
             { id: 'RBAC (Access Control)', label: 'Access Control', icon: Key },
             { id: 'Security & Compliance', label: 'Security & Audit', icon: ShieldCheck },
+          ]
+        }
+      ];
+    }
+
+    if (role === 'lab_assistant') {
+      return [
+        {
+          title: 'Science Laboratories',
+          items: [
+            { id: 'Lab Dashboard', label: 'Lab Command Center', icon: LayoutDashboard },
+            { id: 'Lab Schedule', label: 'Scheduled Classes', icon: CalendarDays },
+            { id: 'Lab Equipments', label: 'Equipments & Apparatus', icon: Microscope },
+            { id: 'Lab Chemicals', label: 'Chemicals & Reagents', icon: TestTube },
+            { id: 'Lab Safety', label: 'Safety & Audit', icon: ShieldCheck },
+            { id: 'Communication & Reports', label: 'Messages & Notices', icon: Mail },
+          ]
+        }
+      ];
+    }
+
+    if (role === 'support_staff' || role === 'support' || role === 'frontdesk') {
+      return [
+        {
+          title: 'Front Desk & Support',
+          items: [
+            { id: 'Support Overview', label: 'Support Command Center', icon: LayoutDashboard },
+            { id: 'Reception Desk', label: 'Reception & Visitors', icon: Users },
+            { id: 'Fee Window', label: 'Fee Accounts Window', icon: CreditCard },
+            { id: 'Admission Desk', label: 'Admissions & Inquiries', icon: GraduationCap },
+            { id: 'Gate Movement', label: 'Student Gate Passes', icon: ShieldCheck },
+            { id: 'Courier Log', label: 'Couriers & Dispatch', icon: Package },
+            { id: 'Communication & Reports', label: 'Notices & Messages', icon: Mail },
           ]
         }
       ];
@@ -203,6 +236,30 @@ const Sidebar = () => {
         return path.includes('/superadmin') && search.includes('tab=assignments');
       case 'Teacher Dashboard':
         return path.includes('/teacher-dashboard');
+      case 'Lab Dashboard':
+        return path.includes('/lab-dashboard') && (!search.includes('tab=') || search.includes('tab=overview'));
+      case 'Lab Schedule':
+      case 'Practical Sessions':
+        return path.includes('/lab-dashboard') && search.includes('tab=schedule');
+      case 'Lab Equipments':
+      case 'Lab Inventory':
+        return path.includes('/lab-dashboard') && search.includes('tab=equipments');
+      case 'Lab Chemicals':
+        return path.includes('/lab-dashboard') && search.includes('tab=chemicals');
+      case 'Lab Safety':
+        return path.includes('/lab-dashboard') && search.includes('tab=safety');
+      case 'Support Overview':
+        return (path.includes('/support-dashboard') || path.includes('/dashboard')) && (!search.includes('tab=') || search.includes('tab=overview'));
+      case 'Reception Desk':
+        return (path.includes('/support-dashboard') || path.includes('/dashboard')) && search.includes('tab=reception');
+      case 'Fee Window':
+        return (path.includes('/support-dashboard') || path.includes('/dashboard')) && search.includes('tab=fees');
+      case 'Admission Desk':
+        return (path.includes('/support-dashboard') || path.includes('/dashboard')) && search.includes('tab=inquiries');
+      case 'Gate Movement':
+        return (path.includes('/support-dashboard') || path.includes('/dashboard')) && search.includes('tab=gatepasses');
+      case 'Courier Log':
+        return (path.includes('/support-dashboard') || path.includes('/dashboard')) && search.includes('tab=parcels');
       case 'Student Dashboard':
         return path.includes('/student-dashboard');
       case 'Parent Dashboard':
@@ -277,6 +334,41 @@ const Sidebar = () => {
         break;
       case 'Teacher Dashboard':
         navigate(`${base}/teacher-dashboard`);
+        break;
+      case 'Lab Dashboard':
+        navigate(`${base}/lab-dashboard?tab=overview`);
+        break;
+      case 'Lab Schedule':
+      case 'Practical Sessions':
+        navigate(`${base}/lab-dashboard?tab=schedule`);
+        break;
+      case 'Lab Equipments':
+      case 'Lab Inventory':
+        navigate(`${base}/lab-dashboard?tab=equipments`);
+        break;
+      case 'Lab Chemicals':
+        navigate(`${base}/lab-dashboard?tab=chemicals`);
+        break;
+      case 'Lab Safety':
+        navigate(`${base}/lab-dashboard?tab=safety`);
+        break;
+      case 'Support Overview':
+        navigate(`${base}/support-dashboard?tab=overview`);
+        break;
+      case 'Reception Desk':
+        navigate(`${base}/support-dashboard?tab=reception`);
+        break;
+      case 'Fee Window':
+        navigate(`${base}/support-dashboard?tab=fees`);
+        break;
+      case 'Admission Desk':
+        navigate(`${base}/support-dashboard?tab=inquiries`);
+        break;
+      case 'Gate Movement':
+        navigate(`${base}/support-dashboard?tab=gatepasses`);
+        break;
+      case 'Courier Log':
+        navigate(`${base}/support-dashboard?tab=parcels`);
         break;
       case 'Student Dashboard':
         navigate(`${base}/student-dashboard`);

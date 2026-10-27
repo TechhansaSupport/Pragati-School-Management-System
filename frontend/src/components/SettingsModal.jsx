@@ -255,6 +255,15 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
         if (data.user.token) {
           sessionStorage.setItem('token', data.user.token);
         }
+        const authSessionStr = localStorage.getItem('authSession');
+        if (authSessionStr) {
+          try {
+            const authSession = JSON.parse(authSessionStr);
+            authSession.userInfo = updatedUser;
+            if (data.user?.token) authSession.token = data.user.token;
+            localStorage.setItem('authSession', JSON.stringify(authSession));
+          } catch (_) {}
+        }
         setCurrentUser(updatedUser);
         window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedUser }));
         setNewUsername('');
@@ -324,6 +333,15 @@ const SettingsModal = ({ isOpen, onClose, initialTab = 'profile', userInfo, role
             token: data.user.token
           };
           sessionStorage.setItem('userInfo', JSON.stringify(updatedUser));
+          const authSessionStr = localStorage.getItem('authSession');
+          if (authSessionStr) {
+            try {
+              const authSession = JSON.parse(authSessionStr);
+              authSession.userInfo = updatedUser;
+              if (data.user?.token) authSession.token = data.user.token;
+              localStorage.setItem('authSession', JSON.stringify(authSession));
+            } catch (_) {}
+          }
           setCurrentUser(updatedUser);
           window.dispatchEvent(new CustomEvent('userProfileUpdated', { detail: updatedUser }));
         }

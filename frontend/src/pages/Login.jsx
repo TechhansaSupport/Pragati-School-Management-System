@@ -191,6 +191,8 @@ const Login = () => {
           navigate(`/${effectiveSlug}/dashboard`);
         } else if (data.role === 'teacher') {
           navigate(`/${effectiveSlug}/teacher-dashboard`);
+        } else if (data.role === 'lab_assistant') {
+          navigate(`/${effectiveSlug}/lab-dashboard`);
         } else if (data.role === 'student') {
           navigate(`/${effectiveSlug}/student-dashboard`);
         } else if (data.role === 'parent') {
@@ -201,6 +203,8 @@ const Login = () => {
           navigate(`/${effectiveSlug}/library-dashboard`);
         } else if (data.role === 'transport') {
           navigate(`/${effectiveSlug}/transport-dashboard`);
+        } else if (data.role === 'support_staff' || data.role === 'support' || data.role === 'frontdesk') {
+          navigate(`/${effectiveSlug}/support-dashboard`);
         } else {
           navigate(`/${effectiveSlug}/dashboard`);
         }

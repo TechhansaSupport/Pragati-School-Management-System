@@ -445,7 +445,8 @@ router.post('/', async (req, res) => {
           'Librarian': 'librarian',
           'Accountant': 'accountant',
           'Transport Incharge': 'transport',
-          'Support Staff': 'admin',
+          'Support Staff': 'support_staff',
+          'Lab Assistant': 'lab_assistant',
         };
         const systemRole = roleMap[role] || 'teacher';
 

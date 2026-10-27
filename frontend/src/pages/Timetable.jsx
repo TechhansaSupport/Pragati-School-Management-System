@@ -738,28 +738,6 @@ const Timetable = () => {
             </div>
           )}
 
-          {/* Quick Nav to Academics */}
-          <button
-            onClick={() => navigate(`/${effectiveSchoolSlug}/academics`)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'rgba(255, 255, 255, 0.12)',
-              color: 'white',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              padding: '10px 18px',
-              borderRadius: '12px',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              backdropFilter: 'blur(10px)',
-              transition: 'all 0.2s'
-            }}
-          >
-            <BookOpen size={16} />
-            <span>Curriculum & Classes</span>
-          </button>
         </div>
       </div>
 

@@ -142,6 +142,8 @@ app.use('/api/communication', require('./routes/communicationRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/timetable', require('./routes/timetableRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
+app.use('/api/lab', require('./routes/labRoutes'));
+app.use('/api/support', require('./routes/supportRoutes'));
 
 // 404 handler
 app.use((req, res) => {

@@ -4,7 +4,7 @@ import {
   Building2, Users, UserPlus, UserCheck, ShieldCheck, Plus, ExternalLink, 
   MapPin, UserCog, RefreshCw, Key, Search, Filter, AlertCircle, 
   CheckCircle2, ArrowRight, Layers, Award, Trash2, Mail, Phone, 
-  Calendar, CalendarDays, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
+  Calendar, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
   Briefcase, BookOpen, Clock, HelpCircle, Check, Copy, X, Settings,
   AlertTriangle, Save, Database, Lock, Edit3, TrendingUp, TrendingDown,
   Wallet, CreditCard, Receipt, Percent, DollarSign, CheckCircle,
@@ -761,46 +761,6 @@ const SuperAdminDashboard = () => {
             </div>
             <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
               Across All Campuses
-            </div>
-          </div>
-        </div>
-
-        {/* Card 6: Master Timetables Setup */}
-        <div 
-          className="card" 
-          onClick={() => navigate(`/${tenantSlug}/timetable`)}
-          style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '18px 22px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={e => { e.currentTarget.style.borderColor = '#4F46E5'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-          onMouseOut={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'translateY(0)'; }}
-          title="Click to manage & configure timetables across all campuses"
-        >
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <CalendarDays size={24} color="#4F46E5" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Master Timetable
-            </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#4F46E5', lineHeight: 1.1 }}>
-              Setup Matrix →
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600, marginTop: '2px' }}>
-              All Campuses Active
             </div>
           </div>
         </div>
@@ -2319,28 +2279,6 @@ const SuperAdminDashboard = () => {
                   }}
                 >
                   <Award size={14} /> Appoint Principal
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTargetSchoolForStaff(schoolsList[0]);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    background: '#4F46E5',
-                    color: 'white',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <UserPlus size={14} /> + Assign Faculty / Staff
                 </button>
               </div>
             </div>

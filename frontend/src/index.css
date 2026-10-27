@@ -40,8 +40,10 @@ body, html {
   background-attachment: fixed;
   color: var(--color-text-main);
   height: 100vh;
-  width: 100vw;
-  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: hidden;
   margin: 0;
   padding: 0;
 }
@@ -231,12 +233,16 @@ body.dark-mode .main-wrapper::before {
   height: 100%;
   position: relative;
   overflow-y: auto;
+  overflow-x: hidden !important;
   padding: 24px 32px;
   scroll-behavior: smooth;
   z-index: 10;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Custom modern scrollbar for content layer */
@@ -254,6 +260,17 @@ body.dark-mode .main-wrapper::before {
   background: rgba(79, 70, 229, 0.6);
 }
 
+/* Utility to completely hide scrollbar while preserving smooth scrolling */
+.no-scrollbar {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
 :root {
   --dashboard-card-gap: 20px;
   --kpi-card-gap: 16px;
@@ -261,13 +278,15 @@ body.dark-mode .main-wrapper::before {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
   gap: var(--dashboard-card-gap) !important;
+  width: 100%;
+  min-width: 0;
 }
 
 @media (max-width: 1200px) {
   .dashboard-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -276,11 +295,13 @@ body.dark-mode .main-wrapper::before {
   display: flex;
   flex-direction: column;
   gap: var(--dashboard-card-gap) !important;
+  min-width: 0;
 }
 
 .left-column > *,
 .right-column > * {
   margin-bottom: 0 !important;
+  min-width: 0;
 }
 
 .kpi-row,
@@ -1780,16 +1801,30 @@ MOBILE
 }
 
 /* Custom modern scrollbar for content layer & timetable */
-.content-layer,
+.content-layer {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+}
+
 .timetable-scroll-container {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
 
-.content-layer::-webkit-scrollbar,
 .timetable-scroll-container::-webkit-scrollbar {
   width: 7px;
   height: 7px;
+}
+
+.content-layer::-webkit-scrollbar {
+  width: 7px;
+  height: 0px !important;
+}
+
+.content-layer::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0px !important;
+  width: 0px !important;
 }
 
 .content-layer::-webkit-scrollbar-track,
@@ -1806,6 +1841,21 @@ MOBILE
 .content-layer::-webkit-scrollbar-thumb:hover,
 .timetable-scroll-container::-webkit-scrollbar-thumb:hover {
   background: rgba(79, 70, 229, 0.7);
+}
+
+.support-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--dashboard-card-gap, 20px) !important;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .support-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 

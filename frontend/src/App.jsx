@@ -22,6 +22,8 @@ import TransportRoutes from './pages/TransportRoutes';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import Attendance from './pages/Attendance';
 import Timetable from './pages/Timetable';
+import LabDashboard from './pages/LabDashboard';
+import SupportStaffDashboard from './pages/SupportStaffDashboard';
 import { AlertTriangle, ShieldAlert, X as CloseIcon } from 'lucide-react';
 import './index.css';
 
@@ -423,12 +425,18 @@ const AppRoutes = () => {
   }
 
   const isAccountant = role === 'accountant' || role === 'accounts';
+  const isLabAssistant = role === 'lab_assistant';
+  const isSupportStaff = role === 'support_staff' || role === 'support' || role === 'frontdesk';
 
   const getDashboardForRole = () => {
     switch(role) {
       case 'superadmin': return <SuperAdminDashboard />;
       case 'principal': return <PrincipalDashboard />;
       case 'teacher': return <TeacherDashboard />;
+      case 'lab_assistant': return <LabDashboard />;
+      case 'support_staff':
+      case 'support':
+      case 'frontdesk': return <SupportStaffDashboard />;
       case 'student': return <StudentDashboard />;
       case 'parent': return <ParentDashboard />;
       case 'librarian': return <LibraryDashboard />;
@@ -448,39 +456,41 @@ const AppRoutes = () => {
         <Route path="/:tenantSlug/superadmin" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Navigate to={`/${tenantSlug}/dashboard`} replace />} />
         <Route path="/:tenantSlug/schools" element={role === 'superadmin' ? <SuperAdminDashboard /> : <Navigate to={`/${tenantSlug}/dashboard?tab=schools`} replace />} />
         
-        {/* Academic Duties Routes (Restricted for Accounts; Managed by Super Admin, Branch Admin, and Principal) */}
-        <Route path="/:tenantSlug/academics" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Academics />} />
-        <Route path="/:tenantSlug/timetable" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Timetable />} />
-        <Route path="/:tenantSlug/attendance" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Attendance />} />
-        <Route path="/:tenantSlug/students" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Students />} />
-        <Route path="/:tenantSlug/staff" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
-        <Route path="/:tenantSlug/teachers" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
-        <Route path="/:tenantSlug/reports" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Reports />} />
+        {/* Academic Duties Routes (Restricted for Accounts, Lab Assistant & Support Staff) */}
+        <Route path="/:tenantSlug/academics" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Academics />} />
+        <Route path="/:tenantSlug/timetable" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Timetable />} />
+        <Route path="/:tenantSlug/attendance" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Attendance />} />
+        <Route path="/:tenantSlug/students" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Students />} />
+        <Route path="/:tenantSlug/staff" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
+        <Route path="/:tenantSlug/teachers" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
+        <Route path="/:tenantSlug/reports" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Reports />} />
         <Route path="/:tenantSlug/communication" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Communication />} />
         <Route path="/:tenantSlug/principal-dashboard" element={<PrincipalDashboard />} />
 
-        {/* Financial Operations (Accessible to Super Admin, Branch Admin, and Accountant; Restricted for Principal who manages Academic Duties) */}
+        {/* Financial Operations (Full finance restricted for Principal, Lab Assistant & Support Staff; Support staff uses fee submission window) */}
         <Route 
           path="/:tenantSlug/finance" 
-          element={role === 'principal' ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <Finance />} 
+          element={(role === 'principal' || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <Finance />} 
         />
 
-        {/* Facilities & Fleet (Restricted for Principal & Accounts) */}
+        {/* Facilities & Fleet */}
         <Route 
           path="/:tenantSlug/transport-dashboard" 
-          element={(role === 'principal' || isAccountant) ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <TransportDashboard />} 
+          element={(role === 'principal' || isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <TransportDashboard />} 
         />
         <Route 
           path="/:tenantSlug/routes" 
-          element={(role === 'principal' || isAccountant) ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <TransportRoutes />} 
+          element={(role === 'principal' || isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <TransportRoutes />} 
         />
 
-        {/* Library (Restricted for Accounts) */}
-        <Route path="/:tenantSlug/library-dashboard" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <LibraryDashboard />} />
-        <Route path="/:tenantSlug/books" element={isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <LibraryBooks />} />
+        {/* Library */}
+        <Route path="/:tenantSlug/library-dashboard" element={(isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <LibraryDashboard />} />
+        <Route path="/:tenantSlug/books" element={(isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <LibraryBooks />} />
 
         {/* Dedicated Role Portals */}
-        <Route path="/:tenantSlug/teacher-dashboard" element={<TeacherDashboard />} />
+        <Route path="/:tenantSlug/teacher-dashboard" element={isLabAssistant ? <Navigate to={`/${tenantSlug}/lab-dashboard`} replace /> : isSupportStaff ? <Navigate to={`/${tenantSlug}/support-dashboard`} replace /> : <TeacherDashboard />} />
+        <Route path="/:tenantSlug/lab-dashboard" element={<LabDashboard />} />
+        <Route path="/:tenantSlug/support-dashboard" element={<SupportStaffDashboard />} />
         <Route path="/:tenantSlug/student-dashboard" element={<StudentDashboard />} />
         <Route path="/:tenantSlug/parent-dashboard" element={<ParentDashboard />} />
         <Route path="*" element={getDashboardForRole()} />

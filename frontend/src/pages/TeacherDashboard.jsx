@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, YAxis, Legend } from 'recharts';
 import StaffPunchClock from '../components/StaffPunchClock';
+import LabDashboard from './LabDashboard';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -15,6 +16,13 @@ const TeacherDashboard = () => {
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
+  const userRole = (sessionStorage.getItem('userRole') || userInfo.role || '').toLowerCase();
+  const staffRole = (userInfo.staffRole || '').toLowerCase();
+  const isLabAssistant = userRole === 'lab_assistant' || staffRole === 'lab assistant' || userInfo.uniqueId === 'assistant';
+
+  if (isLabAssistant) {
+    return <LabDashboard />;
+  }
 
   // Calculate dynamic greeting
   const getGreeting = () => {
