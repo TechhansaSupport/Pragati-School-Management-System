@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const Timetable = require('../models/Timetable');
 const ClassSection = require('../models/ClassSection');
 const Staff = require('../models/Staff');
+const Student = require('../models/Student');
 
 // Standard default period template (8 academic periods + 1 dedicated recess)
 const DEFAULT_PERIODS = [
@@ -204,20 +206,51 @@ const checkTimetableSetupAuthority = (req, res, next) => {
 // GET /api/timetable — Fetch timetable for class & section (or create initial if missing)
 router.get('/', async (req, res) => {
   try {
-    const { className, section } = req.query;
+    let { className, section } = req.query;
     const schoolSlug = resolveSchoolSlug(req);
 
-    if (!className || !section) {
-      // List all existing timetables for this school entity / campus
-      const query = { entityId: req.entityId };
-      if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
-        query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
-      }
+    // Identify user role from token if present
+    let isStudent = false;
+    let studentDoc = null;
+    const authHeader = req.headers.authorization || req.headers['x-auth-token'];
+    if (authHeader) {
+      try {
+        const rawToken = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
+        const decoded = jwt.verify(rawToken, process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024');
+        if ((decoded.role || '').toLowerCase() === 'student') {
+          isStudent = true;
+          if (decoded.referenceId) {
+            studentDoc = await Student.findById(decoded.referenceId);
+          }
+          if (!studentDoc && decoded.username) {
+            studentDoc = await Student.findOne({ rollNo: decoded.username });
+          }
+        }
+      } catch (e) {}
+    }
 
-      const timetables = await Timetable.find(query)
-        .select('className section academicSession status updatedAt schoolSlug')
-        .sort({ className: 1, section: 1 });
-      return res.json({ timetables });
+    // Strict student data scoping: Student can ONLY view their own class & section timetable
+    if (isStudent && studentDoc) {
+      className = studentDoc.grade || 'Class 10';
+      section = studentDoc.section || 'A';
+    }
+
+    if (!className || !section) {
+      if (isStudent && studentDoc) {
+        className = studentDoc.grade || 'Class 10';
+        section = studentDoc.section || 'A';
+      } else {
+        // List all existing timetables for this school entity / campus
+        const query = { entityId: req.entityId };
+        if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+          query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+        }
+
+        const timetables = await Timetable.find(query)
+          .select('className section academicSession status updatedAt schoolSlug')
+          .sort({ className: 1, section: 1 });
+        return res.json({ timetables });
+      }
     }
 
     const query = {
@@ -1009,20 +1042,36 @@ router.post('/period', checkTimetableSetupAuthority, async (req, res) => {
       }
       const dayList = [...timetable.schedule[d]];
       
+      const existingAcademicCount = dayList.filter(p => !p.isRecess && p.type !== 'Recess' && p.type !== 'Break').length;
       const newPeriodObj = {
         ...sanitizedPeriod,
-        periodNumber: dayList.length + 1,
+        periodNumber: isRecessType ? existingAcademicCount : existingAcademicCount + 1,
       };
 
       if (!sanitizedPeriod.periodName || sanitizedPeriod.periodName.startsWith('P')) {
-        newPeriodObj.periodName = isRecessType ? 'Recess' : `P${dayList.length + 1}`;
+        newPeriodObj.periodName = isRecessType ? 'Recess' : `P${existingAcademicCount + 1}`;
       }
 
       dayList.push(newPeriodObj);
 
-      // Re-index periods sequentially 1..N
-      dayList.forEach((p, idx) => {
-        p.periodNumber = idx + 1;
+      // Re-index periods: academic periods 1..N, recess as Recess without consuming period numbers
+      let acCount = 1;
+      dayList.forEach((p) => {
+        const isRec = Boolean(
+          p.isRecess === true ||
+          p.type === 'Recess' ||
+          p.type === 'Break' ||
+          (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
+          (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
+        );
+        if (isRec) {
+          p.isRecess = true;
+          p.periodName = 'Recess';
+        } else {
+          p.periodNumber = acCount;
+          p.periodName = `P${acCount}`;
+          acCount++;
+        }
       });
 
       timetable.schedule[d] = dayList;

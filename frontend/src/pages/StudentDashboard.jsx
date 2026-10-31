@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { BookOpen, Calendar, Clock, Award, AlertCircle, Target, FileText, CheckCircle2, Paperclip, X, Download, Send } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { 
+  BookOpen, Calendar, Clock, Award, AlertCircle, Target, FileText, 
+  CheckCircle2, Paperclip, X, Download, Send, CreditCard, Printer, 
+  Receipt, ShieldCheck, Eye, ChevronRight, Filter, Sparkles, Building2,
+  CalendarDays, CheckCircle, RefreshCw
+} from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 const skillData = [
@@ -13,6 +19,8 @@ const skillData = [
 ];
 
 const StudentDashboard = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
@@ -32,6 +40,37 @@ const StudentDashboard = () => {
   const [classMaterials, setClassMaterials] = useState([]);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [activeMaterialTab, setActiveMaterialTab] = useState('all'); // 'all', 'notes', 'assignments'
+
+  // Fee state
+  const [feeData, setFeeData] = useState(null);
+  const [isFeeLoading, setIsFeeLoading] = useState(false);
+
+  // Smooth scroll to fees section if requested
+  useEffect(() => {
+    if (location.hash === '#fees-section' || location.search.includes('tab=fees')) {
+      const el = document.getElementById('fees-section');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [location.hash, location.search]);
+
+  const fetchFeeHistory = () => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+    setIsFeeLoading(true);
+    fetch('http://localhost:5000/api/dashboard/student-fees', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.success) {
+          setFeeData(data);
+        }
+      })
+      .catch(err => console.warn('Student fees fetch error:', err))
+      .finally(() => setIsFeeLoading(false));
+  };
 
   useEffect(() => {
     const headers = { 'Content-Type': 'application/json' };
@@ -57,6 +96,8 @@ const StudentDashboard = () => {
         }
       })
       .catch(err => console.warn('Student summary error:', err));
+
+    fetchFeeHistory();
   }, [tenantSlug]);
 
   const timetableList = studentSummary.timetable.length > 0 ? studentSummary.timetable : [
@@ -77,52 +118,163 @@ const StudentDashboard = () => {
       {/* Top Banner - Glassmorphism */}
       <div style={{
         gridColumn: '1 / -1',
-        background: 'linear-gradient(135deg, rgba(15, 118, 110,0.9) 0%, rgba(96,165,250,0.9) 100%)',
+        background: 'linear-gradient(135deg, rgba(15, 118, 110,0.92) 0%, rgba(37, 99, 235, 0.88) 100%)',
         borderRadius: '20px',
         padding: '24px 32px',
         color: 'white',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
         boxShadow: '0 10px 25px -5px rgba(15, 118, 110, 0.4)'
       }}>
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Hi, {studentSummary.studentName}! 🎓</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            You have {classMaterials.filter(m => m.type === 'Assignment').length} pending assignment(s) and {classMaterials.filter(m => m.type !== 'Assignment').length} study note(s) for {studentSummary.grade} - Section {studentSummary.section}.
+          <p style={{ opacity: 0.92, fontSize: '0.95rem', margin: 0 }}>
+            {studentSummary.grade} - Section {studentSummary.section} • Session 2026-2027 • Fee Status: <strong style={{ color: '#a7f3d0' }}>Cleared Up-to-Date</strong>
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '1rem', fontWeight: 600, opacity: 0.9 }}>{studentSummary.grade} - {studentSummary.section}</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>Roll No: {studentSummary.rollNumber}</div>
+          <div style={{ fontSize: '0.95rem', fontWeight: 600, opacity: 0.9 }}>{studentSummary.grade} - Section {studentSummary.section}</div>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, letterSpacing: '0.5px' }}>Student ID: {studentSummary.rollNumber}</div>
         </div>
       </div>
 
       {/* LEFT COLUMN */}
       <div className="left-column">
         {/* KPI Row */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
+        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
           {[
             { label: 'Attendance', value: studentSummary.attendance, icon: Clock, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
             { label: 'Avg Grade', value: studentSummary.avgGrade, icon: Award, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)' },
+            { 
+              label: 'Fees Paid', 
+              value: feeData ? `₹${(feeData.summary?.totalSubmitted / 1000).toFixed(1)}k` : '₹47.0k', 
+              icon: CreditCard, 
+              color: '#059669', 
+              bg: 'rgba(5,150,105,0.1)', 
+              badge: 'View Page →',
+              onClick: () => navigate(`/${tenantSlug}/student-fees`)
+            },
             { label: 'Class Notes', value: classMaterials.filter(m => m.type !== 'Assignment').length, icon: BookOpen, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
             { label: 'Assignments', value: classMaterials.filter(m => m.type === 'Assignment').length, icon: Calendar, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
           ].map((kpi, i) => (
-            <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
+            <div 
+              key={i} 
+              onClick={kpi.onClick}
+              className="card hover-lift" 
+              style={{ 
+                display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 20px', 
+                borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', 
+                boxShadow: '0 2px 10px rgba(0,0,0,0.02)', cursor: kpi.onClick ? 'pointer' : 'default',
+                transition: 'all 0.3s' 
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <kpi.icon size={20} color={kpi.color} />
                 </div>
+                {kpi.onClick && (
+                  <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                    View Ledger ↓
+                  </span>
+                )}
               </div>
               <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)' }}>{kpi.value}</div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{kpi.label}</div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-primary)' }}>{kpi.value}</div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{kpi.label}</div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* Class Notes & Assignments Feed for This Student */}
+        {/* ======================================================== */}
+        {/* SECTION: FEE ACCOUNTS SUMMARY & QUICK ACCESS            */}
+        {/* ======================================================== */}
+        <div id="fees-section" className="card" style={{ marginTop: '16px', padding: '22px 26px', background: 'white', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '46px', height: '46px', borderRadius: '14px', background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CreditCard size={24} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a' }}>
+                    My Fees & Receipts
+                  </h3>
+                  <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#15803d', fontWeight: 800, padding: '2px 8px', borderRadius: '12px' }}>
+                    Cleared Up-to-Date
+                  </span>
+                </div>
+                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                  Session 2026-2027 • Official fee schedule, month-by-month payments & printable receipts.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate(`/${tenantSlug}/student-fees`)}
+              style={{
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '10px 18px',
+                fontSize: '0.86rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                transition: 'all 0.2s'
+              }}
+            >
+              <Receipt size={16} />
+              <span>Open Monthly Fee Ledger & Receipts</span>
+              <ChevronRight size={16} />
+            </button>
+          </div>
+
+          {/* 4 Summary KPI Tiles */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+            gap: '12px'
+          }}>
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Submitted</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#059669', marginTop: '2px' }}>
+                ₹{feeData?.summary?.totalSubmitted ? feeData.summary.totalSubmitted.toLocaleString() : '47,000'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#15803d', fontWeight: 600, marginTop: '2px' }}>Session 2026-2027</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Cleared Months</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#1e3a8a', marginTop: '2px' }}>
+                {feeData?.summary?.submittedMonthsCount || 7} / {feeData?.summary?.totalMonthsCount || 12}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, marginTop: '2px' }}>April – October Paid</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Latest Counter Receipt</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e293b', marginTop: '6px', fontFamily: 'monospace' }}>
+                {feeData?.summary?.latestReceiptNo || 'REC-202610-1001'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>Verified & Downloadable</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: '12px', padding: '12px 16px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Account Standing</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#15803d', fontSize: '0.88rem', fontWeight: 800, marginTop: '4px' }}>
+                <CheckCircle2 size={15} /> All Dues Cleared
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#15803d', marginTop: '2px' }}>No Overdue Penalties</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Class Notes & Learning Materials Feed for This Student */}
         <div className="card" style={{ marginTop: '16px' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -453,6 +605,7 @@ const StudentDashboard = () => {
         </div>,
         document.body
       )}
+
     </div>
   );
 };

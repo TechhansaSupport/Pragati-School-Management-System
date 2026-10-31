@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Calendar, CheckCircle2, XCircle, Clock, AlertCircle, 
   Search, Users, Save, RefreshCw, ChevronLeft, ChevronRight, 
@@ -10,10 +11,18 @@ import {
 const API_BASE = 'http://localhost:5000/api';
 
 const Attendance = () => {
+  const navigate = useNavigate();
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = sessionStorage.getItem('token') || userInfo.token || '';
   const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
+
+  // Strict student privacy: Redirect to their own student dashboard
+  useEffect(() => {
+    if (userRole === 'student') {
+      navigate(`/${tenantSlug}/student-dashboard`, { replace: true });
+    }
+  }, [userRole, tenantSlug, navigate]);
 
   const getTodayString = (d = new Date()) => {
     const year = d.getFullYear();
@@ -594,7 +603,7 @@ const Attendance = () => {
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
                 <input
                   type="text"
-                  placeholder="Search student by name or roll no..."
+                  placeholder="Search student by name or ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
@@ -672,7 +681,7 @@ const Attendance = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                    <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', width: '80px' }}>Roll No</th>
+                    <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', width: '100px' }}>Student ID</th>
                     <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Student Name</th>
                     <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', width: '380px' }}>Attendance Status</th>
                     <th style={{ padding: '14px 20px', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Remarks / Reason</th>
@@ -1059,7 +1068,7 @@ const Attendance = () => {
                   <div key={i} style={{ padding: '12px 14px', borderRadius: '10px', background: '#fef2f2', border: '1px solid #fecaca', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#991b1b' }}>{s.studentName}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#b91c1c' }}>Roll No: {s.rollNo || (i + 1)} • {s.remarks || 'No reason provided'}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#b91c1c' }}>Student ID: {s.rollNo || (i + 1)} • {s.remarks || 'No reason provided'}</div>
                     </div>
                     <span style={{ background: '#dc2626', color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
                       ABSENT

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const Announcement = require('../models/Announcement');
 const Staff = require('../models/Staff');
 const Student = require('../models/Student');
@@ -438,7 +439,33 @@ router.get('/class-materials', async (req, res) => {
     const { classSection, className, section, type, search } = req.query;
     const filter = { entityId: req.entityId };
 
-    if (classSection && classSection !== 'All') {
+    // Check if requester is a student to restrict data access strictly to their class
+    let isStudent = false;
+    let studentDoc = null;
+    const authHeader = req.headers.authorization || req.headers['x-auth-token'];
+    if (authHeader) {
+      try {
+        const rawToken = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : authHeader;
+        const decoded = jwt.verify(rawToken, process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024');
+        if ((decoded.role || '').toLowerCase() === 'student') {
+          isStudent = true;
+          if (decoded.referenceId) {
+            studentDoc = await Student.findById(decoded.referenceId);
+          }
+          if (!studentDoc && decoded.username) {
+            studentDoc = await Student.findOne({ rollNo: decoded.username });
+          }
+        }
+      } catch (e) {}
+    }
+
+    if (isStudent && studentDoc) {
+      const cleanGrade = (studentDoc.grade || '').replace(/Class\s*/i, '').replace(/th|st|nd|rd/i, '').trim();
+      filter.className = { $regex: new RegExp(`(${studentDoc.grade}|Class\\s*${cleanGrade}|${cleanGrade}th)`, 'i') };
+      if (studentDoc.section) {
+        filter.section = new RegExp(`^${studentDoc.section.trim()}$`, 'i');
+      }
+    } else if (classSection && classSection !== 'All') {
       filter.classSection = new RegExp(`^${classSection.trim()}$`, 'i');
     } else {
       if (className && className !== 'All') {

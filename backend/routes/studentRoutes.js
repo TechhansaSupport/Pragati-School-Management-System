@@ -45,29 +45,88 @@ const checkBulkDeleteAuthority = (req, res) => {
   return true;
 };
 
+// Helper to synchronize Student with User account for portal login
+const syncStudentUser = async (studentDoc, explicitPassword = null) => {
+  if (!studentDoc || !studentDoc.rollNo || !studentDoc.entityId) return null;
+  const username = (studentDoc.rollNo || '').trim();
+  const targetPassword = (explicitPassword || studentDoc.portalPassword || 'student123').trim();
+  const email = (studentDoc.email || `${username.toLowerCase()}@pragati.edu`).trim().toLowerCase();
+
+  try {
+    let user = await User.findOne({
+      entityId: studentDoc.entityId,
+      $or: [
+        { referenceId: studentDoc._id },
+        { uniqueId: username },
+        { uniqueId: new RegExp(`^${username}$`, 'i') }
+      ]
+    });
+
+    if (user) {
+      user.name = studentDoc.name;
+      user.uniqueId = username;
+      user.email = email;
+      user.phone = studentDoc.parentContact || '';
+      user.role = 'student';
+      user.referenceId = studentDoc._id;
+      user.onModel = 'Student';
+      user.entityId = studentDoc.entityId;
+      user.schoolSlug = studentDoc.schoolSlug || user.schoolSlug;
+      user.status = studentDoc.status === 'Inactive' ? 'inactive' : 'active';
+      if (explicitPassword || !user.password) {
+        user.password = targetPassword;
+      }
+      await user.save();
+      return user;
+    } else {
+      user = new User({
+        uniqueId: username,
+        password: targetPassword,
+        name: studentDoc.name,
+        email: email,
+        phone: studentDoc.parentContact || '',
+        role: 'student',
+        referenceId: studentDoc._id,
+        onModel: 'Student',
+        entityId: studentDoc.entityId,
+        schoolSlug: studentDoc.schoolSlug,
+        status: studentDoc.status === 'Inactive' ? 'inactive' : 'active'
+      });
+      await user.save();
+      return user;
+    }
+  } catch (err) {
+    console.error(`Failed to sync student user ${username}:`, err.message);
+    return null;
+  }
+};
+
 // Seed helper on demand if a school workspace has 0 students
 const seedInitialStudentsIfEmpty = async (entityId, force = false, schoolSlug = null) => {
   if (!entityId && !force) return;
   const count = await Student.countDocuments(entityId ? { entityId } : {});
   if (count === 0 || force) {
     const sampleStudents = [
-      { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 96, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 92, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Vihaan Verma', rollNo: 'STU-1003', grade: 'Class 10', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 88, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Ananya Iyer', rollNo: 'STU-1004', grade: 'Class 9', section: 'A', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 98, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Kabir Mehta', rollNo: 'STU-1005', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 91, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Riya Sen', rollNo: 'STU-1006', grade: 'Class 11', section: 'Science', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Rohan Gupta', rollNo: 'STU-1007', grade: 'Class 12', section: 'Science', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 89, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
-      { name: 'Sneha Reddy', rollNo: 'STU-1008', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 95, status: 'Active', entityId: entityId || 'default-school', schoolSlug },
+      { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 96, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 92, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Vihaan Verma', rollNo: 'STU-1003', grade: 'Class 10', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 88, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Ananya Iyer', rollNo: 'STU-1004', grade: 'Class 9', section: 'A', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 98, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Kabir Mehta', rollNo: 'STU-1005', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 91, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Riya Sen', rollNo: 'STU-1006', grade: 'Class 11', section: 'Science', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Rohan Gupta', rollNo: 'STU-1007', grade: 'Class 12', section: 'Science', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 89, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Sneha Reddy', rollNo: 'STU-1008', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 95, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
     ];
     for (const s of sampleStudents) {
-      const exists = await Student.findOne({ rollNo: s.rollNo, entityId: s.entityId });
-      if (!exists) {
+      let existingStudent = await Student.findOne({ rollNo: s.rollNo, entityId: s.entityId });
+      if (!existingStudent) {
         try {
-          await Student.create(s);
+          existingStudent = await Student.create(s);
         } catch (e) {
           // ignore duplicate in race
         }
+      }
+      if (existingStudent) {
+        await syncStudentUser(existingStudent, 'student123');
       }
     }
   }
@@ -76,6 +135,26 @@ const seedInitialStudentsIfEmpty = async (entityId, force = false, schoolSlug = 
 // GET /api/students — List all students with class & section filters, search, pagination
 router.get('/', async (req, res) => {
   try {
+    const userRole = (req.user?.role || '').toLowerCase();
+    if (userRole === 'student') {
+      const studentId = req.user.referenceId;
+      const username = req.user.username;
+      const ownStudent = await Student.findOne({
+        entityId: req.entityId,
+        $or: [
+          ...(studentId ? [{ _id: studentId }] : []),
+          { rollNo: username },
+          ...(req.user.email ? [{ email: req.user.email }] : [])
+        ]
+      });
+      return res.json({
+        students: ownStudent ? [ownStudent] : [],
+        total: ownStudent ? 1 : 0,
+        page: 1,
+        pages: 1
+      });
+    }
+
     const { search, page = 1, limit = 50, grade, section, status, schoolSlug, all } = req.query;
     const query = { entityId: req.entityId };
 
@@ -185,6 +264,26 @@ router.get('/stats', async (req, res) => {
 // GET /api/students/:id — Get single student
 router.get('/:id', async (req, res) => {
   try {
+    const userRole = (req.user?.role || '').toLowerCase();
+    if (userRole === 'student') {
+      const studentId = String(req.user.referenceId || '');
+      const reqId = String(req.params.id);
+      if (reqId !== studentId) {
+        const ownStudent = await Student.findOne({
+          _id: req.params.id,
+          entityId: req.entityId,
+          $or: [
+            { rollNo: req.user.username },
+            ...(req.user.email ? [{ email: req.user.email }] : [])
+          ]
+        });
+        if (!ownStudent) {
+          return res.status(403).json({ message: 'Access Denied: Students can only view their own student details' });
+        }
+        return res.json(ownStudent);
+      }
+    }
+
     const student = await Student.findOne({ _id: req.params.id, entityId: req.entityId });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
@@ -221,11 +320,15 @@ router.post('/', async (req, res) => {
       rollNo: finalRollNo,
       grade: grade.trim(),
       section: (section || 'A').trim().toUpperCase(),
+      portalPassword: (req.body.portalPassword || 'student123').trim(),
       entityId: req.entityId,
       schoolSlug: req.schoolSlug || req.headers['x-school-slug'],
     });
 
     await newStudent.save();
+    // Synchronize User account for student portal authentication
+    await syncStudentUser(newStudent, newStudent.portalPassword);
+
     res.status(201).json({
       success: true,
       message: `Student "${newStudent.name}" enrolled in ${newStudent.grade} - Section ${newStudent.section} successfully.`,
@@ -259,6 +362,9 @@ router.put('/:id', async (req, res) => {
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
+
+    // Synchronize User account for student portal authentication
+    await syncStudentUser(student, req.body.portalPassword || student.portalPassword);
 
     res.json({
       success: true,
@@ -383,10 +489,14 @@ router.delete('/:id', async (req, res) => {
         { $pull: { submissions: { studentId: req.params.id } } }
       ),
       Fee.deleteMany({ entityId: req.entityId, student: req.params.id }),
-      User.updateMany(
-        { entityId: req.entityId },
-        { $set: { studentsInitialized: true } }
-      )
+      User.deleteMany({
+        entityId: req.entityId,
+        role: 'student',
+        $or: [
+          { referenceId: req.params.id },
+          { uniqueId: student.rollNo }
+        ]
+      })
     ]);
 
     res.json({
@@ -396,6 +506,31 @@ router.delete('/:id', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// POST /api/students/sync-credentials — Synchronize and ensure portal credentials for all students
+router.post('/sync-credentials', async (req, res) => {
+  try {
+    const filter = req.entityId ? { entityId: req.entityId } : {};
+    const students = await Student.find(filter);
+    let count = 0;
+    for (const st of students) {
+      const pwd = st.portalPassword || 'student123';
+      if (!st.portalPassword) {
+        st.portalPassword = pwd;
+        await st.save();
+      }
+      await syncStudentUser(st, pwd);
+      count++;
+    }
+    res.json({
+      success: true,
+      message: `Successfully synchronized and provisioned portal login credentials for ${count} students.`,
+      count
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error syncing credentials', error: error.message });
   }
 });
 
@@ -427,3 +562,4 @@ router.post('/seed', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.syncStudentUser = syncStudentUser;

@@ -103,6 +103,7 @@ const Sidebar = () => {
           title: 'Student Portal',
           items: [
             { id: 'Student Dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+            { id: 'Student Fees', label: 'My Fees', icon: CreditCard },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'My Academics', icon: BookOpen },
             { id: 'Communication & Reports', label: 'Announcements', icon: Mail },
@@ -275,6 +276,8 @@ const Sidebar = () => {
         return (path.includes('/support-dashboard') || path.includes('/dashboard')) && search.includes('tab=parcels');
       case 'Student Dashboard':
         return path.includes('/student-dashboard');
+      case 'Student Fees':
+        return path.includes('/student-fees');
       case 'Parent Dashboard':
         return path.includes('/parent-dashboard');
       case 'Library Dashboard':
@@ -302,6 +305,9 @@ const Sidebar = () => {
       case 'Teachers':
         return (path.includes('/staff') || (path.includes('/teachers') && !path.includes('/teacher-dashboard'))) || (path.includes('/dashboard') && search.includes('tab=teachers'));
       case 'Academics & Exams':
+        if (role === 'student') {
+          return path.includes('/timetable');
+        }
         return (path.includes('/academics') && !search.includes('tab=timetable') && !path.includes('/timetable')) || (path.includes('/dashboard') && search.includes('tab=academics'));
       case 'Finance Overview':
         return (path.includes('/finance') || path.endsWith('/dashboard')) && (!search.includes('tab=') || search.includes('tab=ledger'));
@@ -388,6 +394,9 @@ const Sidebar = () => {
       case 'Student Dashboard':
         navigate(`${base}/student-dashboard`);
         break;
+      case 'Student Fees':
+        navigate(`${base}/student-fees`);
+        break;
       case 'Parent Dashboard':
         navigate(`${base}/parent-dashboard`);
         break;
@@ -428,7 +437,11 @@ const Sidebar = () => {
         navigate(`${base}/staff`);
         break;
       case 'Academics & Exams':
-        navigate(`${base}/academics`);
+        if (role === 'student') {
+          navigate(`${base}/timetable`);
+        } else {
+          navigate(`${base}/academics`);
+        }
         break;
       case 'Finance Overview':
         navigate(`${base}/finance?tab=ledger`);

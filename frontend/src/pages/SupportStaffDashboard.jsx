@@ -1402,7 +1402,7 @@ const SupportStaffDashboard = () => {
                   Accounts Window — Student Fee Collection Desk
                 </h2>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                  Search student by name or roll number to inspect pending dues, accept cash/UPI, and print counter receipts
+                  Search student by name or Student ID to inspect pending dues, accept cash/UPI, and print counter receipts
                 </p>
               </div>
             </div>
@@ -1412,7 +1412,7 @@ const SupportStaffDashboard = () => {
               <Search size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
-                placeholder="Search student by name or roll number (e.g. Aarav, 2024-001)..."
+                placeholder="Search student by name or Student ID (e.g. Aarav, STU-1001)..."
                 value={studentSearchQuery}
                 onChange={(e) => handleStudentSearch(e.target.value)}
                 style={{
@@ -1508,7 +1508,7 @@ const SupportStaffDashboard = () => {
                       {selectedStudentForFee.name}
                     </h3>
                     <p style={{ margin: 0, fontSize: '0.84rem', color: '#047857' }}>
-                      Roll No: <strong>{selectedStudentForFee.rollNo}</strong> • Grade: <strong>{selectedStudentForFee.grade}</strong> • Parent: {selectedStudentForFee.parentName || 'N/A'} ({selectedStudentForFee.parentContact || 'N/A'})
+                      Student ID: <strong>{selectedStudentForFee.rollNo}</strong> • Grade: <strong>{selectedStudentForFee.grade}</strong> • Parent: {selectedStudentForFee.parentName || 'N/A'} ({selectedStudentForFee.parentContact || 'N/A'})
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -2448,7 +2448,7 @@ const SupportStaffDashboard = () => {
                 </div>
                 {selectedReceiptForPrint.rollNo && selectedReceiptForPrint.rollNo !== 'N/A' && (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-                    <span style={{ color: '#64748b' }}>Roll Number:</span>
+                    <span style={{ color: '#64748b' }}>Student ID:</span>
                     <span>{selectedReceiptForPrint.rollNo}</span>
                   </div>
                 )}
@@ -2533,7 +2533,7 @@ const SupportStaffDashboard = () => {
 
               <div style={{ marginTop: '16px', textAlign: 'left', fontSize: '0.84rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div><strong>Student Name:</strong> {selectedGatePassForPrint.studentName}</div>
-                <div><strong>Roll & Class:</strong> {selectedGatePassForPrint.rollNo || 'N/A'} • {selectedGatePassForPrint.classSection}</div>
+                <div><strong>Student ID & Class:</strong> {selectedGatePassForPrint.rollNo || 'N/A'} • {selectedGatePassForPrint.classSection}</div>
                 <div><strong>Reason:</strong> {selectedGatePassForPrint.reason}</div>
                 <div><strong>Escorted By:</strong> {selectedGatePassForPrint.escortedBy}</div>
                 <div><strong>Departure Time:</strong> {new Date(selectedGatePassForPrint.outTime).toLocaleTimeString()}</div>
@@ -2744,7 +2744,7 @@ const SupportStaffDashboard = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Class / Roll No *
+                    Class / Student ID *
                   </label>
                   <input
                     type="text" required
@@ -3048,7 +3048,7 @@ const SupportStaffDashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Roll Number (Optional)
+                    Student ID (Optional)
                   </label>
                   <input
                     type="text"

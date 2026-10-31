@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
   Search, MoreVertical, User, ChevronLeft, ChevronRight, Plus, X, 
   Mail, Phone, MapPin, Calendar, Activity, BookOpen, CreditCard, 
   Edit, Trash2, CheckCircle2, AlertCircle, RefreshCw, GraduationCap, 
   Building2, Layers, Filter, Check, ArrowRight, QrCode, Award, 
-  Shield, Printer, Download, Sparkles, BookMarked, Star
+  Shield, Printer, Download, Sparkles, BookMarked, Star, Key, Copy, Eye, EyeOff
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
@@ -21,6 +22,7 @@ const standardGrades = [
 const standardSections = ['A', 'B', 'C', 'D', 'Science', 'Commerce', 'Arts'];
 
 const Students = () => {
+  const navigate = useNavigate();
   // Authentication & Session Context
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
@@ -30,6 +32,13 @@ const Students = () => {
   const canAdmitStudents = isLeader || ['frontdesk', 'support_staff', 'support', 'staff'].includes(userRole);
   const isAdmin = canAdmitStudents;
   const canDeleteAll = isLeader;
+
+  // Strict data privacy: Redirect students to their own personal portal
+  useEffect(() => {
+    if (userRole === 'student') {
+      navigate(`/${tenantSlug}/student-dashboard`, { replace: true });
+    }
+  }, [userRole, tenantSlug, navigate]);
 
   // Data States
   const [studentsList, setStudentsList] = useState([]);
@@ -77,10 +86,14 @@ const Students = () => {
     email: '',
     address: '',
     attendance: 100,
-    status: 'Active'
+    status: 'Active',
+    portalPassword: 'student123'
   };
   const [formData, setFormData] = useState(initialForm);
   const [formError, setFormError] = useState('');
+  const [showModalPassword, setShowModalPassword] = useState(false);
+  const [showDrawerPassword, setShowDrawerPassword] = useState(false);
+  const [copiedNotice, setCopiedNotice] = useState('');
 
   const getAuthHeaders = () => {
     const headers = { 'Content-Type': 'application/json' };
@@ -176,45 +189,53 @@ const Students = () => {
 
   // Available sections for the filter dropdown based on selected grade
   const availableSectionsForFilter = useMemo(() => {
-    if (gradeFilter === 'All') {
+    const safeFilter = typeof gradeFilter === 'string' ? gradeFilter : 'All';
+    if (safeFilter === 'All') {
       const fromConfig = classesList.map(c => c.section).filter(Boolean);
       const combined = Array.from(new Set([...fromConfig, ...standardSections]));
-      return combined.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      return combined.sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
     }
     const forGrade = classesList
-      .filter(c => c.className.toLowerCase() === gradeFilter.toLowerCase())
+      .filter(c => String(c.className || '').toLowerCase() === safeFilter.toLowerCase())
       .map(c => c.section)
       .filter(Boolean);
     if (forGrade.length > 0) {
-      return Array.from(new Set(forGrade)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      return Array.from(new Set(forGrade)).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
     }
     return standardSections;
   }, [classesList, gradeFilter]);
 
   // Available sections for the selected grade in the form
   const availableSectionsForGrade = useMemo(() => {
+    const safeGrade = typeof formData?.grade === 'string' ? formData.grade : (formData?.grade ? String(formData.grade) : 'Class 10');
     const configuredForGrade = classesList
-      .filter(c => c.className.toLowerCase() === formData.grade.toLowerCase())
-      .map(c => c.section);
+      .filter(c => String(c.className || '').toLowerCase() === safeGrade.toLowerCase())
+      .map(c => c.section)
+      .filter(Boolean);
     if (configuredForGrade.length > 0) {
       return Array.from(new Set([...configuredForGrade, 'A', 'B', 'C']));
     }
     return standardSections;
-  }, [classesList, formData.grade]);
+  }, [classesList, formData?.grade]);
 
   // Open Add Student Modal (optionally prefilled with target class & section)
   const handleOpenAddModal = (targetGrade = null, targetSection = null) => {
-    const defaultGrade = targetGrade || (classesList[0]?.className || 'Class 10');
-    const defaultSection = targetSection || (classesList[0]?.section || 'A');
+    const validGrade = (typeof targetGrade === 'string' && targetGrade) ? targetGrade : null;
+    const validSection = (typeof targetSection === 'string' && targetSection) ? targetSection : null;
+
+    const defaultGrade = validGrade || (classesList[0]?.className || 'Class 10');
+    const defaultSection = validSection || (classesList[0]?.section || 'A');
     const nextRollNo = `STU-${1000 + totalCount + 1}`;
 
     setFormData({
       ...initialForm,
       grade: defaultGrade,
       section: defaultSection,
-      rollNo: nextRollNo
+      rollNo: nextRollNo,
+      portalPassword: 'student123'
     });
     setFormError('');
+    setShowModalPassword(false);
     setEditingStudent(null);
     setIsAddModalOpen(true);
   };
@@ -235,20 +256,22 @@ const Students = () => {
       email: student.email || '',
       address: student.address || '',
       attendance: student.attendance !== undefined ? student.attendance : 100,
-      status: student.status || 'Active'
+      status: student.status || 'Active',
+      portalPassword: student.portalPassword || 'student123'
     });
     setFormError('');
+    setShowModalPassword(false);
     setIsAddModalOpen(true);
   };
 
   // Submit Add / Edit Student Form
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
+    if (!String(formData?.name || '').trim()) {
       setFormError('Student full name is required');
       return;
     }
-    if (!formData.grade.trim()) {
+    if (!String(formData?.grade || '').trim()) {
       setFormError('Assigned class/grade is required');
       return;
     }
@@ -452,7 +475,7 @@ const Students = () => {
   const visibleClassGroups = useMemo(() => {
     let list = studentsByClass;
     if (selectedClassTab !== 'ALL') {
-      list = list.filter(cg => cg.key.toLowerCase() === selectedClassTab.toLowerCase());
+      list = list.filter(cg => String(cg.key || '').toLowerCase() === String(selectedClassTab || 'ALL').toLowerCase());
     } else {
       // In ALL view, hide empty classes if at least one class has students,
       // keeping the multi-class overview clean, concise and legible
@@ -633,7 +656,7 @@ const Students = () => {
                     <Mail size={14} color="#4F46E5" /> Student Email Address
                   </div>
                   <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1e293b', marginTop: '4px' }}>
-                    {s.email || `${s.rollNo?.toLowerCase()}@pragati.edu`}
+                    {s.email || `${String(s.rollNo || '').toLowerCase()}@pragati.edu`}
                   </div>
                 </div>
 
@@ -644,6 +667,79 @@ const Students = () => {
                   <div style={{ fontSize: '0.9rem', color: '#1e293b', marginTop: '4px', lineHeight: 1.4 }}>
                     {s.address || 'No residential address recorded on file.'}
                   </div>
+                </div>
+
+                {/* Student Portal Login Credentials */}
+                <div style={{
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)',
+                  borderRadius: '12px',
+                  border: '1.5px solid #bfdbfe'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '0.78rem', color: '#1e40af', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <Key size={15} color="#2563eb" /> Student Portal Login Credentials
+                    </div>
+                    <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1e40af', fontWeight: 700, padding: '2px 8px', borderRadius: '6px' }}>
+                      Portal Access Active
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div style={{ background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PORTAL USER ID</div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b', marginTop: '2px', fontFamily: 'monospace' }}>
+                        {s.rollNo}
+                      </div>
+                    </div>
+                    <div style={{ background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PORTAL PASSWORD</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowDrawerPassword(!showDrawerPassword)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 0 }}
+                          title={showDrawerPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showDrawerPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b', marginTop: '2px', fontFamily: 'monospace' }}>
+                        {showDrawerPassword ? (s.portalPassword || 'student123') : '••••••••'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const portalUrl = `${window.location.origin}/${tenantSlug || 'neel-public-school'}/login`;
+                      const text = `Student Portal Login Details:\nPortal URL: ${portalUrl}\nStudent ID / User ID: ${s.rollNo}\nPassword: ${s.portalPassword || 'student123'}\nStudent Name: ${s.name}`;
+                      navigator.clipboard?.writeText(text);
+                      setCopiedNotice(s._id);
+                      setTimeout(() => setCopiedNotice(''), 2500);
+                    }}
+                    style={{
+                      width: '100%', marginTop: '10px', padding: '9px 12px',
+                      background: copiedNotice === s._id ? '#16a34a' : 'white',
+                      border: copiedNotice === s._id ? '1px solid #16a34a' : '1px solid #93c5fd',
+                      borderRadius: '8px',
+                      color: copiedNotice === s._id ? 'white' : '#1e40af',
+                      fontWeight: 700, fontSize: '0.8rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                      cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    {copiedNotice === s._id ? (
+                      <>
+                        <Check size={14} /> Credentials Copied to Clipboard!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} /> Copy Portal Login Details
+                      </>
+                    )}
+                  </button>
                 </div>
 
                 {isAdmin && (
@@ -755,7 +851,7 @@ const Students = () => {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
                       <div style={{ fontSize: '0.78rem', color: '#38bdf8', fontWeight: 700, marginTop: '2px' }}>
-                        Roll No: {s.rollNo}
+                        Student ID: {s.rollNo}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginTop: '2px' }}>
                         Class: {s.grade} - {s.section || 'A'}
@@ -1044,7 +1140,7 @@ const Students = () => {
               <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input 
                 type="text" 
-                placeholder="Search student or roll no..." 
+                placeholder="Search student or Student ID..." 
                 value={searchQuery}
                 onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 style={{
@@ -1142,7 +1238,7 @@ const Students = () => {
             {/* Add Student Button */}
             {isAdmin && (
               <button
-                onClick={handleOpenAddModal}
+                onClick={() => handleOpenAddModal()}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '8px',
                   background: 'linear-gradient(135deg, #4F46E5 0%, #1e40af 100%)',
@@ -1161,44 +1257,6 @@ const Students = () => {
           <div style={{ padding: '12px 16px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#b91c1c', fontSize: '0.85rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertCircle size={16} />
             <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* Bulk Selection Actions Toolbar */}
-        {isAdmin && selectedIds.length > 0 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px',
-            padding: '10px 18px', marginBottom: '14px', animation: 'fade-in 0.2s'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#1e40af', fontWeight: 700, fontSize: '0.88rem' }}>
-              <CheckCircle2 size={18} color="#2563eb" />
-              <span>{selectedIds.length} student{selectedIds.length > 1 ? 's' : ''} selected</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => setSelectedIds([])}
-                style={{
-                  background: 'white', border: '1px solid #cbd5e1', color: '#475569',
-                  padding: '6px 14px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer'
-                }}
-              >
-                Clear Selection
-              </button>
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={handleDeleteSelectedStudents}
-                style={{
-                  background: '#dc2626', color: 'white', border: 'none',
-                  padding: '6px 16px', borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700,
-                  cursor: actionLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-                }}
-              >
-                <Trash2 size={14} /> {actionLoading ? 'Deleting...' : `Delete Selected (${selectedIds.length})`}
-              </button>
-            </div>
           </div>
         )}
 
@@ -1324,18 +1382,7 @@ const Students = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ borderBottom: '1.5px solid #f1f5f9', background: '#ffffff' }}>
-                    {isAdmin && (
-                      <th style={{ padding: '12px 16px', width: '42px', textAlign: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={studentsList.length > 0 && selectedIds.length === studentsList.length}
-                          onChange={handleSelectAll}
-                          style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
-                          title="Select all students"
-                        />
-                      </th>
-                    )}
-                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Roll No</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Student ID</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Student Name</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Assigned Class</th>
                     <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Attendance</th>
@@ -1352,26 +1399,15 @@ const Students = () => {
                       style={{
                         borderBottom: '1px solid #f1f5f9',
                         cursor: 'pointer',
-                        transition: 'background-color 0.12s',
-                        backgroundColor: selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent'
+                        transition: 'background-color 0.12s'
                       }}
                       onMouseOver={(e) => {
-                        if (!selectedIds.includes(st._id)) e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)';
+                        e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)';
                       }}
                       onMouseOut={(e) => {
-                        e.currentTarget.style.backgroundColor = selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent';
+                        e.currentTarget.style.backgroundColor = 'transparent';
                       }}
                     >
-                      {isAdmin && (
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(st._id)}
-                            onChange={() => handleToggleSelect(st._id)}
-                            style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
-                          />
-                        </td>
-                      )}
                       <td style={{ padding: '12px 16px' }}>
                         <code style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
                           {st.rollNo}
@@ -1522,7 +1558,7 @@ const Students = () => {
 
             <form onSubmit={handleFormSubmit}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* Name & Roll No */}
+                {/* Name & Student ID */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '14px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
@@ -1539,7 +1575,7 @@ const Students = () => {
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '5px' }}>
-                      Roll / Admission No *
+                      Student ID *
                     </label>
                     <input 
                       type="text" 
@@ -1694,6 +1730,88 @@ const Students = () => {
                     onChange={e => setFormData({ ...formData, address: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', resize: 'vertical', boxSizing: 'border-box' }}
                   />
+                </div>
+
+                {/* Student Portal Login Credentials */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+                  border: '1.5px solid #bfdbfe',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.82rem', color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      <Key size={15} color="#2563eb" /> Student Portal Login Credentials
+                    </div>
+                    <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, padding: '2px 8px', borderRadius: '6px' }}>
+                      Student Access
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                        Portal User ID (Login ID)
+                      </label>
+                      <input 
+                        type="text"
+                        readOnly
+                        value={formData.rollNo || 'Auto-assigned'}
+                        style={{
+                          width: '100%', padding: '9px 12px', borderRadius: '8px',
+                          border: '1px solid #cbd5e1', background: '#f1f5f9',
+                          color: '#1e293b', fontWeight: 700, fontSize: '0.88rem',
+                          boxSizing: 'border-box', outline: 'none'
+                        }}
+                      />
+                      <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px' }}>
+                        Students sign in using their Student ID (<code>{formData.rollNo || 'STU-XXXX'}</code>) or email.
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                        Portal Password *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input 
+                          type={showModalPassword ? 'text' : 'password'}
+                          required
+                          placeholder="e.g. student123"
+                          value={formData.portalPassword || 'student123'}
+                          onChange={e => setFormData({ ...formData, portalPassword: e.target.value })}
+                          style={{
+                            width: '100%', padding: '9px 36px 9px 12px', borderRadius: '8px',
+                            border: '1px solid #cbd5e1', fontSize: '0.88rem',
+                            background: 'white', boxSizing: 'border-box', outline: 'none'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowModalPassword(!showModalPassword)}
+                          style={{
+                            position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                            background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px'
+                          }}
+                        >
+                          {showModalPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Default: student123</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, portalPassword: `stu@${Math.floor(1000 + Math.random() * 9000)}` })}
+                          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                        >
+                          Generate New
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Action Buttons */}

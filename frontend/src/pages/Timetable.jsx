@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   CalendarDays, Clock, Users, Building, Building2, ShieldCheck, RefreshCw, 
   FileText, CheckCircle2, AlertTriangle, Award, X, Sparkles, BookOpen, Plus,
-  Trash2, Coffee, SlidersHorizontal, Check, LayoutGrid, RotateCcw, Edit3, Grid
+  Trash2, Coffee, SlidersHorizontal, Check, LayoutGrid, RotateCcw, Edit3, Grid,
+  GraduationCap
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -31,32 +32,33 @@ const COMMON_SUBJECTS = [
   'General Knowledge (GK)'
 ];
 
-// Helper to ensure recess does NOT replace any academic period and is appointed as recess only
-const getAcademicPeriodLabel = (period, index, allPeriods) => {
-  if (!period) return `P${index + 1}`;
-  const isRecess = Boolean(
-    period.isRecess ||
+// Helper to check if a period slot is a Recess / Break
+const isRecessPeriod = (period) => Boolean(
+  period && (
+    period.isRecess === true ||
     period.type === 'Recess' ||
     period.type === 'Break' ||
     (period.periodName && period.periodName.toLowerCase().trim() === 'recess') ||
     (period.subject && period.subject.toLowerCase().trim().startsWith('recess'))
-  );
-  if (isRecess) return 'Recess';
+  )
+);
+
+// Helper to count only academic periods (excluding recess / breaks)
+const getAcademicPeriodsCount = (periodsList) => {
+  if (!Array.isArray(periodsList)) return 0;
+  return periodsList.filter(p => !isRecessPeriod(p)).length;
+};
+
+// Helper to ensure recess does NOT replace any academic period and is appointed as recess only
+const getAcademicPeriodLabel = (period, index, allPeriods) => {
+  if (!period) return `P${index + 1}`;
+  if (isRecessPeriod(period)) return 'Recess';
 
   let academicNumber = 1;
   if (Array.isArray(allPeriods)) {
     for (let i = 0; i < index; i++) {
       const p = allPeriods[i];
-      const pIsRecess = Boolean(
-        p && (
-          p.isRecess ||
-          p.type === 'Recess' ||
-          p.type === 'Break' ||
-          (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
-          (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
-        )
-      );
-      if (!pIsRecess) {
+      if (!isRecessPeriod(p)) {
         academicNumber++;
       }
     }
@@ -78,11 +80,13 @@ const Timetable = () => {
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
   const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || userInfo.tenantSlug || '';
 
-  const isSuperAdmin = userRole === 'superadmin' || location.pathname.includes('/superadmin');
-  const isAdmin = userRole === 'admin';
-  const isPrincipal = userRole === 'principal';
-  const canSetup = isSuperAdmin || isAdmin || isPrincipal;
+  const isStudent = userRole === 'student';
+  const isSuperAdmin = !isStudent && (userRole === 'superadmin' || location.pathname.includes('/superadmin'));
+  const isAdmin = !isStudent && userRole === 'admin';
+  const isPrincipal = !isStudent && userRole === 'principal';
+  const canSetup = !isStudent && (isSuperAdmin || isAdmin || isPrincipal);
 
+  const [studentInfo, setStudentInfo] = useState(null);
   const [schoolsList, setSchoolsList] = useState([]);
   const [selectedSchoolSlug, setSelectedSchoolSlug] = useState(tenantSlug);
 
@@ -103,6 +107,43 @@ const Timetable = () => {
   const [isValidatingConflicts, setIsValidatingConflicts] = useState(false);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [timetableNotification, setTimetableNotification] = useState('');
+  
+  // Coordinated Class and Section dropdown options
+  const effectiveClassesList = useMemo(() => {
+    return classesList.length > 0 ? classesList : [
+      { className: 'Class 10', section: 'A' },
+      { className: 'Class 11', section: 'SCIENCE' },
+      { className: 'Class 9', section: 'B' },
+      { className: 'Class 8', section: 'A' }
+    ];
+  }, [classesList]);
+
+  const uniqueClassNames = useMemo(() => {
+    const set = new Set();
+    effectiveClassesList.forEach(c => {
+      if (c?.className) set.add(c.className);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [effectiveClassesList]);
+
+  const currentSelectedClassName = useMemo(() => {
+    const parts = (selectedTimetableClass || '').split(' - ');
+    return parts[0] || (uniqueClassNames[0] || 'Class 10');
+  }, [selectedTimetableClass, uniqueClassNames]);
+
+  const currentSelectedSectionName = useMemo(() => {
+    const parts = (selectedTimetableClass || '').split(' - ');
+    return parts[1] || 'A';
+  }, [selectedTimetableClass]);
+
+  const availableSectionsForCurrentClass = useMemo(() => {
+    const sections = effectiveClassesList
+      .filter(c => String(c.className || '').toLowerCase() === currentSelectedClassName.toLowerCase())
+      .map(c => c.section)
+      .filter(Boolean);
+    const combined = Array.from(new Set(sections.length > 0 ? sections : ['A', 'B', 'C']));
+    return combined.sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+  }, [effectiveClassesList, currentSelectedClassName]);
   
   // Master Timetable Structure for ALL Classes Modal State (Super Admin & Admin)
   const [isMasterStructureModalOpen, setIsMasterStructureModalOpen] = useState(false);
@@ -210,6 +251,23 @@ const Timetable = () => {
     return headers;
   };
 
+  // If user is a student, fetch their specific enrolled class & details and lock timetable
+  useEffect(() => {
+    if (isStudent) {
+      fetch(`${API_BASE}/dashboard/student-summary`, { headers: getAuthHeaders() })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            setStudentInfo(data);
+            const targetClass = `${data.grade || 'Class 10'} - ${data.section || 'A'}`;
+            setSelectedTimetableClass(targetClass);
+            fetchLiveTimetable(data.grade || 'Class 10', data.section || 'A');
+          }
+        })
+        .catch(err => console.warn('Student summary fetch error in Timetable:', err));
+    }
+  }, [isStudent]);
+
   // If Super Admin, fetch all campuses/schools to allow switching and setting up timetables
   useEffect(() => {
     if (isSuperAdmin) {
@@ -279,7 +337,7 @@ const Timetable = () => {
             initialClass = `${list[0].className} - ${list[0].section}`;
           }
 
-          if (initialClass) {
+          if (!isStudent && initialClass) {
             setSelectedTimetableClass(initialClass);
           }
         }
@@ -550,7 +608,7 @@ const Timetable = () => {
 
   const handleOpenAddPeriodModal = (targetDay = 'Monday') => {
     const dayPeriods = timetableSchedule[targetDay] || [];
-    const nextNum = dayPeriods.length + 1;
+    const nextNum = getAcademicPeriodsCount(dayPeriods) + 1;
     let nextStart = '08:30';
     let nextEnd = '09:20';
     if (dayPeriods.length > 0) {
@@ -1008,38 +1066,36 @@ const Timetable = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', fontFamily: "'Outfit', sans-serif" }}>
       
       {/* TIMETABLE HERO HEADER */}
-      <div className="no-print" style={{
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e3a8a 100%)',
-        borderRadius: '20px',
-        padding: '28px 32px',
-        color: 'white',
-        boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '20px'
-      }}>
-        <div style={{ maxWidth: '720px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              backdropFilter: 'blur(10px)',
-              padding: '4px 12px',
-              borderRadius: '20px',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <CalendarDays size={14} color="#60a5fa" /> Smart Schedule Engine
-            </span>
-
-            {/* Role-Based Authority Pill */}
-            {isSuperAdmin ? (
+      {isStudent ? (
+        <div className="no-print" style={{
+          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e3a8a 100%)',
+          borderRadius: '20px',
+          padding: '28px 32px',
+          color: 'white',
+          boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <CalendarDays size={14} color="#60a5fa" /> Student Academic Schedule
+              </span>
               <span style={{
                 background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.35) 0%, rgba(99, 102, 241, 0.35) 100%)',
                 border: '1px solid rgba(165, 180, 252, 0.4)',
@@ -1052,330 +1108,415 @@ const Timetable = () => {
                 alignItems: 'center',
                 gap: '6px'
               }}>
-                <ShieldCheck size={14} color="#a5b4fc" /> Super Admin Control: Global Timetable Setup & Matrix Architecture
+                <GraduationCap size={14} color="#a5b4fc" /> Enrolled Class Timetable
               </span>
-            ) : isAdmin ? (
-              <span style={{
-                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.3) 100%)',
-                border: '1px solid rgba(110, 231, 183, 0.4)',
-                color: '#d1fae5',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.76rem',
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <Building2 size={14} color="#6ee7b7" /> Branch Admin Authority: Campus Timetable Setup & Period Allocation
-              </span>
-            ) : isPrincipal ? (
-              <span style={{
-                background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.3) 100%)',
-                border: '1px solid rgba(252, 211, 77, 0.4)',
-                color: '#fef3c7',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.76rem',
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <Award size={14} color="#fcd34d" /> Principal Leadership: Academic Timetable & Class Schedules
-              </span>
-            ) : (
-              <span style={{
-                background: 'rgba(255, 255, 255, 0.1)',
-                color: '#cbd5e1',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.76rem',
-                fontWeight: 600
-              }}>
-                View-Only Access (Managed by Super Admin & Campus Admin)
-              </span>
-            )}
-          </div>
-
-          <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-            Master Timetable & Period Architecture
-          </h1>
-        </div>
-
-        {/* Right Header Area: Campus Selector (SuperAdmin) & Nav Button */}
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-          
-          {/* Campus Selector for Super Admin */}
-          {isSuperAdmin && schoolsList.length > 0 && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'rgba(255, 255, 255, 0.14)',
-              padding: '6px 14px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <Building2 size={16} color="#93c5fd" />
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Campus Scope:
-              </span>
-              <select
-                value={selectedSchoolSlug}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedSchoolSlug(val);
-                  sessionStorage.setItem('tenantSlug', val);
-                }}
-                style={{
-                  background: '#0f172a',
-                  color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  borderRadius: '8px',
-                  padding: '6px 10px',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                {schoolsList.map(s => (
-                  <option key={s.slug} value={s.slug}>
-                    {s.name} {s.isBranch ? '• Branch' : '• Main'}
-                  </option>
-                ))}
-              </select>
             </div>
-          )}
-
-        </div>
-      </div>
-
-      {/* CONTROL & CONSTRAINT ACTION BAR */}
-      <div className="chart-card no-print" style={{ padding: '20px 24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-            <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
-              CONFLICT ENGINE
-            </span>
-            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Live Constraint Validation</span>
+            <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+              My Class Timetable
+            </h1>
+            <div style={{ marginTop: '8px', fontSize: '0.88rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <span>Assigned Class: <strong style={{ color: 'white' }}>{studentInfo ? `${studentInfo.grade} - Section ${studentInfo.section}` : selectedTimetableClass}</strong></span>
+              <span>•</span>
+              <span>Student: <strong style={{ color: 'white' }}>{studentInfo?.studentName || userInfo.name} ({studentInfo?.rollNumber || userInfo.username})</strong></span>
+            </div>
           </div>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a' }}>
-            Schedule Matrix & Allocation Controls
-          </h2>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            value={selectedTimetableClass}
-            onChange={(e) => setSelectedTimetableClass(e.target.value)}
-            style={{ padding: '9px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 700, color: '#1e3a8a', background: 'white', cursor: 'pointer' }}
-          >
-            {classesList.length > 0 ? (
-              classesList.map(c => (
-                <option key={c._id} value={`${c.className} - ${c.section}`}>
-                  {c.className} - Section {c.section}
-                </option>
-              ))
-            ) : (
-              <>
-                <option value="Class 10 - A">Class 10 - Section A</option>
-                <option value="Class 9 - B">Class 9 - Section B</option>
-                <option value="Class 11 - SCIENCE">Class 11 - Section Science</option>
-                <option value="Class 8 - A">Class 8 - Section A</option>
-              </>
-            )}
-          </select>
-
-          <button
-            onClick={handleValidateConflicts}
-            disabled={isValidatingConflicts}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '9px 16px',
-              borderRadius: '10px',
-              border: 'none',
-              background: '#0F766E',
-              color: 'white',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: isValidatingConflicts ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
-            }}
-          >
-            <ShieldCheck size={16} />
-            <span>{isValidatingConflicts ? 'Validating...' : 'Run Conflict Validator'}</span>
-          </button>
-
-          {canSetup && (
-            <>
-              {/* PRIMARY MASTER STRUCTURE BUTTON FOR ALL CLASSES AT ONCE */}
-              <button
-                onClick={() => {
-                  const allNames = classesList.map(c => `${c.className} - ${c.section}`);
-                  setMasterStructureConfig(prev => ({
-                    ...prev,
-                    targetClasses: 'all',
-                    selectedClassesList: allNames
-                  }));
-                  setIsMasterStructureModalOpen(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '7px',
-                  padding: '9px 18px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4338ca 100%)',
-                  color: 'white',
-                  fontWeight: 800,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 14px rgba(55, 48, 163, 0.35)',
-                  transition: 'all 0.15s'
-                }}
-                title="Super Admin & Admin: Structure the timetable for all school classes at once (8 periods + dedicated recess), then assign periods separately"
-              >
-                <Sparkles size={16} color="#a5b4fc" />
-                <span>Structure All Classes (Master)</span>
-              </button>
-
-              <button
-                onClick={() => handleOpenAddPeriodModal()}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 16px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
-                }}
-                title="Super Admin & Admin: Add a new period or recess slot"
-              >
-                <Plus size={16} />
-                <span>Add Period</span>
-              </button>
-
-              <button
-                onClick={handleOpenBellScheduleModal}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 16px',
-                  borderRadius: '10px',
-                  border: '1.5px solid #fed7aa',
-                  background: '#fff7ed',
-                  color: '#c2410c',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer'
-                }}
-                title="Super Admin & Admin: Configure bell timings and recess breaks across all days"
-              >
-                <Coffee size={15} color="#ea580c" />
-                <span>Bell & Recess Timings</span>
-              </button>
-
-              <button
-                onClick={handleAutoGenerateTimetable}
-                disabled={isAutoGenerating}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 16px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: '#4F46E5',
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: isAutoGenerating ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
-                }}
-                title="Super Admin & Admin: Auto-Generate conflict-free timetable"
-              >
-                <RefreshCw size={15} className={isAutoGenerating ? 'spin' : ''} />
-                <span>Auto-Optimize Matrix</span>
-              </button>
-
-              <button
-                onClick={() => setIsResetModalOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 16px',
-                  borderRadius: '10px',
-                  border: '1.5px solid #fecaca',
-                  background: '#fff1f2',
-                  color: '#e11d48',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer'
-                }}
-                title="Reset this class' schedule to blank scratch matrix"
-              >
-                <RotateCcw size={14} color="#e11d48" />
-                <span>Reset to Scratch</span>
-              </button>
-
-              <button
-                onClick={handleOpenWorkingDaysModal}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '9px 16px',
-                  borderRadius: '10px',
-                  border: '1.5px solid #fed7aa',
-                  background: '#fff7ed',
-                  color: '#c2410c',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer'
-                }}
-                title="Manage instructional working days & off days (e.g. make Saturday or any day ON or OFF)"
-              >
-                <CalendarDays size={15} color="#ea580c" />
-                <span>Days ON / OFF</span>
-              </button>
-            </>
-          )}
 
           <button
             onClick={handlePrintTimetable}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '9px 16px',
-              borderRadius: '10px',
-              border: '1px solid #cbd5e1',
-              background: 'white',
-              color: '#475569',
+              gap: '8px',
+              padding: '10px 20px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              background: 'rgba(255, 255, 255, 0.15)',
+              color: 'white',
               fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer'
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
             }}
-            title="Print official academic weekly timetable schedule"
           >
-            <FileText size={15} />
-            <span>Print Schedule</span>
+            <FileText size={16} />
+            <span>Print Timetable</span>
           </button>
         </div>
-      </div>
+      ) : (
+        <div className="no-print" style={{
+          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e3a8a 100%)',
+          borderRadius: '20px',
+          padding: '28px 32px',
+          color: 'white',
+          boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '20px'
+        }}>
+          <div style={{ maxWidth: '720px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                backdropFilter: 'blur(10px)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '0.78rem',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <CalendarDays size={14} color="#60a5fa" /> Smart Schedule Engine
+              </span>
+
+              {/* Role-Based Authority Pill */}
+              {isSuperAdmin ? (
+                <span style={{
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.35) 0%, rgba(99, 102, 241, 0.35) 100%)',
+                  border: '1px solid rgba(165, 180, 252, 0.4)',
+                  color: '#e0e7ff',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <ShieldCheck size={14} color="#a5b4fc" /> Super Admin Control: Global Timetable Setup & Matrix Architecture
+                </span>
+              ) : isAdmin ? (
+                <span style={{
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.3) 100%)',
+                  border: '1px solid rgba(110, 231, 183, 0.4)',
+                  color: '#d1fae5',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <Building2 size={14} color="#6ee7b7" /> Branch Admin Authority: Campus Timetable Setup & Period Allocation
+                </span>
+              ) : isPrincipal ? (
+                <span style={{
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.3) 100%)',
+                  border: '1px solid rgba(252, 211, 77, 0.4)',
+                  color: '#fef3c7',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '0.76rem',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <Award size={14} color="#fcd34d" /> Principal Leadership: Academic Timetable & Class Schedules
+                </span>
+              ) : (
+                <span style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#cbd5e1',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '0.76rem',
+                  fontWeight: 600
+                }}>
+                  View-Only Access (Managed by Super Admin & Campus Admin)
+                </span>
+              )}
+            </div>
+
+            <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
+              Master Timetable & Period Architecture
+            </h1>
+          </div>
+
+          {/* Right Header Area: Campus Selector (SuperAdmin) & Nav Button */}
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+            
+            {/* Campus Selector for Super Admin */}
+            {isSuperAdmin && schoolsList.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(255, 255, 255, 0.14)',
+                padding: '6px 14px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                backdropFilter: 'blur(10px)'
+              }}>
+                <Building2 size={16} color="#93c5fd" />
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Campus Scope:
+                </span>
+                <select
+                  value={selectedSchoolSlug}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedSchoolSlug(val);
+                    sessionStorage.setItem('tenantSlug', val);
+                  }}
+                  style={{
+                    background: 'white',
+                    color: '#1e3a8a',
+                    border: '1.5px solid #c7d2fe',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '0.84rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
+                  }}
+                >
+                  {schoolsList.map(s => (
+                    <option key={s.slug} value={s.slug} style={{ color: '#1e3a8a', background: 'white' }}>
+                      {s.name} {s.isBranch ? '• Branch' : '• Main'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
+      {/* CONTROL & CONSTRAINT ACTION BAR */}
+      {!isStudent && (
+        <div className="chart-card no-print" style={{ padding: '20px 24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
+                CONFLICT ENGINE
+              </span>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Live Constraint Validation</span>
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a' }}>
+              Schedule Matrix & Allocation Controls
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={selectedTimetableClass}
+              onChange={(e) => setSelectedTimetableClass(e.target.value)}
+              style={{ padding: '9px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 700, color: '#1e3a8a', background: 'white', cursor: 'pointer' }}
+            >
+              {classesList.length > 0 ? (
+                classesList.map(c => (
+                  <option key={c._id} value={`${c.className} - ${c.section}`}>
+                    {c.className} - Section {c.section}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="Class 10 - A">Class 10 - Section A</option>
+                  <option value="Class 9 - B">Class 9 - Section B</option>
+                  <option value="Class 11 - SCIENCE">Class 11 - Section Science</option>
+                  <option value="Class 8 - A">Class 8 - Section A</option>
+                </>
+              )}
+            </select>
+
+            <button
+              onClick={handleValidateConflicts}
+              disabled={isValidatingConflicts}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '9px 16px',
+                borderRadius: '10px',
+                border: 'none',
+                background: '#0F766E',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: isValidatingConflicts ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
+              }}
+            >
+              <ShieldCheck size={16} />
+              <span>{isValidatingConflicts ? 'Validating...' : 'Run Conflict Validator'}</span>
+            </button>
+
+            {canSetup && (
+              <>
+                {/* PRIMARY MASTER STRUCTURE BUTTON FOR ALL CLASSES AT ONCE */}
+                <button
+                  onClick={() => {
+                    const allNames = classesList.map(c => `${c.className} - ${c.section}`);
+                    setMasterStructureConfig(prev => ({
+                      ...prev,
+                      targetClasses: 'all',
+                      selectedClassesList: allNames
+                    }));
+                    setIsMasterStructureModalOpen(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '7px',
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4338ca 100%)',
+                    color: 'white',
+                    fontWeight: 800,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(55, 48, 163, 0.35)',
+                    transition: 'all 0.15s'
+                  }}
+                  title="Super Admin & Admin: Structure the timetable for all school classes at once (8 periods + dedicated recess), then assign periods separately"
+                >
+                  <Sparkles size={16} color="#a5b4fc" />
+                  <span>Structure All Classes (Master)</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenAddPeriodModal()}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                  }}
+                  title="Super Admin & Admin: Add a new period or recess slot"
+                >
+                  <Plus size={16} />
+                  <span>Add Period</span>
+                </button>
+
+                <button
+                  onClick={handleOpenBellScheduleModal}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #fed7aa',
+                    background: '#fff7ed',
+                    color: '#c2410c',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                  title="Super Admin & Admin: Configure bell timings and recess breaks across all days"
+                >
+                  <Coffee size={15} color="#ea580c" />
+                  <span>Bell & Recess Timings</span>
+                </button>
+
+                <button
+                  onClick={handleAutoGenerateTimetable}
+                  disabled={isAutoGenerating}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: '#4F46E5',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: isAutoGenerating ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
+                  }}
+                  title="Super Admin & Admin: Auto-Generate conflict-free timetable"
+                >
+                  <RefreshCw size={15} className={isAutoGenerating ? 'spin' : ''} />
+                  <span>Auto-Optimize Matrix</span>
+                </button>
+
+                <button
+                  onClick={() => setIsResetModalOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #fecaca',
+                    background: '#fff1f2',
+                    color: '#e11d48',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                  title="Reset this class' schedule to blank scratch matrix"
+                >
+                  <RotateCcw size={14} color="#e11d48" />
+                  <span>Reset to Scratch</span>
+                </button>
+
+                <button
+                  onClick={handleOpenWorkingDaysModal}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #fed7aa',
+                    background: '#fff7ed',
+                    color: '#c2410c',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                  title="Manage instructional working days & off days (e.g. make Saturday or any day ON or OFF)"
+                >
+                  <CalendarDays size={15} color="#ea580c" />
+                  <span>Days ON / OFF</span>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={handlePrintTimetable}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '9px 16px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                background: 'white',
+                color: '#475569',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+              title="Print official academic weekly timetable schedule"
+            >
+              <FileText size={15} />
+              <span>Print Schedule</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* NOTIFICATION BANNER */}
       {timetableNotification && (
@@ -1397,121 +1538,170 @@ const Timetable = () => {
       )}
 
       {/* 4 CONFLICT & ALLOCATION STAT SCORECARDS */}
-      <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-        <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: conflictReport.teacherConflicts > 0 ? '#fef2f2' : '#dcfce7', color: conflictReport.teacherConflicts > 0 ? '#dc2626' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CheckCircle2 size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Teacher Clashes</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: conflictReport.teacherConflicts > 0 ? '#dc2626' : '#166534' }}>
-              {conflictReport.teacherConflicts} Collisions
+      {!isStudent && (
+        <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+          <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: conflictReport.teacherConflicts > 0 ? '#fef2f2' : '#dcfce7', color: conflictReport.teacherConflicts > 0 ? '#dc2626' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle2 size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Teacher Clashes</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: conflictReport.teacherConflicts > 0 ? '#dc2626' : '#166534' }}>
+                {conflictReport.teacherConflicts} Collisions
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: conflictReport.roomCollisions > 0 ? '#fef2f2' : '#dcfce7', color: conflictReport.roomCollisions > 0 ? '#dc2626' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Building size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Room Overlaps</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: conflictReport.roomCollisions > 0 ? '#dc2626' : '#166534' }}>
-              {conflictReport.roomCollisions} Collisions
+          <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: conflictReport.roomCollisions > 0 ? '#fef2f2' : '#dcfce7', color: conflictReport.roomCollisions > 0 ? '#dc2626' : '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Building size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Room Overlaps</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: conflictReport.roomCollisions > 0 ? '#dc2626' : '#166534' }}>
+                {conflictReport.roomCollisions} Collisions
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Award size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Weekly Periods Quota</div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a' }}>
-              {masterPeriods.filter(p => !p.isRecess && p.type !== 'Recess').length * 5} Periods / Week
+          <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Award size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Weekly Periods Quota</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a' }}>
+                {getAcademicPeriodsCount(masterPeriods) * 5} Periods / Week
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Clock size={22} />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Validation Engine</div>
-            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#92400e' }}>
-              {conflictReport.lastChecked}
+          <div className="chart-card" style={{ padding: '16px 20px', background: 'white', borderRadius: '14px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#fef3c7', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={22} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Validation Engine</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#92400e' }}>
+                {conflictReport.lastChecked}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* 6-DAY INTERACTIVE TIMETABLE MATRIX GRID */}
       <div className="chart-card timetable-main-card" style={{ padding: '24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
         
         {/* CLASS SELECTOR RIBBON: ASSIGN PERIODS SEPARATELY FOR EACH CLASS */}
-        <div className="no-print" style={{
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-          border: '1.5px solid #e2e8f0',
-          borderRadius: '12px',
-          padding: '12px 16px',
-          marginBottom: '18px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '6px' }}>
-              <BookOpen size={16} color="#4f46e5" />
-              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                Select Class to Assign Periods:
+        {!isStudent && (
+          <div className="no-print" style={{
+            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            border: '1.5px solid #e2e8f0',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '18px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookOpen size={18} color="#4f46e5" />
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Select Class to Assign Periods:
+                </span>
+              </div>
+              
+              {/* Class Dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label htmlFor="ribbon-class-select" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569' }}>
+                  Class:
+                </label>
+                <select
+                  id="ribbon-class-select"
+                  aria-label="Select Class"
+                  value={currentSelectedClassName}
+                  onChange={(e) => {
+                    const nextClass = e.target.value;
+                    const matching = effectiveClassesList.filter(c => c.className === nextClass);
+                    const nextSec = matching.some(c => c.section === currentSelectedSectionName)
+                      ? currentSelectedSectionName 
+                      : (matching[0]?.section || 'A');
+                    setSelectedTimetableClass(`${nextClass} - ${nextSec}`);
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #4f46e5',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    color: '#1e3a8a',
+                    background: 'white',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: '0 2px 5px rgba(79, 70, 229, 0.1)'
+                  }}
+                >
+                  {uniqueClassNames.map(cls => (
+                    <option key={cls} value={cls}>🏫 {cls}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Section Dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label htmlFor="ribbon-sec-select" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569' }}>
+                  Section:
+                </label>
+                <select
+                  id="ribbon-sec-select"
+                  aria-label="Select Section"
+                  value={currentSelectedSectionName}
+                  onChange={(e) => {
+                    const nextSec = e.target.value;
+                    setSelectedTimetableClass(`${currentSelectedClassName} - ${nextSec}`);
+                  }}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #4f46e5',
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
+                    color: '#1e3a8a',
+                    background: 'white',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: '0 2px 5px rgba(79, 70, 229, 0.1)'
+                  }}
+                >
+                  {availableSectionsForCurrentClass.map(sec => (
+                    <option key={sec} value={sec}>Section {sec}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Active indicator */}
+              <span style={{
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                background: '#ecfdf5',
+                color: '#065f46',
+                border: '1px solid #a7f3d0',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <CheckCircle2 size={14} color="#059669" />
+                Active Class: <strong>{selectedTimetableClass}</strong>
               </span>
             </div>
-            
-            {(classesList.length > 0 ? classesList : [
-              { className: 'Class 10', section: 'A' },
-              { className: 'Class 11', section: 'SCIENCE' },
-              { className: 'Class 9', section: 'B' },
-              { className: 'Class 8', section: 'A' }
-            ]).map(c => {
-              const classKey = `${c.className} - ${c.section}`;
-              const isSelected = selectedTimetableClass.toLowerCase() === classKey.toLowerCase();
-              return (
-                <button
-                  key={c._id || classKey}
-                  type="button"
-                  onClick={() => setSelectedTimetableClass(classKey)}
-                  style={{
-                    padding: '7px 14px',
-                    borderRadius: '8px',
-                    border: isSelected ? '2px solid #4f46e5' : '1px solid #cbd5e1',
-                    background: isSelected ? 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)' : 'white',
-                    color: isSelected ? 'white' : '#334155',
-                    fontSize: '0.82rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: isSelected ? '0 3px 10px rgba(79, 70, 229, 0.3)' : '0 1px 3px rgba(0,0,0,0.04)',
-                    transition: 'all 0.15s'
-                  }}
-                  title={`View and assign period schedule for ${classKey}`}
-                >
-                  <span>🏫 {c.className} - {c.section}</span>
-                  {isSelected && (
-                    <span style={{ fontSize: '0.62rem', background: 'rgba(255, 255, 255, 0.25)', padding: '1px 5px', borderRadius: '4px' }}>
-                      Active Class
-                    </span>
-                  )}
-                </button>
-              );
-            })}
           </div>
-        </div>
+        )}
 
         {/* Day Filter Tabs & Scrolling Helper */}
         <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
@@ -1596,7 +1786,7 @@ const Timetable = () => {
             </div>
             <div className="print-info-item">
               <span className="info-lbl">ALLOCATED PERIODS:</span>
-              <span className="info-val">{masterPeriods.filter(p => !p.isRecess && p.type !== 'Recess').length * 5} Periods / Week (100% Coverage)</span>
+              <span className="info-val">{getAcademicPeriodsCount(masterPeriods) * 5} Periods / Week (100% Coverage)</span>
             </div>
           </div>
         </div>
@@ -1772,7 +1962,7 @@ const Timetable = () => {
                           </span>
                         ) : (
                           <span className="day-periods-count" style={{ fontSize: '0.62rem', opacity: 0.8, fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap' }}>
-                            {periods?.length || 0} Periods
+                            {getAcademicPeriodsCount(periods)} {getAcademicPeriodsCount(periods) === 1 ? 'Period' : 'Periods'}
                           </span>
                         )}
 

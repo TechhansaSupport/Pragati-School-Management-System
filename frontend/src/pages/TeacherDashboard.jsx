@@ -1262,7 +1262,7 @@ const TeacherDashboard = () => {
                 <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '10px' }} />
                 <input 
                   type="text" 
-                  placeholder="Filter student name or roll..." 
+                  placeholder="Filter student name or Student ID..." 
                   value={attendanceSearch}
                   onChange={(e) => setAttendanceSearch(e.target.value)}
                   style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.85rem', outline: 'none' }}
@@ -1302,7 +1302,7 @@ const TeacherDashboard = () => {
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{student.name}</div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            Roll: {student.rollNo} • Standing: {student.attendance}%
+                            Student ID: {student.rollNo} • Standing: {student.attendance}%
                           </div>
                         </div>
                       </div>
@@ -1465,7 +1465,7 @@ const TeacherDashboard = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
                     <tr style={{ borderBottom: '2px solid #e2e8f0', fontSize: '0.78rem', color: '#64748B', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '8px 12px' }}>Roll No</th>
+                      <th style={{ padding: '8px 12px' }}>Student ID</th>
                       <th style={{ padding: '8px 12px' }}>Student Name</th>
                       <th style={{ padding: '8px 12px' }}>Gender</th>
                       <th style={{ padding: '8px 12px' }}>Attendance</th>

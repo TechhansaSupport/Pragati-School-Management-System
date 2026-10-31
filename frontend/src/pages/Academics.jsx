@@ -38,32 +38,33 @@ const standardAssessmentSchedules = [
   { title: 'Pre-Board Mock Examinations', date: 'December 10 - December 22, 2026', status: 'Draft', grades: 'Class 10th & 12th' },
 ];
 
-// Helper to ensure recess does NOT replace any academic period and is appointed as recess only
-const getAcademicPeriodLabel = (period, index, allPeriods) => {
-  if (!period) return `P${index + 1}`;
-  const isRecess = Boolean(
-    period.isRecess ||
+// Helper to check if a period slot is a Recess / Break
+const isRecessPeriod = (period) => Boolean(
+  period && (
+    period.isRecess === true ||
     period.type === 'Recess' ||
     period.type === 'Break' ||
     (period.periodName && period.periodName.toLowerCase().trim() === 'recess') ||
     (period.subject && period.subject.toLowerCase().trim().startsWith('recess'))
-  );
-  if (isRecess) return 'Recess';
+  )
+);
+
+// Helper to count only academic periods (excluding recess / breaks)
+const getAcademicPeriodsCount = (periodsList) => {
+  if (!Array.isArray(periodsList)) return 0;
+  return periodsList.filter(p => !isRecessPeriod(p)).length;
+};
+
+// Helper to ensure recess does NOT replace any academic period and is appointed as recess only
+const getAcademicPeriodLabel = (period, index, allPeriods) => {
+  if (!period) return `P${index + 1}`;
+  if (isRecessPeriod(period)) return 'Recess';
 
   let academicNumber = 1;
   if (Array.isArray(allPeriods)) {
     for (let i = 0; i < index; i++) {
       const p = allPeriods[i];
-      const pIsRecess = Boolean(
-        p && (
-          p.isRecess ||
-          p.type === 'Recess' ||
-          p.type === 'Break' ||
-          (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
-          (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
-        )
-      );
-      if (!pIsRecess) {
+      if (!isRecessPeriod(p)) {
         academicNumber++;
       }
     }
@@ -145,6 +146,13 @@ const Academics = () => {
     }
   });
   const [isPeriodSaving, setIsPeriodSaving] = useState(false);
+
+  // If user is a student, redirect to their personal class timetable
+  useEffect(() => {
+    if (userRole === 'student') {
+      navigate(`/${tenantSlug}/timetable`, { replace: true });
+    }
+  }, [userRole, tenantSlug, navigate]);
 
   // Sync tab with URL search params (redirect legacy timetable param to dedicated page)
   useEffect(() => {
@@ -1054,7 +1062,6 @@ const Academics = () => {
         <div className="system-tabs-container">
           {[
             { id: 'classes', label: 'Classes & Sections Directory', count: classesList.length, icon: LayoutGrid },
-            { id: 'timetable', label: 'Master Timetable Matrix', count: 'Live', icon: Clock },
             { id: 'subjects', label: 'Subjects Catalog', count: institutionalSubjects.length, icon: BookOpen },
             { id: 'examinations', label: 'Assessment Schedules', count: standardAssessmentSchedules.length, icon: Calendar }
           ].map(tab => {
@@ -1976,7 +1983,7 @@ const Academics = () => {
                       }}>
                         <span>{day}</span>
                         <span style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 500, marginTop: '2px' }}>
-                          {periods?.length || 0} Periods
+                          {getAcademicPeriodsCount(periods)} {getAcademicPeriodsCount(periods) === 1 ? 'Period' : 'Periods'}
                         </span>
                       </div>
 
@@ -3031,7 +3038,7 @@ const Academics = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>
-                        Roll No (Optional)
+                        Student ID (Optional)
                       </label>
                       <input 
                         type="text" 
@@ -3120,7 +3127,7 @@ const Academics = () => {
                         </div>
                         <div>
                           <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '0.85rem' }}>{st.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Roll No: {st.rollNo}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Student ID: {st.rollNo}</div>
                         </div>
                       </div>
                       <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 700, background: '#dcfce7', padding: '2px 8px', borderRadius: '8px' }}>

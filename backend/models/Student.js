@@ -62,6 +62,9 @@ const studentSchema = new mongoose.Schema({
   },
   schoolSlug: { type: String, trim: true, index: true },
   entityId: { type: String, required: true, index: true },
+  // Student Portal Login Credentials
+  userId: { type: String, trim: true },
+  portalPassword: { type: String, default: 'student123' },
 }, {
   timestamps: true,
 });
