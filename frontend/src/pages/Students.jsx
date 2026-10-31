@@ -26,7 +26,10 @@ const Students = () => {
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const tenantSlug = sessionStorage.getItem('tenantSlug') || userInfo.slug || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
-  const isAdmin = ['admin', 'superadmin', 'principal', 'frontdesk', 'school', 'school_admin'].includes(userRole);
+  const isLeader = ['admin', 'superadmin', 'principal', 'school', 'school_admin'].includes(userRole);
+  const canAdmitStudents = isLeader || ['frontdesk', 'support_staff', 'support', 'staff'].includes(userRole);
+  const isAdmin = canAdmitStudents;
+  const canDeleteAll = isLeader;
 
   // Data States
   const [studentsList, setStudentsList] = useState([]);
@@ -49,8 +52,9 @@ const Students = () => {
   const [gradeFilter, setGradeFilter] = useState('All');
   const [sectionFilter, setSectionFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [selectedClassTab, setSelectedClassTab] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 100;
 
   // Drawer & Modal States
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -165,10 +169,27 @@ const Students = () => {
 
   // Available grade options: merge configured classes with standard grades
   const availableGrades = useMemo(() => {
-    const fromConfig = classesList.map(c => c.className);
-    const combined = Array.from(new Set([...fromConfig, ...standardGrades]));
-    return combined;
+    const fromConfig = classesList.map(c => c.className).filter(Boolean);
+    const combined = Array.from(new Set(fromConfig.length > 0 ? fromConfig : standardGrades));
+    return combined.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
   }, [classesList]);
+
+  // Available sections for the filter dropdown based on selected grade
+  const availableSectionsForFilter = useMemo(() => {
+    if (gradeFilter === 'All') {
+      const fromConfig = classesList.map(c => c.section).filter(Boolean);
+      const combined = Array.from(new Set([...fromConfig, ...standardSections]));
+      return combined.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+    const forGrade = classesList
+      .filter(c => c.className.toLowerCase() === gradeFilter.toLowerCase())
+      .map(c => c.section)
+      .filter(Boolean);
+    if (forGrade.length > 0) {
+      return Array.from(new Set(forGrade)).sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+    return standardSections;
+  }, [classesList, gradeFilter]);
 
   // Available sections for the selected grade in the form
   const availableSectionsForGrade = useMemo(() => {
@@ -181,10 +202,10 @@ const Students = () => {
     return standardSections;
   }, [classesList, formData.grade]);
 
-  // Open Add Student Modal
-  const handleOpenAddModal = () => {
-    const defaultGrade = classesList[0]?.className || 'Class 10';
-    const defaultSection = classesList[0]?.section || 'A';
+  // Open Add Student Modal (optionally prefilled with target class & section)
+  const handleOpenAddModal = (targetGrade = null, targetSection = null) => {
+    const defaultGrade = targetGrade || (classesList[0]?.className || 'Class 10');
+    const defaultSection = targetSection || (classesList[0]?.section || 'A');
     const nextRollNo = `STU-${1000 + totalCount + 1}`;
 
     setFormData({
@@ -371,6 +392,81 @@ const Students = () => {
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
+
+  const handleToggleSelectClassGroup = (classStudents) => {
+    const classIds = classStudents.map(s => s._id);
+    const allSelected = classIds.length > 0 && classIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !classIds.includes(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...classIds])));
+    }
+  };
+
+  // Compute Class-Wise Grouped Students
+  const studentsByClass = useMemo(() => {
+    const map = {};
+
+    // 1. Initialize with configured classes from classesList
+    if (Array.isArray(classesList) && classesList.length > 0) {
+      classesList.forEach(c => {
+        const key = `${c.className} - ${c.section}`;
+        map[key] = {
+          key,
+          className: c.className,
+          section: c.section,
+          capacity: c.capacity || 40,
+          students: []
+        };
+      });
+    }
+
+    // 2. Distribute enrolled students into their classes
+    if (Array.isArray(studentsList)) {
+      studentsList.forEach(st => {
+        const clsName = st.grade || 'Unassigned';
+        const secName = st.section || 'A';
+        const key = `${clsName} - ${secName}`;
+        if (!map[key]) {
+          map[key] = {
+            key,
+            className: clsName,
+            section: secName,
+            capacity: 40,
+            students: []
+          };
+        }
+        map[key].students.push(st);
+      });
+    }
+
+    // 3. Sort classes naturally: Class 8, Class 9, Class 10, Class 11...
+    const sortedKeys = Object.keys(map).sort((a, b) => {
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    return sortedKeys.map(k => map[k]);
+  }, [classesList, studentsList]);
+
+  // Filtered classes based on selectedClassTab and search
+  const visibleClassGroups = useMemo(() => {
+    let list = studentsByClass;
+    if (selectedClassTab !== 'ALL') {
+      list = list.filter(cg => cg.key.toLowerCase() === selectedClassTab.toLowerCase());
+    } else {
+      // In ALL view, hide empty classes if at least one class has students,
+      // keeping the multi-class overview clean, concise and legible
+      const hasAnyStudents = list.some(cg => cg.students.length > 0);
+      if (hasAnyStudents) {
+        list = list.filter(cg => cg.students.length > 0);
+      }
+    }
+    // If search or status filter is active, only show classes that have matching students
+    if (searchQuery.trim() || statusFilter !== 'All') {
+      list = list.filter(cg => cg.students.length > 0);
+    }
+    return list;
+  }, [studentsByClass, selectedClassTab, searchQuery, statusFilter]);
 
   // Generate Starter Students on Demand
   const handleSeedDefaultStudents = async () => {
@@ -874,7 +970,7 @@ const Students = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%' }}>
       {renderProfileDrawer()}
 
       {/* KPI Stats Cards */}
@@ -930,7 +1026,7 @@ const Students = () => {
 
       {/* Main Student Directory Table Card */}
       <div className="card" style={{
-        flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+        display: 'flex', flexDirection: 'column',
         background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0',
         padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
       }}>
@@ -962,12 +1058,16 @@ const Students = () => {
               />
             </div>
 
-            {/* Filter by Grade / Class */}
+            {/* Dropdown to select Class */}
             <select
               value={gradeFilter}
-              onChange={e => { setGradeFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => {
+                setGradeFilter(e.target.value);
+                setSectionFilter('All');
+                setCurrentPage(1);
+              }}
               style={{
-                padding: '9px 12px',
+                padding: '9px 14px',
                 borderRadius: '10px',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.85rem',
@@ -984,12 +1084,15 @@ const Students = () => {
               ))}
             </select>
 
-            {/* Filter by Section */}
+            {/* Dropdown to select Section */}
             <select
               value={sectionFilter}
-              onChange={e => { setSectionFilter(e.target.value); setCurrentPage(1); }}
+              onChange={e => {
+                setSectionFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               style={{
-                padding: '9px 12px',
+                padding: '9px 14px',
                 borderRadius: '10px',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.85rem',
@@ -1001,7 +1104,7 @@ const Students = () => {
               }}
             >
               <option value="All">All Sections</option>
-              {standardSections.map(s => (
+              {availableSectionsForFilter.map(s => (
                 <option key={s} value={s}>Section {s}</option>
               ))}
             </select>
@@ -1019,8 +1122,8 @@ const Students = () => {
               <RefreshCw size={15} />
             </button>
 
-            {/* Delete All Students Button */}
-            {isAdmin && studentsList.length > 0 && (
+            {/* Delete All Students Button (Restricted to School Leadership) */}
+            {canDeleteAll && studentsList.length > 0 && (
               <button
                 onClick={() => setIsDeleteAllModalOpen(true)}
                 style={{
@@ -1099,8 +1202,79 @@ const Students = () => {
           </div>
         )}
 
-        {/* Table Content */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        {/* Table Selection Context Banner */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '12px 18px',
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          marginBottom: '16px',
+          flexWrap: 'wrap',
+          gap: '10px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.95rem'
+            }}>
+              🏫
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1e3a8a' }}>
+                {gradeFilter === 'All' ? 'All Classes' : gradeFilter}
+                {sectionFilter !== 'All' ? ` — Section ${sectionFilter}` : ''}
+              </span>
+              <span style={{
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '6px',
+                background: studentsList.length > 0 ? '#e0e7ff' : '#f1f5f9',
+                color: studentsList.length > 0 ? '#3730a3' : '#64748b'
+              }}>
+                {studentsList.length} Student{studentsList.length !== 1 ? 's' : ''} Enrolled
+              </span>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => handleOpenAddModal(gradeFilter !== 'All' ? gradeFilter : null, sectionFilter !== 'All' ? sectionFilter : null)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: '1px solid #c7d2fe',
+                background: '#eef2ff',
+                color: '#4338ca',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#4f46e5'; e.currentTarget.style.color = 'white'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4338ca'; }}
+            >
+              <Plus size={13} strokeWidth={2.6} /> Admit Student {gradeFilter !== 'All' ? `to ${gradeFilter}` : ''}
+            </button>
+          )}
+        </div>
+
+        {/* Unified Student Directory Table */}
+        <div style={{ width: '100%' }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
               <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 10px', color: '#4F46E5' }} />
@@ -1110,154 +1284,169 @@ const Students = () => {
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
               <GraduationCap size={44} style={{ margin: '0 auto 12px', color: '#cbd5e1' }} />
               <h4 style={{ margin: '0 0 6px', color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 700 }}>
-                {searchQuery || gradeFilter !== 'All' ? 'No Matching Students' : 'No Students Registered'}
+                {searchQuery || gradeFilter !== 'All' || sectionFilter !== 'All' 
+                  ? 'No Students Found for this Selection' 
+                  : 'No Students Registered'}
               </h4>
               <p style={{ margin: '0 0 16px', fontSize: '0.85rem', color: '#64748b' }}>
-                {searchQuery || gradeFilter !== 'All' 
-                  ? 'Try adjusting your filters or search terms.' 
+                {searchQuery || gradeFilter !== 'All' || sectionFilter !== 'All' 
+                  ? 'Try selecting a different class/section or clearing your search query.' 
                   : 'Your student directory is currently empty. You can admit students individually or generate starter students.'}
               </p>
               {isAdmin && (
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                   <button
-                    onClick={handleOpenAddModal}
+                    onClick={() => handleOpenAddModal(gradeFilter !== 'All' ? gradeFilter : null, sectionFilter !== 'All' ? sectionFilter : null)}
                     style={{ padding: '8px 18px', background: '#4F46E5', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
                     <Plus size={14} /> Admit Student
                   </button>
-                  <button
-                    onClick={handleSeedDefaultStudents}
-                    disabled={actionLoading}
-                    style={{ padding: '8px 18px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: actionLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <RefreshCw size={14} /> {actionLoading ? 'Enrolling...' : 'Generate Starter Students'}
-                  </button>
+                  {gradeFilter === 'All' && sectionFilter === 'All' && (
+                    <button
+                      onClick={handleSeedDefaultStudents}
+                      disabled={actionLoading}
+                      style={{ padding: '8px 18px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: actionLoading ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <RefreshCw size={14} /> {actionLoading ? 'Enrolling...' : 'Generate Starter Students'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ borderBottom: '1.5px solid #e2e8f0', background: '#f8fafc' }}>
-                  {isAdmin && (
-                    <th style={{ padding: '12px 14px', width: '38px', textAlign: 'center' }}>
-                      <input
-                        type="checkbox"
-                        checked={studentsList.length > 0 && selectedIds.length === studentsList.length}
-                        onChange={handleSelectAll}
-                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
-                        title="Select all on this page"
-                      />
-                    </th>
-                  )}
-                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Roll No</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Student Name</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Assigned Class</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Attendance</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Parent / Contact</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '12px 14px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {studentsList.map((st) => (
-                  <tr 
-                    key={st._id} 
-                    onClick={() => setSelectedStudent(st)} 
-                    style={{
-                      borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background-color 0.15s',
-                      backgroundColor: selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent'
-                    }}
-                    onMouseOver={(e) => {
-                      if (!selectedIds.includes(st._id)) e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent';
-                    }}
-                  >
+            <div style={{
+              background: 'white',
+              borderRadius: '16px',
+              border: '1.5px solid #e2e8f0',
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid #f1f5f9', background: '#ffffff' }}>
                     {isAdmin && (
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      <th style={{ padding: '12px 16px', width: '42px', textAlign: 'center' }}>
                         <input
                           type="checkbox"
-                          checked={selectedIds.includes(st._id)}
-                          onChange={() => handleToggleSelect(st._id)}
+                          checked={studentsList.length > 0 && selectedIds.length === studentsList.length}
+                          onChange={handleSelectAll}
                           style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
+                          title="Select all students"
                         />
-                      </td>
+                      </th>
                     )}
-                    <td style={{ padding: '12px 14px' }}>
-                      <code style={{ background: '#f8fafc', padding: '2px 6px', borderRadius: '5px', fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
-                        {st.rollNo}
-                      </code>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                          width: '32px', height: '32px', borderRadius: '50%',
-                          background: '#eff6ff', color: '#3b82f6', display: 'flex',
-                          alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.82rem'
-                        }}>
-                          {st.name?.charAt(0) || 'S'}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.88rem' }}>{st.name}</div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{st.gender || 'Student'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '5px',
-                        background: '#e0e7ff', color: '#4338ca', padding: '3px 9px',
-                        borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700
-                      }}>
-                        <Layers size={11} /> {st.grade} - Section {st.section || 'A'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: (st.attendance || 100) >= 85 ? '#16a34a' : '#d97706' }}>
-                        {st.attendance !== undefined ? st.attendance : 100}%
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ fontSize: '0.84rem', color: '#1e293b', fontWeight: 600 }}>{st.parentName || '—'}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{st.parentContact || st.email || ''}</div>
-                    </td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <span style={{
-                        padding: '3px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700,
-                        background: st.status === 'Active' ? '#dcfce7' : '#fee2e2',
-                        color: st.status === 'Active' ? '#15803d' : '#b91c1c'
-                      }}>
-                        ● {st.status || 'Active'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        {isAdmin && (
-                          <button
-                            onClick={(e) => handleOpenEditModal(st, e)}
-                            style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '4px 8px', color: '#1d4ed8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                            title="Reassign Class / Edit Details"
-                          >
-                            <Edit size={12} style={{ display: 'inline', marginRight: '3px' }} /> Edit
-                          </button>
-                        )}
-                        {isAdmin && (
-                          <button
-                            onClick={() => setStudentToDelete(st)}
-                            style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '4px 8px', color: '#dc2626', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}
-                            title="Delete Student Record"
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Roll No</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Student Name</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Assigned Class</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Attendance</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Parent / Contact</th>
+                    <th style={{ padding: '12px 16px', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {studentsList.map(st => (
+                    <tr
+                      key={st._id}
+                      onClick={() => setSelectedStudent(st)}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.12s',
+                        backgroundColor: selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent'
+                      }}
+                      onMouseOver={(e) => {
+                        if (!selectedIds.includes(st._id)) e.currentTarget.style.backgroundColor = 'rgba(79, 70, 229, 0.03)';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = selectedIds.includes(st._id) ? 'rgba(79, 70, 229, 0.06)' : 'transparent';
+                      }}
+                    >
+                      {isAdmin && (
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(st._id)}
+                            onChange={() => handleToggleSelect(st._id)}
+                            style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4F46E5' }}
+                          />
+                        </td>
+                      )}
+                      <td style={{ padding: '12px 16px' }}>
+                        <code style={{ background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                          {st.rollNo}
+                        </code>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{
+                            width: '34px', height: '34px', borderRadius: '50%',
+                            background: '#eff6ff', color: '#3b82f6', display: 'flex',
+                            alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.84rem'
+                          }}>
+                            {st.name?.charAt(0) || 'S'}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.9rem' }}>{st.name}</div>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{st.gender || 'Student'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '4px 10px', borderRadius: '6px',
+                          background: '#f1f5f9', color: '#1e3a8a',
+                          fontWeight: 700, fontSize: '0.8rem'
+                        }}>
+                          🏫 {st.grade} - Section {st.section}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: (st.attendance || 100) >= 85 ? '#16a34a' : '#d97706' }}>
+                          {st.attendance !== undefined ? st.attendance : 100}%
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontSize: '0.86rem', color: '#1e293b', fontWeight: 600 }}>{st.parentName || '—'}</div>
+                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{st.parentContact || st.email || ''}</div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          padding: '3px 9px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700,
+                          background: st.status === 'Active' ? '#dcfce7' : '#fee2e2',
+                          color: st.status === 'Active' ? '#15803d' : '#b91c1c'
+                        }}>
+                          ● {st.status || 'Active'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          {isAdmin && (
+                            <button
+                              onClick={(e) => handleOpenEditModal(st, e)}
+                              style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '5px 10px', color: '#1d4ed8', cursor: 'pointer', fontSize: '0.76rem', fontWeight: 600 }}
+                              title="Reassign Class / Edit Details"
+                            >
+                              <Edit size={12} style={{ display: 'inline', marginRight: '4px' }} /> Edit
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => setStudentToDelete(st)}
+                              style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', padding: '5px 9px', color: '#dc2626', cursor: 'pointer', fontSize: '0.76rem', fontWeight: 600 }}
+                              title="Delete Student Record"
+                            >
+                              <Trash2 size={12} style={{ display: 'inline' }} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 

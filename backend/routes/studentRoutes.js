@@ -3,16 +3,42 @@ const router = express.Router();
 const Student = require('../models/Student');
 const User = require('../models/User');
 
-// Helper to verify admin authority
+// Helper to verify authority to admit and manage students
 const checkAdminAuthority = (req, res) => {
-  const allowedRoles = ['admin', 'superadmin', 'principal', 'frontdesk', 'school', 'school_admin'];
-  const userRole = (req.user && req.user.role) ? req.user.role.toLowerCase() : '';
+  const allowedRoles = ['admin', 'superadmin', 'principal', 'frontdesk', 'support_staff', 'support', 'school', 'school_admin'];
+  const userRole = (
+    req.user?.role || 
+    req.headers['x-user-role'] || 
+    req.body?.userRole || 
+    ''
+  ).toLowerCase().trim();
   
   if (userRole && !allowedRoles.includes(userRole)) {
     res.status(403).json({
-      error: 'Access Denied: Only School Administrators have authority to manage students',
+      error: 'Access Denied: You do not have authority to admit or manage students',
+      code: 'FORBIDDEN_UNAUTHORIZED',
+      message: 'Access Denied: You do not have authority to admit or manage students'
+    });
+    return false;
+  }
+  return true;
+};
+
+// Helper for bulk destructive actions (Delete All) - Restricted to leadership
+const checkBulkDeleteAuthority = (req, res) => {
+  const allowedRoles = ['admin', 'superadmin', 'principal', 'school', 'school_admin'];
+  const userRole = (
+    req.user?.role || 
+    req.headers['x-user-role'] || 
+    req.body?.userRole || 
+    ''
+  ).toLowerCase().trim();
+
+  if (userRole && !allowedRoles.includes(userRole)) {
+    res.status(403).json({
+      error: 'Access Denied: Only School Administrators have authority to perform bulk student deletions',
       code: 'FORBIDDEN_ADMIN_ONLY',
-      message: 'Access Denied: Only School Administrators have authority to manage students'
+      message: 'Access Denied: Only School Administrators have authority to perform bulk student deletions'
     });
     return false;
   }
@@ -247,9 +273,9 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/students — Delete ALL or SELECTED students (Admin Authority Only)
+// DELETE /api/students — Delete ALL or SELECTED students (Leadership Authority Only)
 router.delete('/', async (req, res) => {
-  if (!checkAdminAuthority(req, res)) return;
+  if (!checkBulkDeleteAuthority(req, res)) return;
 
   try {
     const { ids } = req.body || {};

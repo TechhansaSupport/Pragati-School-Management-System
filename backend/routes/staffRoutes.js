@@ -530,13 +530,27 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Staff member not found' });
     }
 
-    // Update portal user password if provided
-    if (req.body.portalPassword && member.portalUsername) {
-      const user = await User.findOne({ uniqueId: member.portalUsername, entityId: req.entityId });
-      if (user) {
-        user.password = req.body.portalPassword;
-        await user.save();
-      }
+    // Update linked portal user credentials & profile if provided
+    const userFilter = {
+      entityId: member.entityId || req.entityId,
+      $or: [
+        { referenceId: member._id },
+        ...(member.portalUsername ? [{ uniqueId: member.portalUsername }] : [])
+      ]
+    };
+    if (member.role === 'Principal') {
+      userFilter.$or.push({ role: 'principal' });
+    }
+
+    const userUpdates = {};
+    if (member.name) userUpdates.name = member.name;
+    if (member.email) userUpdates.email = member.email;
+    if (req.body.portalPassword && req.body.portalPassword.trim()) {
+      userUpdates.password = req.body.portalPassword.trim();
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
+      await User.updateMany(userFilter, { $set: userUpdates }).catch(() => null);
     }
 
     res.json({

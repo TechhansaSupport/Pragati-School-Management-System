@@ -603,8 +603,7 @@ const SuperAdminDashboard = () => {
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
 
-
-      {/* ─── ENTERPRISE EXECUTIVE METRIC CARDS ─── */}
+        {/* ─── ENTERPRISE EXECUTIVE METRIC CARDS ─── */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
@@ -1399,8 +1398,13 @@ const SuperAdminDashboard = () => {
                   <tbody>
                     {schoolsList.map(school => {
                       const isMain = !school.parentSchoolSlug;
-                      const hasAdmin = !!school.adminName || !!school.adminEmail;
-                      const hasPrincipal = !!school.principalName || !!school.principalEmail;
+                      const adminName = school.admin?.name || school.adminName || '';
+                      const adminEmail = school.admin?.email || school.adminEmail || '';
+                      const hasAdmin = !!adminName || !!adminEmail;
+
+                      const principalName = school.principal?.name || school.principalName || '';
+                      const principalEmail = school.principal?.email || school.principalEmail || '';
+                      const hasPrincipal = !!principalName || !!principalEmail;
 
                       return (
                         <tr key={school._id || school.slug} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -1438,9 +1442,16 @@ const SuperAdminDashboard = () => {
 
                           <td style={{ padding: '14px 14px' }}>
                             {hasAdmin ? (
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#059669', fontSize: '0.78rem', fontWeight: 700 }}>
-                                <CheckCircle2 size={14} /> {school.adminName || school.adminEmail}
-                              </span>
+                              <div>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#059669', fontSize: '0.78rem', fontWeight: 700 }}>
+                                  <CheckCircle2 size={14} /> {adminName || 'Admin'}
+                                </span>
+                                {adminEmail && (
+                                  <div style={{ fontSize: '0.72rem', color: '#64748b', paddingLeft: '19px', marginTop: '1px' }}>
+                                    {adminEmail}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <button
                                 type="button"
@@ -1464,9 +1475,16 @@ const SuperAdminDashboard = () => {
                           <td style={{ padding: '14px 14px' }}>
                             {hasPrincipal ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700 }}>
-                                  <CheckCircle2 size={14} /> {school.principalName || school.principalEmail}
-                                </span>
+                                <div>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700 }}>
+                                    <CheckCircle2 size={14} /> {principalName || 'Principal'}
+                                  </span>
+                                  {principalEmail && (
+                                    <div style={{ fontSize: '0.72rem', color: '#64748b', paddingLeft: '19px', marginTop: '1px' }}>
+                                      {principalEmail}
+                                    </div>
+                                  )}
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -1992,7 +2010,12 @@ const SuperAdminDashboard = () => {
                                 <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e293b' }}>
                                   {sch.admin.name}
                                 </div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                {sch.admin.email && (
+                                  <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                    <Mail size={12} /> {sch.admin.email}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
                                   Login: <code>{sch.admin.portalUsername || 'N/A'}</code>
                                 </div>
                               </div>
@@ -2041,7 +2064,12 @@ const SuperAdminDashboard = () => {
                                 <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#1e293b' }}>
                                   {sch.principal.name}
                                 </div>
-                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                {sch.principal.email && (
+                                  <div style={{ fontSize: '0.74rem', color: '#0f766e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                    <Mail size={12} /> {sch.principal.email}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
                                   Login: <code>{sch.principal.portalUsername || 'N/A'}</code>
                                 </div>
                               </div>

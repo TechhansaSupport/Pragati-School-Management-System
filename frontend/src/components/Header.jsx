@@ -160,6 +160,12 @@ const Header = () => {
   const searchRef = useRef(null);
   const searchInputRef = useRef(null);
 
+  // OS detection for keyboard shortcut display (Ctrl + K on Windows/Linux, ⌘K on macOS)
+  const isMac = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return /mac|iphone|ipad|ipod/i.test(navigator.userAgent || navigator.platform || '');
+  }, []);
+
   // Keyboard shortcut (Cmd+K / Ctrl+K) to focus search
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1171,17 +1177,19 @@ const Header = () => {
             <div style={{
               position: 'absolute',
               right: '12px',
-              fontSize: '0.7rem',
-              padding: '2px 6px',
+              fontSize: '0.67rem',
+              padding: '2px 7px',
               borderRadius: '6px',
               background: '#f1f5f9',
-              border: '1px solid #e2e8f0',
+              border: '1px solid #cbd5e1',
               color: '#64748b',
-              fontWeight: 600,
+              fontWeight: 700,
               pointerEvents: 'none',
-              zIndex: 2
+              zIndex: 2,
+              letterSpacing: '0.2px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
             }}>
-              ⌘K
+              {isMac ? '⌘K' : 'Ctrl + K'}
             </div>
           )}
         </div>

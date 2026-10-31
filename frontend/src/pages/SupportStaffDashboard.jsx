@@ -18,6 +18,23 @@ const SupportStaffDashboard = () => {
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
+  const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'support_staff').toLowerCase().trim();
+
+  // Student Admission State (Support Staff Authority)
+  const [isAdmitStudentModalOpen, setIsAdmitStudentModalOpen] = useState(false);
+  const [isSubmittingAdmission, setIsSubmittingAdmission] = useState(false);
+  const [admitStudentForm, setAdmitStudentForm] = useState({
+    name: '',
+    grade: 'Class 10',
+    section: 'A',
+    rollNo: '',
+    gender: 'Male',
+    parentName: '',
+    parentContact: '',
+    email: '',
+    address: '',
+    linkedInquiryId: null
+  });
 
   // Parse active tab from URL or default to 'overview'
   const searchParams = new URLSearchParams(location.search);
@@ -148,6 +165,7 @@ const SupportStaffDashboard = () => {
     const h = { 'Content-Type': 'application/json' };
     if (token) h['Authorization'] = `Bearer ${token}`;
     if (tenantSlug) h['x-tenant-slug'] = tenantSlug;
+    if (userRole) h['x-user-role'] = userRole;
     return h;
   };
 
@@ -371,6 +389,99 @@ const SupportStaffDashboard = () => {
       fetchAllData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // Open Student Admission Modal (Support Staff Authority)
+  const handleOpenAdmitStudentModal = (inquiry = null) => {
+    if (inquiry) {
+      setAdmitStudentForm({
+        name: inquiry.studentName || '',
+        grade: inquiry.gradeSeeking || 'Class 10',
+        section: 'A',
+        rollNo: '',
+        gender: 'Male',
+        parentName: inquiry.parentName || '',
+        parentContact: inquiry.phone || '',
+        email: inquiry.email || '',
+        address: '',
+        linkedInquiryId: inquiry._id || null
+      });
+    } else {
+      setAdmitStudentForm({
+        name: '',
+        grade: 'Class 10',
+        section: 'A',
+        rollNo: '',
+        gender: 'Male',
+        parentName: '',
+        parentContact: '',
+        email: '',
+        address: '',
+        linkedInquiryId: null
+      });
+    }
+    setIsAdmitStudentModalOpen(true);
+  };
+
+  // Submit Student Admission (Support Staff Authority)
+  const handleAdmitStudentSubmit = async (e) => {
+    e.preventDefault();
+    if (!admitStudentForm.name.trim()) {
+      alert('Student full name is required');
+      return;
+    }
+    if (!admitStudentForm.grade.trim()) {
+      alert('Class / Grade is required');
+      return;
+    }
+
+    setIsSubmittingAdmission(true);
+    try {
+      const payload = {
+        name: admitStudentForm.name.trim(),
+        grade: admitStudentForm.grade.trim(),
+        section: (admitStudentForm.section || 'A').trim().toUpperCase(),
+        rollNo: admitStudentForm.rollNo ? admitStudentForm.rollNo.trim() : undefined,
+        gender: admitStudentForm.gender,
+        parentName: admitStudentForm.parentName.trim(),
+        parentContact: admitStudentForm.parentContact.trim(),
+        email: admitStudentForm.email.trim(),
+        address: admitStudentForm.address.trim(),
+        status: 'Active'
+      };
+
+      const res = await fetch(`${API_BASE}/students`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        if (admitStudentForm.linkedInquiryId) {
+          try {
+            await fetch(`${API_BASE}/support/inquiries/${admitStudentForm.linkedInquiryId}`, {
+              method: 'PUT',
+              headers: getHeaders(),
+              body: JSON.stringify({ status: 'Enrolled' })
+            });
+            setInquiries(prev => prev.map(inq => inq._id === admitStudentForm.linkedInquiryId ? { ...inq, status: 'Enrolled' } : inq));
+          } catch (inqErr) {
+            console.warn('Could not update linked inquiry:', inqErr);
+          }
+        }
+
+        alert(`🎉 Student "${data.student?.name || payload.name}" successfully enrolled in ${data.student?.grade || payload.grade} - Section ${data.student?.section || payload.section}!`);
+        setIsAdmitStudentModalOpen(false);
+        fetchAllData();
+      } else {
+        alert(data.message || data.error || 'Failed to admit student');
+      }
+    } catch (err) {
+      alert('Network error while admitting student: ' + err.message);
+    } finally {
+      setIsSubmittingAdmission(false);
     }
   };
 
@@ -1528,17 +1639,30 @@ const SupportStaffDashboard = () => {
                 Record prospective parent inquiries, capture student grade details, and track admissions status
               </p>
             </div>
-            <button
-              onClick={() => setIsInquiryModalOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                background: '#d97706', color: 'white', border: 'none',
-                padding: '10px 20px', borderRadius: '12px', fontWeight: 800,
-                fontSize: '0.88rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(217, 119, 6, 0.3)'
-              }}
-            >
-              <Mail size={16} /> Register Walk-in Inquiry
-            </button>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setIsInquiryModalOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: 'white', color: '#d97706', border: '1px solid #d97706',
+                  padding: '9px 16px', borderRadius: '12px', fontWeight: 700,
+                  fontSize: '0.86rem', cursor: 'pointer'
+                }}
+              >
+                <Mail size={16} /> Register Walk-in Inquiry
+              </button>
+              <button
+                onClick={() => handleOpenAdmitStudentModal()}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)', color: 'white', border: 'none',
+                  padding: '9px 18px', borderRadius: '12px', fontWeight: 800,
+                  fontSize: '0.86rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
+                }}
+              >
+                <UserPlus size={16} /> + Admit New Student
+              </button>
+            </div>
           </div>
 
           {/* Filters */}
@@ -1628,20 +1752,43 @@ const SupportStaffDashboard = () => {
                         </span>
                       </td>
                       <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <select
-                          value={inq.status}
-                          onChange={(e) => handleUpdateInquiryStatus(inq._id, e.target.value)}
-                          style={{
-                            padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1',
-                            fontSize: '0.75rem', fontWeight: 600, color: '#334155', cursor: 'pointer'
-                          }}
-                        >
-                          <option value="New">New</option>
-                          <option value="Contacted">Contacted</option>
-                          <option value="Visited Campus">Visited Campus</option>
-                          <option value="Enrolled">Enrolled</option>
-                          <option value="Closed">Closed</option>
-                        </select>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {inq.status !== 'Enrolled' && (
+                            <button
+                              onClick={() => handleOpenAdmitStudentModal(inq)}
+                              style={{
+                                padding: '5px 10px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                background: '#16a34a',
+                                color: 'white',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="Admit directly into school roster"
+                            >
+                              <UserPlus size={12} /> Admit
+                            </button>
+                          )}
+                          <select
+                            value={inq.status}
+                            onChange={(e) => handleUpdateInquiryStatus(inq._id, e.target.value)}
+                            style={{
+                              padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1',
+                              fontSize: '0.75rem', fontWeight: 600, color: '#334155', cursor: 'pointer'
+                            }}
+                          >
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="Visited Campus">Visited Campus</option>
+                            <option value="Enrolled">Enrolled</option>
+                            <option value="Closed">Closed</option>
+                          </select>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -2796,6 +2943,214 @@ const SupportStaffDashboard = () => {
                   }}
                 >
                   Log Parcel at Reception
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 8. ADMIT NEW STUDENT MODAL (Support Staff Authority) */}
+      {isAdmitStudentModalOpen && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }} onClick={() => setIsAdmitStudentModalOpen(false)}>
+          <div style={{
+            background: 'white',
+            borderRadius: '18px',
+            maxWidth: '560px',
+            width: '100%',
+            overflow: 'hidden',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)',
+              color: 'white',
+              padding: '20px 24px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>
+                  🎓 Admit New Student
+                </h3>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', opacity: 0.9 }}>
+                  Enroll student directly into school central database (Support Staff Desk)
+                </p>
+              </div>
+              <button 
+                onClick={() => setIsAdmitStudentModalOpen(false)} 
+                style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdmitStudentSubmit} style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Student Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Aarav Sharma"
+                  value={admitStudentForm.name}
+                  onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, name: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Assigned Class / Grade *
+                  </label>
+                  <select
+                    value={admitStudentForm.grade}
+                    onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, grade: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.88rem' }}
+                  >
+                    {['Nursery', 'LKG', 'UKG', 'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Section *
+                  </label>
+                  <select
+                    value={admitStudentForm.section}
+                    onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, section: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.88rem' }}
+                  >
+                    {['A', 'B', 'C', 'D', 'Science', 'Commerce', 'Arts'].map(sec => (
+                      <option key={sec} value={sec}>Section {sec}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Roll Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Auto: STU-100x"
+                    value={admitStudentForm.rollNo}
+                    onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, rollNo: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Gender
+                  </label>
+                  <select
+                    value={admitStudentForm.gender}
+                    onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, gender: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', fontSize: '0.88rem' }}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Parent / Guardian Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Ramesh Sharma"
+                    value={admitStudentForm.parentName}
+                    onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, parentName: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Parent Contact / Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="+91 98201 00000"
+                    value={admitStudentForm.parentContact}
+                    onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, parentContact: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Parent Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  placeholder="parent@example.com"
+                  value={admitStudentForm.email}
+                  onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, email: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Residential Address
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="House / Street, City, Pincode"
+                  value={admitStudentForm.address}
+                  onChange={(e) => setAdmitStudentForm({ ...admitStudentForm, address: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAdmitStudentModalOpen(false)}
+                  style={{
+                    padding: '9px 16px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                    background: 'white', color: '#475569', fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingAdmission}
+                  style={{
+                    padding: '9px 22px', borderRadius: '8px', border: 'none',
+                    background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                    color: 'white', fontWeight: 800, cursor: isSubmittingAdmission ? 'wait' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(22, 163, 74, 0.35)'
+                  }}
+                >
+                  {isSubmittingAdmission ? 'Enrolling Student...' : 'Admit & Enroll Student'}
                 </button>
               </div>
             </form>

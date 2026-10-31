@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Book, Bookmark, Clock, AlertTriangle, Search, Scan, MoreVertical } from 'lucide-react';
+import { Book, Bookmark, Clock, AlertTriangle, Search, Scan, MoreVertical, Calendar } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, CartesianGrid, YAxis } from 'recharts';
 
 const LibraryDashboard = () => {

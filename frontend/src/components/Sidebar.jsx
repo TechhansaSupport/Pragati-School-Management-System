@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, UserCheck, BookOpen, CreditCard, 
   Bus, Mail, Settings, Server, Key, ShieldCheck, Building2,
-  CalendarCheck, CalendarDays, GraduationCap, Library, Navigation,
+  CalendarCheck, CalendarDays, Clock, GraduationCap, Library, Navigation,
   AlertCircle, TrendingUp, FlaskConical, Microscope, TestTube, Package
 } from 'lucide-react';
 
@@ -27,7 +27,8 @@ const Sidebar = () => {
             { id: 'Teachers', label: 'All Faculty & Staff', icon: Users },
             { id: 'Students & IDs', label: 'All Students', icon: GraduationCap },
             { id: 'Academics & Exams', label: 'Curriculum & Plans', icon: BookOpen },
-            { id: 'Timetable Matrix', label: 'Master Timetable', icon: CalendarDays },
+            { id: 'Timetable Matrix', label: 'Master Timetable', icon: Clock },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Finance & Fees', label: 'Central Financials', icon: CreditCard },
             { id: 'Transport Dashboard', label: 'Fleet & Transport', icon: Bus },
             { id: 'Library Dashboard', label: 'Library & Media', icon: Library },
@@ -51,7 +52,8 @@ const Sidebar = () => {
           title: 'Science Laboratories',
           items: [
             { id: 'Lab Dashboard', label: 'Lab Command Center', icon: LayoutDashboard },
-            { id: 'Lab Schedule', label: 'Scheduled Classes', icon: CalendarDays },
+            { id: 'Lab Schedule', label: 'Scheduled Classes', icon: Clock },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Lab Equipments', label: 'Equipments & Apparatus', icon: Microscope },
             { id: 'Lab Chemicals', label: 'Chemicals & Reagents', icon: TestTube },
             { id: 'Lab Safety', label: 'Safety & Audit', icon: ShieldCheck },
@@ -67,9 +69,11 @@ const Sidebar = () => {
           title: 'Front Desk & Support',
           items: [
             { id: 'Support Overview', label: 'Support Command Center', icon: LayoutDashboard },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Reception Desk', label: 'Reception & Visitors', icon: Users },
             { id: 'Fee Window', label: 'Fee Accounts Window', icon: CreditCard },
             { id: 'Admission Desk', label: 'Admissions & Inquiries', icon: GraduationCap },
+            { id: 'Students & IDs', label: 'Student Admissions & Directory', icon: UserCheck },
             { id: 'Gate Movement', label: 'Student Gate Passes', icon: ShieldCheck },
             { id: 'Courier Log', label: 'Couriers & Dispatch', icon: Package },
             { id: 'Communication & Reports', label: 'Notices & Messages', icon: Mail },
@@ -84,6 +88,7 @@ const Sidebar = () => {
           title: 'Faculty Portal',
           items: [
             { id: 'Teacher Dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'Classes & Grading', icon: BookOpen },
             { id: 'Students & IDs', label: 'My Students', icon: GraduationCap },
             { id: 'Communication & Reports', label: 'Messages & Notices', icon: Mail },
@@ -98,6 +103,7 @@ const Sidebar = () => {
           title: 'Student Portal',
           items: [
             { id: 'Student Dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'My Academics', icon: BookOpen },
             { id: 'Communication & Reports', label: 'Announcements', icon: Mail },
           ]
@@ -111,6 +117,7 @@ const Sidebar = () => {
           title: 'Parent Portal',
           items: [
             { id: 'Parent Dashboard', label: 'Parent Portal', icon: LayoutDashboard },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'Student Progress', icon: BookOpen },
             { id: 'Finance & Fees', label: 'Fee Payments', icon: CreditCard },
             { id: 'Communication & Reports', label: 'School Notices', icon: Mail },
@@ -125,6 +132,7 @@ const Sidebar = () => {
           title: 'Library Portal',
           items: [
             { id: 'Library Dashboard', label: 'Library Overview', icon: Library },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Book Catalog', label: 'Books & Inventory', icon: BookOpen },
             { id: 'Communication & Reports', label: 'Announcements', icon: Mail },
           ]
@@ -138,6 +146,7 @@ const Sidebar = () => {
           title: 'Fleet & Transit',
           items: [
             { id: 'Transport Dashboard', label: 'Transport Hub', icon: Bus },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Routes', label: 'Routes & Stops', icon: Navigation },
             { id: 'Communication & Reports', label: 'Parent Alerts', icon: Mail },
           ]
@@ -151,8 +160,9 @@ const Sidebar = () => {
           title: 'Academic Leadership',
           items: [
             { id: 'Principal Command', label: 'Executive Health', icon: LayoutDashboard },
+            { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: Clock },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'Curriculum & Classes', icon: BookOpen },
-            { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: CalendarDays },
             { id: 'Attendance Register', label: 'Attendance Telemetry', icon: CalendarCheck },
             { id: 'Students & IDs', label: 'Student 360° Profiles', icon: GraduationCap },
             { id: 'Teachers', label: 'Faculty & Workload', icon: Users },
@@ -169,6 +179,7 @@ const Sidebar = () => {
           title: 'Accounts & Finance',
           items: [
             { id: 'Finance Overview', label: 'Financial Overview', icon: LayoutDashboard },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Fees Collection', label: 'Fees Collection', icon: CreditCard },
             { id: 'Due Fees', label: 'Due / Overdue Fees', icon: AlertCircle },
             { id: 'School Expenses', label: 'School Expenses', icon: TrendingUp },
@@ -185,7 +196,8 @@ const Sidebar = () => {
           items: [
             { id: 'Overview', label: 'Branch Dashboard', icon: LayoutDashboard },
             { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
-            { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: CalendarDays },
+            { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: Clock },
+            { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Students & IDs', label: 'Students & IDs', icon: GraduationCap },
             { id: 'Teachers', label: 'Faculty & Staff', icon: Users },
             { id: 'Academics & Exams', label: 'Academics & Classes', icon: BookOpen },
@@ -213,7 +225,8 @@ const Sidebar = () => {
         items: [
           { id: 'Overview', label: 'Overview', icon: LayoutDashboard },
           { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
-          { id: 'Timetable Matrix', label: 'Timetable', icon: CalendarDays },
+          { id: 'Timetable Matrix', label: 'Timetable', icon: Clock },
+          { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
           { id: 'Students & IDs', label: 'Students', icon: GraduationCap },
           { id: 'Teachers', label: 'Teachers & Staff', icon: Users },
           { id: 'Academics & Exams', label: 'Academics', icon: BookOpen },
@@ -282,6 +295,8 @@ const Sidebar = () => {
         return path.includes('/attendance');
       case 'Timetable Matrix':
         return path.includes('/timetable') || (path.includes('/academics') && search.includes('tab=timetable'));
+      case 'School Calendar':
+        return path.includes('/calendar');
       case 'Students & IDs':
         return (path.includes('/students') && !path.includes('/student-dashboard')) || (path.includes('/dashboard') && search.includes('tab=students'));
       case 'Teachers':
@@ -402,6 +417,9 @@ const Sidebar = () => {
         break;
       case 'Timetable Matrix':
         navigate(`${base}/timetable`);
+        break;
+      case 'School Calendar':
+        navigate(`${base}/calendar`);
         break;
       case 'Students & IDs':
         navigate(`${base}/students`);

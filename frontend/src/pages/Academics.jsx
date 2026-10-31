@@ -5,7 +5,8 @@ import {
   Search, BookOpen, ChevronLeft, ChevronRight, Plus, X, 
   Calendar, FileText, Award, Clock, Users, User, ShieldCheck, 
   Edit, Trash2, RefreshCw, LayoutGrid, List, CheckCircle2, 
-  GraduationCap, Building, AlertCircle, ArrowRight
+  GraduationCap, Building, AlertCircle, ArrowRight,
+  Sparkles, Sliders, ExternalLink, Check, CalendarDays, Eye, Coffee
 } from 'lucide-react';
 import CreateSchoolModal from '../components/CreateSchoolModal';
 
@@ -36,6 +37,45 @@ const standardAssessmentSchedules = [
   { title: 'Unit Assessment 3 (Primary)', date: 'November 12 - November 18, 2026', status: 'Scheduled', grades: 'Class 1st to 5th' },
   { title: 'Pre-Board Mock Examinations', date: 'December 10 - December 22, 2026', status: 'Draft', grades: 'Class 10th & 12th' },
 ];
+
+// Helper to ensure recess does NOT replace any academic period and is appointed as recess only
+const getAcademicPeriodLabel = (period, index, allPeriods) => {
+  if (!period) return `P${index + 1}`;
+  const isRecess = Boolean(
+    period.isRecess ||
+    period.type === 'Recess' ||
+    period.type === 'Break' ||
+    (period.periodName && period.periodName.toLowerCase().trim() === 'recess') ||
+    (period.subject && period.subject.toLowerCase().trim().startsWith('recess'))
+  );
+  if (isRecess) return 'Recess';
+
+  let academicNumber = 1;
+  if (Array.isArray(allPeriods)) {
+    for (let i = 0; i < index; i++) {
+      const p = allPeriods[i];
+      const pIsRecess = Boolean(
+        p && (
+          p.isRecess ||
+          p.type === 'Recess' ||
+          p.type === 'Break' ||
+          (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
+          (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
+        )
+      );
+      if (!pIsRecess) {
+        academicNumber++;
+      }
+    }
+  } else {
+    academicNumber = index + 1;
+  }
+
+  if (period.periodName && !/^P\d+$/i.test(period.periodName) && period.periodName !== 'New Period') {
+    return period.periodName;
+  }
+  return `P${academicNumber}`;
+};
 
 const Academics = () => {
   const navigate = useNavigate();
@@ -268,6 +308,28 @@ const Academics = () => {
   const [enrollError, setEnrollError] = useState('');
   const [enrollLoading, setEnrollLoading] = useState(false);
 
+  // Timetable Setup Modal State for Created Classes
+  const [timetableSetupModal, setTimetableSetupModal] = useState({
+    open: false,
+    classData: null,
+    activeTab: 'auto', // 'auto' | 'scratch' | 'view'
+    periodsPerDay: 8,
+    startTime: '08:30',
+    periodDurationMinutes: 50,
+    includeSaturday: false,
+    includeRecess: true,
+    recessAfterPeriod: 4,
+    recessDurationMinutes: 20,
+    blankSlots: true,
+    selectedDayPreview: 'Monday',
+    currentSchedule: null,
+    hasExistingTimetable: false,
+    loadingStatus: false,
+    actionLoading: false,
+    notification: '',
+    error: '',
+  });
+
   // Form State for Creating / Editing
   const initialForm = {
     className: 'Class 10',
@@ -280,6 +342,8 @@ const Academics = () => {
     schedule: 'Mon - Fri | 08:30 AM - 02:30 PM',
     status: 'Active',
     schoolSlug: '',
+    autoSetupTimetable: true,
+    timetableInitMode: 'auto',
   };
   const [formData, setFormData] = useState(initialForm);
 
@@ -351,6 +415,165 @@ const Academics = () => {
       console.error('Failed to load class roster:', err);
     } finally {
       setRosterLoading(false);
+    }
+  };
+
+  // Open Timetable Setup Modal for a specific created class
+  const handleOpenTimetableSetup = async (cls) => {
+    if (!cls) return;
+    setTimetableSetupModal(prev => ({
+      ...prev,
+      open: true,
+      classData: cls,
+      activeTab: 'auto',
+      loadingStatus: true,
+      actionLoading: false,
+      notification: '',
+      error: '',
+      currentSchedule: null,
+      hasExistingTimetable: false,
+      selectedDayPreview: 'Monday'
+    }));
+
+    try {
+      const res = await fetch(
+        `${API_BASE}/timetable?className=${encodeURIComponent(cls.className)}&section=${encodeURIComponent(cls.section)}&noSeed=true`,
+        { headers: getAuthHeaders() }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const sched = data.timetable?.schedule;
+        const hasPeriods = sched && Object.keys(sched).some(day => Array.isArray(sched[day]) && sched[day].length > 0);
+        if (hasPeriods) {
+          setTimetableSetupModal(prev => ({
+            ...prev,
+            hasExistingTimetable: true,
+            currentSchedule: sched,
+            loadingStatus: false,
+            activeTab: 'view'
+          }));
+        } else {
+          setTimetableSetupModal(prev => ({
+            ...prev,
+            hasExistingTimetable: false,
+            currentSchedule: null,
+            loadingStatus: false,
+            activeTab: 'auto'
+          }));
+        }
+      } else {
+        setTimetableSetupModal(prev => ({ ...prev, loadingStatus: false }));
+      }
+    } catch (err) {
+      console.error('Error checking class timetable:', err);
+      setTimetableSetupModal(prev => ({ ...prev, loadingStatus: false }));
+    }
+  };
+
+  // Auto-generate timetable from modal
+  const handleModalAutoGenerate = async () => {
+    const cls = timetableSetupModal.classData;
+    if (!cls) return;
+
+    setTimetableSetupModal(prev => ({ ...prev, actionLoading: true, error: '', notification: '' }));
+    try {
+      const targetSchoolSlug = cls.schoolSlug || tenantSlug;
+      const res = await fetch(`${API_BASE}/timetable/auto-generate`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          className: cls.className,
+          section: cls.section,
+          schoolSlug: targetSchoolSlug
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setTimetableSetupModal(prev => ({
+          ...prev,
+          actionLoading: false,
+          hasExistingTimetable: true,
+          currentSchedule: data.timetable?.schedule || null,
+          notification: `✅ Collision-free timetable successfully generated and saved for ${cls.className} - Section ${cls.section}!`,
+          activeTab: 'view'
+        }));
+      } else {
+        setTimetableSetupModal(prev => ({
+          ...prev,
+          actionLoading: false,
+          error: data.message || 'Failed to auto-generate timetable'
+        }));
+      }
+    } catch (err) {
+      setTimetableSetupModal(prev => ({
+        ...prev,
+        actionLoading: false,
+        error: `Network error: ${err.message}`
+      }));
+    }
+  };
+
+  // Setup custom scratch timetable from modal
+  const handleModalResetScratch = async () => {
+    const cls = timetableSetupModal.classData;
+    if (!cls) return;
+
+    setTimetableSetupModal(prev => ({ ...prev, actionLoading: true, error: '', notification: '' }));
+    try {
+      const targetSchoolSlug = cls.schoolSlug || tenantSlug;
+      const res = await fetch(`${API_BASE}/timetable/reset`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          className: cls.className,
+          section: cls.section,
+          periodsPerDay: Number(timetableSetupModal.periodsPerDay) || 8,
+          startTime: timetableSetupModal.startTime || '08:30',
+          periodDurationMinutes: Number(timetableSetupModal.periodDurationMinutes) || 50,
+          includeSaturday: Boolean(timetableSetupModal.includeSaturday),
+          includeRecess: Boolean(timetableSetupModal.includeRecess),
+          recessAfterPeriod: Number(timetableSetupModal.recessAfterPeriod) || 4,
+          recessDurationMinutes: Number(timetableSetupModal.recessDurationMinutes) || 20,
+          blankSlots: Boolean(timetableSetupModal.blankSlots),
+          schoolSlug: targetSchoolSlug
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setTimetableSetupModal(prev => ({
+          ...prev,
+          actionLoading: false,
+          hasExistingTimetable: true,
+          currentSchedule: data.timetable?.schedule || null,
+          notification: `✅ Custom ${timetableSetupModal.periodsPerDay}-period timetable initialized for ${cls.className} - Section ${cls.section}!`,
+          activeTab: 'view'
+        }));
+      } else {
+        setTimetableSetupModal(prev => ({
+          ...prev,
+          actionLoading: false,
+          error: data.message || 'Failed to initialize timetable'
+        }));
+      }
+    } catch (err) {
+      setTimetableSetupModal(prev => ({
+        ...prev,
+        actionLoading: false,
+        error: `Network error: ${err.message}`
+      }));
+    }
+  };
+
+  // Jump to dedicated Master Timetable page pre-selected for class
+  const handleNavigateToTimetablePage = (cls) => {
+    setTimetableSetupModal(prev => ({ ...prev, open: false }));
+    const target = cls || timetableSetupModal.classData;
+    if (target) {
+      navigate(`/${tenantSlug}/timetable?class=${encodeURIComponent(target.className)}&section=${encodeURIComponent(target.section)}`);
+    } else {
+      navigate(`/${tenantSlug}/timetable`);
     }
   };
 
@@ -432,6 +655,43 @@ const Academics = () => {
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.message || data.error || 'Failed to create class section');
+      }
+
+      // Automatically initialize timetable if requested
+      if (formData.autoSetupTimetable !== false) {
+        try {
+          if (formData.timetableInitMode === 'scratch') {
+            await fetch(`${API_BASE}/timetable/reset`, {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                className: formData.className.trim(),
+                section: formData.section.trim().toUpperCase(),
+                periodsPerDay: 8,
+                startTime: '08:30',
+                periodDurationMinutes: 50,
+                includeSaturday: false,
+                includeRecess: true,
+                recessAfterPeriod: 4,
+                recessDurationMinutes: 20,
+                blankSlots: true,
+                schoolSlug: targetSchoolSlug
+              })
+            });
+          } else {
+            await fetch(`${API_BASE}/timetable/auto-generate`, {
+              method: 'POST',
+              headers: getAuthHeaders(),
+              body: JSON.stringify({
+                className: formData.className.trim(),
+                section: formData.section.trim().toUpperCase(),
+                schoolSlug: targetSchoolSlug
+              })
+            });
+          }
+        } catch (tErr) {
+          console.warn('Auto timetable initialization warning:', tErr);
+        }
       }
 
       setIsCreateModalOpen(false);
@@ -794,6 +1054,7 @@ const Academics = () => {
         <div className="system-tabs-container">
           {[
             { id: 'classes', label: 'Classes & Sections Directory', count: classesList.length, icon: LayoutGrid },
+            { id: 'timetable', label: 'Master Timetable Matrix', count: 'Live', icon: Clock },
             { id: 'subjects', label: 'Subjects Catalog', count: institutionalSubjects.length, icon: BookOpen },
             { id: 'examinations', label: 'Assessment Schedules', count: standardAssessmentSchedules.length, icon: Calendar }
           ].map(tab => {
@@ -1145,8 +1406,46 @@ const Academics = () => {
                     )}
                   </div>
 
+                  {/* Quick Schedule / Timetable Status Bar */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '7px 10px',
+                    background: '#f8fafc',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    fontSize: '0.78rem',
+                    color: '#475569',
+                    marginTop: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Clock size={12} color="#6366f1" />
+                      <span style={{ fontWeight: 600 }}>{cls.schedule || 'Mon - Fri | 08:30 - 02:30'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTimetableSetup(cls)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#2563eb',
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                    >
+                      <Calendar size={12} />
+                      Set Timetable
+                    </button>
+                  </div>
+
                   {/* Actions Footer */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--color-border, #f1f5f9)', marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--color-border, #f1f5f9)', marginTop: 'auto', gap: '8px', flexWrap: 'wrap' }}>
                     <button
                       onClick={() => handleOpenRoster(cls)}
                       style={{
@@ -1164,37 +1463,72 @@ const Academics = () => {
                       View Student Roster <ArrowRight size={14} />
                     </button>
 
-                    {isAdmin && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => {
-                            setEditingClass(cls);
-                            setFormData({
-                              className: cls.className,
-                              section: cls.section,
-                              classTeacher: cls.classTeacher || '',
-                              roomNumber: cls.roomNumber || '',
-                              capacity: cls.capacity || 40,
-                              academicSession: cls.academicSession || '2026-2027',
-                              subjects: (cls.subjects || []).join(', '),
-                              schedule: cls.schedule || '',
-                              status: cls.status || 'Active',
-                            });
-                          }}
-                          title="Edit Class Section"
-                          className="academic-icon-btn"
-                        >
-                          <Edit size={14} />
-                        </button>
-                        <button
-                          onClick={() => setClassToDelete(cls)}
-                          title="Delete Section"
-                          className="academic-icon-btn academic-btn-danger"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenTimetableSetup(cls)}
+                        title={`Set up or view timetable for ${cls.className} - ${cls.section}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '5px 10px',
+                          background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
+                          color: '#3730a3',
+                          border: '1px solid #c7d2fe',
+                          borderRadius: '7px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = '#dbeafe';
+                          e.currentTarget.style.borderColor = '#93c5fd';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)';
+                          e.currentTarget.style.borderColor = '#c7d2fe';
+                        }}
+                      >
+                        <Calendar size={13} color="#4f46e5" />
+                        <span>Timetable</span>
+                      </button>
+
+                      {isAdmin && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingClass(cls);
+                              setFormData({
+                                className: cls.className,
+                                section: cls.section,
+                                classTeacher: cls.classTeacher || '',
+                                roomNumber: cls.roomNumber || '',
+                                capacity: cls.capacity || 40,
+                                academicSession: cls.academicSession || '2026-2027',
+                                subjects: (cls.subjects || []).join(', '),
+                                schedule: cls.schedule || '',
+                                status: cls.status || 'Active',
+                                autoSetupTimetable: false,
+                                timetableInitMode: 'auto'
+                              });
+                            }}
+                            title="Edit Class Section"
+                            className="academic-icon-btn"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => setClassToDelete(cls)}
+                            title="Delete Section"
+                            className="academic-icon-btn academic-btn-danger"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1261,13 +1595,34 @@ const Academics = () => {
                         </span>
                       </td>
                       <td style={{ padding: '14px', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px', alignItems: 'center' }}>
                           <button 
                             onClick={() => handleOpenRoster(cls)}
                             title="View Roster"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb' }}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', padding: '4px' }}
                           >
                             <Users size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTimetableSetup(cls)}
+                            title={`Set up or view timetable for ${cls.className} - ${cls.section}`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              color: '#1d4ed8',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Calendar size={13} color="#2563eb" />
+                            <span>Timetable</span>
                           </button>
                           {isAdmin && (
                             <>
@@ -1284,17 +1639,19 @@ const Academics = () => {
                                     subjects: (cls.subjects || []).join(', '),
                                     schedule: cls.schedule || '',
                                     status: cls.status || 'Active',
+                                    autoSetupTimetable: false,
+                                    timetableInitMode: 'auto'
                                   });
                                 }}
                                 title="Edit Class"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: '4px' }}
                               >
                                 <Edit size={16} />
                               </button>
                               <button 
                                 onClick={() => setClassToDelete(cls)}
                                 title="Delete Section"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px' }}
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -2240,6 +2597,43 @@ const Academics = () => {
                     style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
                   />
                 </div>
+
+                {/* Timetable Initialization Option */}
+                <div style={{ marginTop: '16px', padding: '14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, color: '#166534', fontSize: '0.85rem' }}>
+                    <input 
+                      type="checkbox"
+                      checked={formData.autoSetupTimetable !== false}
+                      onChange={e => setFormData({ ...formData, autoSetupTimetable: e.target.checked })}
+                      style={{ width: '16px', height: '16px', accentColor: '#16a34a', cursor: 'pointer' }}
+                    />
+                    <span>Automatically set up timetable for this class</span>
+                  </label>
+                  {formData.autoSetupTimetable !== false && (
+                    <div style={{ marginTop: '10px', display: 'flex', gap: '14px', fontSize: '0.8rem', paddingLeft: '24px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', color: '#14532d', fontWeight: 600 }}>
+                        <input 
+                          type="radio" 
+                          name="timetableInitMode" 
+                          value="auto" 
+                          checked={formData.timetableInitMode === 'auto' || !formData.timetableInitMode} 
+                          onChange={() => setFormData({ ...formData, timetableInitMode: 'auto' })} 
+                        />
+                        Auto-Generate AI Collision-Free Timetable
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer', color: '#14532d', fontWeight: 600 }}>
+                        <input 
+                          type="radio" 
+                          name="timetableInitMode" 
+                          value="scratch" 
+                          checked={formData.timetableInitMode === 'scratch'} 
+                          onChange={() => setFormData({ ...formData, timetableInitMode: 'scratch' })} 
+                        />
+                        Blank 6-Period Schedule
+                      </label>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* PINNED FOOTER */}
@@ -2549,6 +2943,35 @@ const Academics = () => {
                     <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e3a8a' }}>{selectedClassForRoster.roomNumber || 'TBD'} • Max {selectedClassForRoster.capacity}</div>
                   </div>
                 </div>
+                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px dashed #bfdbfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#1e40af', fontWeight: 600 }}>
+                    Schedule: {selectedClassForRoster.schedule || 'Mon - Fri | 08:30 - 02:30'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = selectedClassForRoster;
+                      setSelectedClassForRoster(null);
+                      handleOpenTimetableSetup(target);
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '4px 10px',
+                      background: '#2563eb',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Calendar size={12} />
+                    <span>Set Up Timetable</span>
+                  </button>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
@@ -2710,6 +3133,696 @@ const Academics = () => {
             </div>
           </div>
         </>,
+        document.body
+      )}
+
+      {/* MODAL 6: TIMETABLE SETUP MODAL FOR CREATED CLASSES */}
+      {timetableSetupModal.open && timetableSetupModal.classData && createPortal(
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, left: 0, right: 0, bottom: 0, 
+            backgroundColor: 'rgba(15, 23, 42, 0.75)', 
+            zIndex: 999999, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !timetableSetupModal.actionLoading) {
+              setTimetableSetupModal(prev => ({ ...prev, open: false }));
+            }
+          }}
+        >
+          <div 
+            style={{ 
+              backgroundColor: '#ffffff', 
+              borderRadius: '20px', 
+              width: '100%', 
+              maxWidth: '820px', 
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'scaleUp 0.2s ease-out',
+              border: '1px solid #e2e8f0'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                }}>
+                  <Calendar size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#4f46e5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Class Timetable Configuration
+                    </span>
+                    <span style={{ 
+                      padding: '2px 8px', 
+                      borderRadius: '6px', 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700,
+                      background: timetableSetupModal.hasExistingTimetable ? '#dcfce7' : '#fef3c7',
+                      color: timetableSetupModal.hasExistingTimetable ? '#15803d' : '#b45309'
+                    }}>
+                      {timetableSetupModal.loadingStatus 
+                        ? 'Checking...' 
+                        : timetableSetupModal.hasExistingTimetable 
+                          ? '✓ Timetable Active' 
+                          : '⚠️ No Schedule Set Up'}
+                    </span>
+                  </div>
+                  <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
+                    {timetableSetupModal.classData.className} — Section {timetableSetupModal.classData.section}
+                  </h2>
+                </div>
+              </div>
+              <button 
+                onClick={() => setTimetableSetupModal(prev => ({ ...prev, open: false }))}
+                disabled={timetableSetupModal.actionLoading}
+                style={{ 
+                  background: 'white', 
+                  border: '1px solid #cbd5e1', 
+                  borderRadius: '8px', 
+                  width: '32px', 
+                  height: '32px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  cursor: 'pointer',
+                  color: '#64748b'
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Class Details Bar */}
+            <div style={{
+              padding: '10px 24px',
+              background: '#f1f5f9',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              gap: '18px',
+              flexWrap: 'wrap',
+              fontSize: '0.78rem',
+              color: '#475569'
+            }}>
+              <div><strong>Room:</strong> {timetableSetupModal.classData.roomNumber || 'TBD'}</div>
+              <div><strong>Class Teacher:</strong> {timetableSetupModal.classData.classTeacherName || 'Unassigned'}</div>
+              <div><strong>Session:</strong> {timetableSetupModal.classData.academicSession || '2026-2027'}</div>
+              <div><strong>Capacity:</strong> {timetableSetupModal.classData.enrolledStudents || 0} / {timetableSetupModal.classData.capacity || 40} Students</div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '22px 24px', overflowY: 'auto', flex: 1 }}>
+              {/* Notification Banner */}
+              {timetableSetupModal.notification && (
+                <div style={{ 
+                  padding: '12px 16px', 
+                  background: '#f0fdf4', 
+                  border: '1px solid #bbf7d0', 
+                  borderRadius: '10px', 
+                  color: '#166534', 
+                  fontWeight: 600, 
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <CheckCircle2 size={18} color="#16a34a" />
+                  <span>{timetableSetupModal.notification}</span>
+                </div>
+              )}
+
+              {/* Error Banner */}
+              {timetableSetupModal.error && (
+                <div style={{ 
+                  padding: '12px 16px', 
+                  background: '#fef2f2', 
+                  border: '1px solid #fecaca', 
+                  borderRadius: '10px', 
+                  color: '#991b1b', 
+                  fontWeight: 600, 
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}>
+                  <AlertCircle size={18} color="#dc2626" />
+                  <span>{timetableSetupModal.error}</span>
+                </div>
+              )}
+
+              {/* Mode Tabs */}
+              <div style={{ 
+                display: 'flex', 
+                gap: '8px', 
+                borderBottom: '1px solid #e2e8f0', 
+                paddingBottom: '12px', 
+                marginBottom: '18px' 
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setTimetableSetupModal(prev => ({ ...prev, activeTab: 'auto' }))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: timetableSetupModal.activeTab === 'auto' ? '#4f46e5' : '#f1f5f9',
+                    color: timetableSetupModal.activeTab === 'auto' ? '#ffffff' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>1. Auto-Generate (AI & Collision-Free)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTimetableSetupModal(prev => ({ ...prev, activeTab: 'scratch' }))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: timetableSetupModal.activeTab === 'scratch' ? '#059669' : '#f1f5f9',
+                    color: timetableSetupModal.activeTab === 'scratch' ? '#ffffff' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Sliders size={14} />
+                  <span>2. Custom Bell Schedule (From Scratch)</span>
+                </button>
+
+                {timetableSetupModal.hasExistingTimetable && (
+                  <button
+                    type="button"
+                    onClick={() => setTimetableSetupModal(prev => ({ ...prev, activeTab: 'view' }))}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: timetableSetupModal.activeTab === 'view' ? '#1e3a8a' : '#f1f5f9',
+                      color: timetableSetupModal.activeTab === 'view' ? '#ffffff' : '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <Eye size={14} />
+                    <span>3. View Active Schedule</span>
+                  </button>
+                )}
+              </div>
+
+              {/* TAB 1: AUTO-GENERATE */}
+              {timetableSetupModal.activeTab === 'auto' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{
+                    padding: '18px',
+                    background: 'linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%)',
+                    borderRadius: '14px',
+                    border: '1px solid #c7d2fe'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ 
+                        background: '#4f46e5', 
+                        color: 'white', 
+                        padding: '2px 8px', 
+                        borderRadius: '6px', 
+                        fontSize: '0.72rem', 
+                        fontWeight: 800 
+                      }}>
+                        INTELLIGENT ALLOCATION
+                      </span>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#3730a3' }}>
+                        Collision-Free Schedule Generator
+                      </span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                      The algorithm automatically balances weekly periods across the curriculum subjects for <strong>{timetableSetupModal.classData.className} - {timetableSetupModal.classData.section}</strong>.
+                      Subjects taught: <em>{(timetableSetupModal.classData.subjects || []).join(', ') || 'Standard Core Subjects'}</em>.
+                    </p>
+                    <ul style={{ margin: '10px 0 0 0', paddingLeft: '20px', fontSize: '0.8rem', color: '#475569', lineHeight: 1.6 }}>
+                      <li>Builds 6 standard periods (08:30 AM to 02:25 PM) from Monday to Friday.</li>
+                      <li>Assigns certified campus faculty with zero room collisions and zero teacher double-bookings.</li>
+                      <li>Overwrites any blank placeholder schedule with a fully populated syllabus matrix.</li>
+                    </ul>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      {timetableSetupModal.hasExistingTimetable ? '⚠️ Generating will update the existing schedule.' : '⚡ Ready to generate in 1-click.'}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleModalAutoGenerate}
+                      disabled={timetableSetupModal.actionLoading}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '11px 24px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '0.88rem',
+                        cursor: timetableSetupModal.actionLoading ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
+                        opacity: timetableSetupModal.actionLoading ? 0.7 : 1
+                      }}
+                    >
+                      {timetableSetupModal.actionLoading ? (
+                        <>
+                          <RefreshCw size={16} className="animate-spin" />
+                          <span>Generating Collision-Free Timetable...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} />
+                          <span>Auto-Generate Collision-Free Timetable</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: SETUP FROM SCRATCH */}
+              {timetableSetupModal.activeTab === 'scratch' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{
+                    padding: '16px',
+                    background: '#f0fdf4',
+                    borderRadius: '12px',
+                    border: '1px solid #bbf7d0',
+                    fontSize: '0.84rem',
+                    color: '#166534'
+                  }}>
+                    <strong>Custom Bell Timings:</strong> Set up a custom period template tailored to this class. This creates blank or general study slots that you can populate in the Master Timetable Matrix.
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    {/* Periods per Day */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Periods per Day
+                      </label>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {[4, 5, 6, 7, 8, 9].map(num => (
+                          <button
+                            key={num}
+                            type="button"
+                            onClick={() => setTimetableSetupModal(prev => ({ ...prev, periodsPerDay: num }))}
+                            style={{
+                              flex: 1,
+                              padding: '8px 0',
+                              borderRadius: '8px',
+                              border: timetableSetupModal.periodsPerDay === num ? '2px solid #059669' : '1px solid #cbd5e1',
+                              background: timetableSetupModal.periodsPerDay === num ? '#d1fae5' : '#ffffff',
+                              color: timetableSetupModal.periodsPerDay === num ? '#065f46' : '#334155',
+                              fontWeight: 700,
+                              fontSize: '0.85rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {num}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* School Start Time */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        First Period Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={timetableSetupModal.startTime}
+                        onChange={e => setTimetableSetupModal(prev => ({ ...prev, startTime: e.target.value }))}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                      />
+                    </div>
+
+                    {/* Period Duration */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Period Duration (Minutes)
+                      </label>
+                      <select
+                        value={timetableSetupModal.periodDurationMinutes}
+                        onChange={e => setTimetableSetupModal(prev => ({ ...prev, periodDurationMinutes: Number(e.target.value) }))}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', background: 'white' }}
+                      >
+                        <option value={35}>35 Minutes</option>
+                        <option value={40}>40 Minutes</option>
+                        <option value={45}>45 Minutes</option>
+                        <option value={50}>50 Minutes (Standard)</option>
+                        <option value={60}>60 Minutes (1 Hour)</option>
+                      </select>
+                    </div>
+
+                    {/* Saturday Classes */}
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 600, color: '#334155' }}>
+                        <input
+                          type="checkbox"
+                          checked={timetableSetupModal.includeSaturday}
+                          onChange={e => setTimetableSetupModal(prev => ({ ...prev, includeSaturday: e.target.checked }))}
+                          style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
+                        />
+                        <span>Include Saturday Classes (Mon - Sat)</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Recess Break Config */}
+                  <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.84rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={timetableSetupModal.includeRecess}
+                        onChange={e => setTimetableSetupModal(prev => ({ ...prev, includeRecess: e.target.checked }))}
+                        style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
+                      />
+                      <span>Insert Recess / Lunch Break</span>
+                    </label>
+
+                    {timetableSetupModal.includeRecess && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '8px', paddingLeft: '24px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                            Break After Period #
+                          </label>
+                          <select
+                            value={timetableSetupModal.recessAfterPeriod}
+                            onChange={e => setTimetableSetupModal(prev => ({ ...prev, recessAfterPeriod: Number(e.target.value) }))}
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: 'white' }}
+                          >
+                            {[2, 3, 4, 5].map(p => (
+                              <option key={p} value={p}>After Period {p}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                            Break Duration
+                          </label>
+                          <select
+                            value={timetableSetupModal.recessDurationMinutes}
+                            onChange={e => setTimetableSetupModal(prev => ({ ...prev, recessDurationMinutes: Number(e.target.value) }))}
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: 'white' }}
+                          >
+                            <option value={15}>15 Minutes</option>
+                            <option value={20}>20 Minutes</option>
+                            <option value={30}>30 Minutes</option>
+                            <option value={45}>45 Minutes (Full Lunch)</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Slot Initialization Type */}
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.82rem', color: '#334155' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="slotInitType"
+                        checked={timetableSetupModal.blankSlots === true}
+                        onChange={() => setTimetableSetupModal(prev => ({ ...prev, blankSlots: true }))}
+                      />
+                      <span>Blank slots (ready for manual subject allocation)</span>
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="slotInitType"
+                        checked={timetableSetupModal.blankSlots === false}
+                        onChange={() => setTimetableSetupModal(prev => ({ ...prev, blankSlots: false }))}
+                      />
+                      <span>Pre-fill with 'General Study' placeholder</span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={handleModalResetScratch}
+                      disabled={timetableSetupModal.actionLoading}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '11px 24px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                        color: 'white',
+                        fontWeight: 700,
+                        fontSize: '0.88rem',
+                        cursor: timetableSetupModal.actionLoading ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 4px 14px rgba(5, 150, 105, 0.35)',
+                        opacity: timetableSetupModal.actionLoading ? 0.7 : 1
+                      }}
+                    >
+                      {timetableSetupModal.actionLoading ? (
+                        <>
+                          <RefreshCw size={16} className="animate-spin" />
+                          <span>Initializing Bell Schedule...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sliders size={16} />
+                          <span>Initialize Custom Bell Timetable</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: VIEW ACTIVE SCHEDULE PREVIEW */}
+              {timetableSetupModal.activeTab === 'view' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {/* Day Picker Pills */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginRight: '4px' }}>Day:</span>
+                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => {
+                      const count = timetableSetupModal.currentSchedule?.[day]?.length || 0;
+                      const isSelected = timetableSetupModal.selectedDayPreview === day;
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => setTimetableSetupModal(prev => ({ ...prev, selectedDayPreview: day }))}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: isSelected ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                            background: isSelected ? '#eff6ff' : '#ffffff',
+                            color: isSelected ? '#1d4ed8' : '#475569',
+                            fontWeight: isSelected ? 800 : 600,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {day} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Schedule Table Preview */}
+                  {(() => {
+                    const dayPeriods = timetableSetupModal.currentSchedule?.[timetableSetupModal.selectedDayPreview] || [];
+                    if (dayPeriods.length === 0) {
+                      return (
+                        <div style={{
+                          padding: '30px',
+                          textAlign: 'center',
+                          background: '#f8fafc',
+                          borderRadius: '12px',
+                          border: '1px dashed #cbd5e1',
+                          color: '#64748b',
+                          fontSize: '0.88rem'
+                        }}>
+                          No periods configured for {timetableSetupModal.selectedDayPreview}. You can auto-generate or initialize from scratch.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                          <thead>
+                            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#64748b', fontWeight: 700 }}>
+                              <th style={{ padding: '10px 12px' }}>Period</th>
+                              <th style={{ padding: '10px 12px' }}>Timing</th>
+                              <th style={{ padding: '10px 12px' }}>Subject</th>
+                              <th style={{ padding: '10px 12px' }}>Teacher / Faculty</th>
+                              <th style={{ padding: '10px 12px' }}>Room</th>
+                              <th style={{ padding: '10px 12px' }}>Type</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {dayPeriods.map((p, idx) => {
+                              const isRecess = Boolean(
+                                p.isRecess ||
+                                p.type === 'Recess' ||
+                                p.type === 'Break' ||
+                                (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
+                                (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
+                              );
+                              const label = getAcademicPeriodLabel(p, idx, dayPeriods);
+
+                              return (
+                                <tr 
+                                  key={idx}
+                                  style={{ 
+                                    borderBottom: '1px solid #f1f5f9',
+                                    background: isRecess ? '#fefce8' : 'white'
+                                  }}
+                                >
+                                  <td style={{ padding: '10px 12px', fontWeight: 800, color: isRecess ? '#a16207' : '#1e3a8a', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    {isRecess && <Coffee size={13} color="#d97706" />}
+                                    <span>{label}</span>
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: '#475569', fontWeight: 600 }}>
+                                    {p.startTime} - {p.endTime}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', fontWeight: 700, color: isRecess ? '#854d0e' : '#0f172a' }}>
+                                    {p.subject || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Unallocated Slot</span>}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: '#334155' }}>
+                                    {p.teacher || <span style={{ color: '#94a3b8' }}>{isRecess ? 'Duty Staff' : '--'}</span>}
+                                  </td>
+                                  <td style={{ padding: '10px 12px', color: '#64748b' }}>
+                                    {p.room || (isRecess ? 'Campus Area' : 'TBD')}
+                                  </td>
+                                  <td style={{ padding: '10px 12px' }}>
+                                    <span style={{
+                                      padding: '2px 8px',
+                                      borderRadius: '6px',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      background: isRecess ? '#fef08a' : '#dbeafe',
+                                      color: isRecess ? '#713f12' : '#1e40af'
+                                    }}>
+                                      {isRecess ? 'Recess' : (p.type || 'Lecture')}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <button
+                type="button"
+                onClick={() => handleNavigateToTimetablePage(timetableSetupModal.classData)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #2563eb',
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <ExternalLink size={14} />
+                <span>Open Full Interactive Timetable Matrix ↗</span>
+              </button>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setTimetableSetupModal(prev => ({ ...prev, open: false }))}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: 'white',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
         document.body
       )}
 

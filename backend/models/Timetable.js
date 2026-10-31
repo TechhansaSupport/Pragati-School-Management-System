@@ -77,6 +77,11 @@ const timetableSchema = new mongoose.Schema({
     Thursday: { type: [periodSchema], default: [] },
     Friday: { type: [periodSchema], default: [] },
     Saturday: { type: [periodSchema], default: [] },
+    Sunday: { type: [periodSchema], default: [] },
+  },
+  offDays: {
+    type: [String],
+    default: ['Sunday'],
   },
   status: {
     type: String,

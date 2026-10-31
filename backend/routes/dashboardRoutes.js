@@ -13,6 +13,51 @@ const TeacherTask = require('../models/TeacherTask');
 const Attendance = require('../models/Attendance');
 const Timetable = require('../models/Timetable');
 
+// Helper to parse time slot string (e.g. "08:00 AM - 09:00 AM") into start and end minutes
+const parseSlotMinutes = (timeStr) => {
+  if (!timeStr) return { startMinutes: null, endMinutes: null, startLabel: '' };
+  const raw = timeStr.includes('|') ? timeStr.split('|')[1].trim() : timeStr;
+  const parts = raw.split(' - ');
+  if (parts.length < 2) return { startMinutes: null, endMinutes: null, startLabel: '' };
+
+  const parseSingle = (s) => {
+    if (!s) return null;
+    const match12 = s.trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match12) {
+      let [_, h, m, meridiem] = match12;
+      let hours = parseInt(h, 10);
+      const minutes = parseInt(m, 10);
+      if (meridiem.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+      if (meridiem.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    }
+    const match24 = s.trim().match(/(\d{1,2}):(\d{2})/);
+    if (match24) {
+      let [_, h, m] = match24;
+      return parseInt(h, 10) * 60 + parseInt(m, 10);
+    }
+    return null;
+  };
+
+  return {
+    startMinutes: parseSingle(parts[0]),
+    endMinutes: parseSingle(parts[1]),
+    startLabel: parts[0].trim()
+  };
+};
+
+const getSlotTimeForClassIndex = (idx) => {
+  const timeSlots = [
+    '08:00 AM - 09:00 AM',
+    '09:00 AM - 10:00 AM',
+    '10:15 AM - 11:15 AM',
+    '11:15 AM - 12:15 PM',
+    '12:45 PM - 01:45 PM',
+    '01:45 PM - 02:45 PM'
+  ];
+  return timeSlots[idx] || `${8 + idx}:00 AM - ${9 + idx}:00 AM`;
+};
+
 // Seed helper on-demand if school has 0 fee records
 const seedInitialFeesIfEmpty = async (entityId, force = false) => {
   if (!entityId && !force) return;
@@ -420,7 +465,11 @@ router.get('/teacher-summary', async (req, res) => {
       ? `${(Math.round(attResult[0].avgAttendance * 10) / 10)}%`
       : '0%';
 
-    // Map real classes to today's schedule with live enrolled counts
+    const dToday = new Date();
+    const todayDateStr = `${dToday.getFullYear()}-${String(dToday.getMonth() + 1).padStart(2, '0')}-${String(dToday.getDate()).padStart(2, '0')}`;
+    const nowMinutes = dToday.getHours() * 60 + dToday.getMinutes();
+
+    // Map real classes to today's schedule with live enrolled counts and real attendance status
     const schedule = await Promise.all(classes.map(async (c, idx) => {
       const cleanGrade = c.className.replace(/Class\s*/i, '').replace(/th|st|nd|rd/i, '').trim();
       const enrolled = await Student.countDocuments({
@@ -429,9 +478,37 @@ router.get('/teacher-summary', async (req, res) => {
         section: { $regex: new RegExp(`^${c.section}$`, 'i') }
       });
 
+      const slotTime = getSlotTimeForClassIndex(idx);
+      const { startMinutes, endMinutes } = parseSlotMinutes(slotTime);
+
+      // Check if attendance already marked for today in live DB
+      const existingAttendance = await Attendance.findOne({
+        entityId: req.entityId,
+        className: c.className,
+        section: c.section,
+        date: todayDateStr
+      });
+
+      let status = 'Upcoming';
+      let color = '#94A3B8';
+
+      if (existingAttendance) {
+        status = 'Completed';
+        color = '#16A34A';
+      } else if (startMinutes !== null && nowMinutes < startMinutes) {
+        status = 'Upcoming';
+        color = '#94A3B8';
+      } else if (startMinutes !== null && endMinutes !== null && nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+        status = 'In Progress';
+        color = '#4F46E5';
+      } else {
+        status = 'Pending';
+        color = '#F59E0B';
+      }
+
       return {
         id: c._id,
-        time: idx === 0 ? '08:00 AM - 09:00 AM' : idx === 1 ? '09:00 AM - 10:00 AM' : idx === 2 ? '10:15 AM - 11:15 AM' : '11:15 AM - 12:15 PM',
+        time: slotTime,
         subject: c.className.includes('Science') || c.section.includes('SCI') ? 'Physics & Chemistry' : (teacherStaff?.department || 'Mathematics'),
         cls: `${c.className} - ${c.section}`,
         className: c.className,
@@ -440,8 +517,8 @@ router.get('/teacher-summary', async (req, res) => {
         students: `${enrolled} Enrolled`,
         enrolled,
         capacity: c.capacity || 40,
-        status: idx === 0 ? 'Completed' : idx === 1 ? 'In Progress' : 'Upcoming',
-        color: idx === 0 ? '#16A34A' : idx === 1 ? '#4F46E5' : '#60A5FA',
+        status,
+        color,
       };
     }));
 
@@ -646,6 +723,26 @@ router.post('/teacher/attendance', async (req, res) => {
     const cleanClass = (className || 'Class 10').trim();
     const cleanSection = (section || 'A').trim().toUpperCase();
 
+    // Enforce: Attendance cannot be marked before the scheduled start time of the class
+    const classes = await ClassSection.find({ entityId: req.entityId, status: 'Active' });
+    const classIdx = classes.findIndex(c => 
+      c.className.toLowerCase() === cleanClass.toLowerCase() && 
+      c.section.toLowerCase() === cleanSection.toLowerCase()
+    );
+
+    if (classIdx !== -1) {
+      const slotTime = getSlotTimeForClassIndex(classIdx);
+      const { startMinutes, startLabel } = parseSlotMinutes(slotTime);
+      const dNow = new Date();
+      const currentMinutes = dNow.getHours() * 60 + dNow.getMinutes();
+
+      if (startMinutes !== null && currentMinutes < startMinutes) {
+        return res.status(400).json({
+          message: `Attendance cannot be marked before the class scheduled start time (${startLabel || slotTime.split(' - ')[0]}).`
+        });
+      }
+    }
+
     const d = new Date();
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
@@ -768,6 +865,37 @@ router.post('/teacher/assignment', async (req, res) => {
     });
 
     await newAssignment.save();
+
+    // Also sync to ClassMaterial so it displays across Communication and Student Dashboards
+    try {
+      const ClassMaterial = require('../models/ClassMaterial');
+      const classMaterial = new ClassMaterial({
+        title: title.trim(),
+        type: 'Assignment',
+        classSection,
+        className: className || 'General',
+        section: section || 'All',
+        subject: subject || 'General',
+        chapter: 'Homework Assignment',
+        content: instructions || title.trim(),
+        dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 3 * 86400000),
+        maxMarks: Number(maxMarks) || 50,
+        teacherName: req.user?.name || 'Mr. Ramesh Singh',
+        entityId: String(req.entityId || 'default'),
+        schoolSlug: req.schoolSlug || 'default',
+        submissions: submissions.map(s => ({
+          studentId: s.studentId,
+          studentName: s.studentName,
+          rollNo: s.rollNo,
+          submittedAt: s.submittedAt,
+          maxMarks: s.maxMarks,
+          status: 'Submitted'
+        }))
+      });
+      await classMaterial.save();
+    } catch (syncErr) {
+      console.warn('ClassMaterial sync error:', syncErr.message);
+    }
 
     res.status(201).json({
       success: true,

@@ -1217,6 +1217,12 @@ body.dark-mode .teacher-roster-pill:hover {
   border: 1px solid transparent;
 }
 
+.teacher-status-action-pill:disabled,
+.teacher-status-action-pill.disabled {
+  cursor: not-allowed !important;
+  opacity: 0.65;
+}
+
 body.dark-mode .teacher-status-action-pill.upcoming,
 body.dark-mode *[style*="rgba(226, 232, 240, 0.6)"],
 body.dark-mode *[style*="rgba(226,232,240,0.6)"],
@@ -2338,7 +2344,8 @@ body.dark-mode .staff-nav-tab:hover:not(.active) {
     break-after: avoid !important;
   }
 
-  .timetable-day-header {
+  .timetable-day-header,
+  .timetable-corner-header {
     position: static !important;
     box-shadow: none !important;
     background: #1e3a8a !important;

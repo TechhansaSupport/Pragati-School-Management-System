@@ -193,6 +193,80 @@ router.get('/list', protect, async (req, res) => {
           }).select('_id name email phone qualification portalUsername employeeId status');
         }
 
+        // Auto-sync Principal with User account if profile was updated
+        let principalUser = null;
+        if (principal) {
+          principalUser = await User.findOne({
+            entityId: req.entityId,
+            $or: [
+              { referenceId: principal._id },
+              ...(principal.portalUsername ? [{ uniqueId: principal.portalUsername }] : [])
+            ]
+          }).select('_id name email phone uniqueId');
+
+          if (principalUser) {
+            if (principalUser.email && principalUser.email !== principal.email) {
+              await Staff.updateOne({ _id: principal._id }, { $set: { email: principalUser.email } }).catch(() => null);
+              principal.email = principalUser.email;
+            }
+            if (principalUser.name && principalUser.name !== principal.name) {
+              await Staff.updateOne({ _id: principal._id }, { $set: { name: principalUser.name } }).catch(() => null);
+              principal.name = principalUser.name;
+            }
+          }
+        } else {
+          // Fallback to User with role 'principal' if Staff record was not found
+          principalUser = await User.findOne({
+            role: 'principal',
+            entityId: req.entityId,
+            schoolSlug: sch.slug
+          }).select('_id name email phone uniqueId status referenceId');
+
+          if (!principalUser && sch.slug === primarySchoolSlug) {
+            principalUser = await User.findOne({
+              role: 'principal',
+              entityId: req.entityId
+            }).select('_id name email phone uniqueId status referenceId');
+          }
+
+          if (principalUser) {
+            principal = {
+              _id: principalUser._id,
+              name: principalUser.name || 'School Principal',
+              email: principalUser.email || '',
+              phone: principalUser.phone || '',
+              qualification: 'School Principal',
+              portalUsername: principalUser.uniqueId,
+              employeeId: 'PRIN-001',
+              status: 'Active'
+            };
+          }
+        }
+
+        // Auto-sync Branch Admin with User account if profile was updated
+        if (adminStaff) {
+          const adminUserMatch = await User.findOne({
+            entityId: req.entityId,
+            $or: [
+              { referenceId: adminStaff._id },
+              ...(adminStaff.portalUsername ? [{ uniqueId: adminStaff.portalUsername }] : [])
+            ]
+          }).select('_id name email phone uniqueId');
+
+          if (adminUserMatch) {
+            if (adminUserMatch.email && adminUserMatch.email !== adminStaff.email) {
+              await Staff.updateOne({ _id: adminStaff._id }, { $set: { email: adminUserMatch.email } }).catch(() => null);
+              adminStaff.email = adminUserMatch.email;
+              if (adminObj) adminObj.email = adminUserMatch.email;
+            }
+            if (adminUserMatch.name && adminUserMatch.name !== adminStaff.name) {
+              await Staff.updateOne({ _id: adminStaff._id }, { $set: { name: adminUserMatch.name } }).catch(() => null);
+              adminStaff.name = adminUserMatch.name;
+              if (adminObj) adminObj.name = adminUserMatch.name;
+            }
+          }
+        }
+
         // Staff count strictly for this specific branch and entity
         const staffCount = await Staff.countDocuments({
           entityId: req.entityId,
@@ -215,6 +289,8 @@ router.get('/list', protect, async (req, res) => {
           ...sch,
           isCurrent,
           admin: adminObj,
+          adminName: adminObj?.name || '',
+          adminEmail: adminObj?.email || '',
           principal: principal ? {
             id: principal._id,
             name: principal.name,
@@ -225,6 +301,8 @@ router.get('/list', protect, async (req, res) => {
             employeeId: principal.employeeId,
             status: principal.status
           } : null,
+          principalName: principal?.name || '',
+          principalEmail: principal?.email || '',
           staffCount,
           studentCount
         };
@@ -1381,12 +1459,59 @@ router.get('/', protect, async (req, res) => {
     const affiliationNo = school?.affiliationNo || tenant?.affiliationNo || 'CBSE-AFF-2026-9081';
 
     // Find appointed Principal for this school strictly in this entity
-    const principalStaff = await Staff.findOne({
+    let principalStaff = await Staff.findOne({
       role: 'Principal',
       entityId: entityId,
       schoolSlug: school?.slug || slug,
       status: { $ne: 'Resigned' }
     }).select('_id name email phone qualification portalUsername employeeId status');
+
+    if (!principalStaff && (school?.slug || slug)) {
+      principalStaff = await Staff.findOne({
+        role: 'Principal',
+        entityId: entityId,
+        $or: [{ schoolSlug: { $exists: false } }, { schoolSlug: null }, { schoolSlug: '' }, { schoolSlug: school?.slug || slug }],
+        status: { $ne: 'Resigned' }
+      }).select('_id name email phone qualification portalUsername employeeId status');
+    }
+
+    if (principalStaff) {
+      const pUser = await User.findOne({
+        entityId: entityId,
+        $or: [
+          { referenceId: principalStaff._id },
+          ...(principalStaff.portalUsername ? [{ uniqueId: principalStaff.portalUsername }] : [])
+        ]
+      }).select('_id name email phone uniqueId');
+
+      if (pUser?.email && pUser.email !== principalStaff.email) {
+        await Staff.updateOne({ _id: principalStaff._id }, { $set: { email: pUser.email } }).catch(() => null);
+        principalStaff.email = pUser.email;
+      }
+      if (pUser?.name && pUser.name !== principalStaff.name) {
+        await Staff.updateOne({ _id: principalStaff._id }, { $set: { name: pUser.name } }).catch(() => null);
+        principalStaff.name = pUser.name;
+      }
+    } else {
+      const pUser = await User.findOne({
+        role: 'principal',
+        entityId: entityId,
+        ...(slug ? { schoolSlug: slug } : {})
+      }).select('_id name email phone uniqueId status referenceId');
+
+      if (pUser) {
+        principalStaff = {
+          _id: pUser._id,
+          name: pUser.name || 'School Principal',
+          email: pUser.email || '',
+          phone: pUser.phone || '',
+          qualification: 'School Principal',
+          portalUsername: pUser.uniqueId,
+          employeeId: 'PRIN-001',
+          status: 'Active'
+        };
+      }
+    }
 
     return res.json({
       success: true,

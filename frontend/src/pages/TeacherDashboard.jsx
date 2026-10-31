@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
   Users, BookOpen, Clock, FileText, CheckCircle, Calendar, 
@@ -12,7 +13,42 @@ import LabDashboard from './LabDashboard';
 
 const API_BASE = 'http://localhost:5000/api';
 
+// Helper to parse slot time (e.g. "08:00 AM - 09:00 AM") into start and end minutes
+export const parseTimeRangeMinutes = (timeStr) => {
+  if (!timeStr) return { startMinutes: null, endMinutes: null, startLabel: '', endLabel: '' };
+  const raw = timeStr.includes('|') ? timeStr.split('|')[1].trim() : timeStr;
+  const parts = raw.split(' - ');
+  if (parts.length < 2) return { startMinutes: null, endMinutes: null, startLabel: '', endLabel: '' };
+
+  const parseSingle = (s) => {
+    if (!s) return null;
+    const match12 = s.trim().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match12) {
+      let [_, h, m, meridiem] = match12;
+      let hours = parseInt(h, 10);
+      const minutes = parseInt(m, 10);
+      if (meridiem.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+      if (meridiem.toUpperCase() === 'AM' && hours === 12) hours = 0;
+      return hours * 60 + minutes;
+    }
+    const match24 = s.trim().match(/(\d{1,2}):(\d{2})/);
+    if (match24) {
+      let [_, h, m] = match24;
+      return parseInt(h, 10) * 60 + parseInt(m, 10);
+    }
+    return null;
+  };
+
+  return {
+    startMinutes: parseSingle(parts[0]),
+    endMinutes: parseSingle(parts[1]),
+    startLabel: parts[0].trim(),
+    endLabel: parts[1].trim()
+  };
+};
+
 const TeacherDashboard = () => {
+  const navigate = useNavigate();
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
@@ -51,6 +87,27 @@ const TeacherDashboard = () => {
     setTimeout(() => {
       setToast({ show: false, message: '', type: 'success' });
     }, 3500);
+  };
+
+  // Real-time wall-clock ticker for live schedule and attendance locks
+  const [currentClock, setCurrentClock] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentClock(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const isClassTimeStarted = (timeStr) => {
+    const { startMinutes } = parseTimeRangeMinutes(timeStr);
+    if (startMinutes === null) return true;
+    const currentMinutes = currentClock.getHours() * 60 + currentClock.getMinutes();
+    return currentMinutes >= startMinutes;
+  };
+
+  const isClassLiveNow = (timeStr) => {
+    const { startMinutes, endMinutes } = parseTimeRangeMinutes(timeStr);
+    if (startMinutes === null || endMinutes === null) return false;
+    const currentMinutes = currentClock.getHours() * 60 + currentClock.getMinutes();
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   };
 
   // Schedule State (with live overrides for marked attendance)
@@ -177,9 +234,50 @@ const TeacherDashboard = () => {
     return [];
   }, [teacherSummary.performanceData]);
 
+  // Smart Quick Attendance action
+  const handleQuickAttendance = () => {
+    if (!effectiveSchedule || effectiveSchedule.length === 0) {
+      showToast('No classes scheduled for today.', 'error');
+      return;
+    }
+    // 1. Priority 1: Currently live class that is not yet completed
+    const liveClass = effectiveSchedule.find(c => c.cls !== 'Staff Room' && c.status !== 'Completed' && isClassLiveNow(c.time));
+    if (liveClass) {
+      handleOpenAttendance(liveClass);
+      return;
+    }
+    // 2. Priority 2: Any started class today pending attendance
+    const pendingClass = effectiveSchedule.find(c => c.cls !== 'Staff Room' && c.status !== 'Completed' && isClassTimeStarted(c.time));
+    if (pendingClass) {
+      handleOpenAttendance(pendingClass);
+      return;
+    }
+    // 3. Priority 3: If all started classes are completed
+    const hasStarted = effectiveSchedule.some(c => isClassTimeStarted(c.time));
+    if (hasStarted) {
+      showToast('✅ Attendance already recorded for all started classes today!', 'success');
+      return;
+    }
+    // 4. No class has started yet today
+    const firstClass = effectiveSchedule[0];
+    const { startLabel } = parseTimeRangeMinutes(firstClass?.time);
+    showToast(`⚠️ Attendance opens when the first class starts at ${startLabel || firstClass?.time?.split(' - ')[0] || 'scheduled time'}.`, 'error');
+  };
+
   // Open Attendance Modal for a Class (Live DB)
   const handleOpenAttendance = async (cls) => {
     if (!cls) return;
+
+    // Strict guard: Teacher cannot mark attendance before the scheduled class start time
+    const { startMinutes, startLabel } = parseTimeRangeMinutes(cls.time);
+    if (startMinutes !== null) {
+      const currentMinutes = currentClock.getHours() * 60 + currentClock.getMinutes();
+      if (currentMinutes < startMinutes) {
+        showToast(`⚠️ Attendance cannot be marked before the class scheduled time (${startLabel || cls.time.split(' - ')[0]}).`, 'error');
+        return;
+      }
+    }
+
     setSelectedClassForAttendance(cls);
     setIsAttendanceModalOpen(true);
     setAttendanceLoading(true);
@@ -228,12 +326,25 @@ const TeacherDashboard = () => {
     const classNameClean = selectedClassForAttendance.className || (selectedClassForAttendance.cls ? selectedClassForAttendance.cls.split(' - ')[0] : 'Class 10');
     const sectionClean = selectedClassForAttendance.section || (selectedClassForAttendance.cls ? selectedClassForAttendance.cls.split(' - ')[1] : 'A');
 
+    // Strict guard against early marking
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (attendanceDate === todayStr) {
+      const { startMinutes, startLabel } = parseTimeRangeMinutes(selectedClassForAttendance.time);
+      if (startMinutes !== null) {
+        const currentMinutes = currentClock.getHours() * 60 + currentClock.getMinutes();
+        if (currentMinutes < startMinutes) {
+          showToast(`⚠️ Cannot submit attendance before the class starts at ${startLabel || selectedClassForAttendance.time.split(' - ')[0]}.`, 'error');
+          return;
+        }
+      }
+    }
+
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
 
     try {
-      await fetch(`${API_BASE}/dashboard/teacher/attendance`, {
+      const res = await fetch(`${API_BASE}/dashboard/teacher/attendance`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -242,8 +353,15 @@ const TeacherDashboard = () => {
           records: attendanceRoster.map(s => ({ studentId: s.id || s._id, status: s.status }))
         })
       });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Error submitting attendance', 'error');
+        return;
+      }
     } catch (err) {
       console.warn('Attendance sync error:', err);
+      showToast('Error syncing attendance. Please try again.', 'error');
+      return;
     }
 
     // Update local schedule to reflect 'Completed'
@@ -512,7 +630,7 @@ const TeacherDashboard = () => {
           {/* Quick Action Pills inside Banner */}
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button 
-              onClick={() => handleOpenAttendance(effectiveSchedule[0])}
+              onClick={handleQuickAttendance}
               style={{
                 background: 'rgba(255, 255, 255, 0.2)',
                 backdropFilter: 'blur(8px)',
@@ -552,6 +670,27 @@ const TeacherDashboard = () => {
               className="hover-lift"
             >
               <BookMarked size={14} /> Create Assignment
+            </button>
+            <button 
+              onClick={() => navigate(`/${tenantSlug || 'neel-public-school'}/communication?tab=classMaterials`)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.2)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                color: 'white',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <BookOpen size={14} /> Send Notes & Materials
             </button>
             <button 
               onClick={handleOpenTimetableModal}
@@ -644,89 +783,126 @@ const TeacherDashboard = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
-            {effectiveSchedule.map((cls, i) => (
-              <div key={i} className="teacher-schedule-card" style={{ 
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                padding: '16px 20px', 
-                borderRadius: '14px', 
-                borderLeft: `5px solid ${cls.color}`,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                transition: 'all 0.2s'
-              }}>
-                <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
-                  <div style={{ textAlign: 'right', minWidth: '135px' }}>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{cls.time.split(' - ')[0]}</div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{cls.time.split(' - ')[1]}</div>
-                  </div>
-                  <div style={{ width: '1px', height: '36px', background: 'var(--color-border)' }}></div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 800, fontSize: '1.02rem', color: 'var(--color-text-main)' }}>{cls.subject}</span>
-                      {cls.status === 'In Progress' && (
-                        <span style={{ 
-                          fontSize: '0.7rem', fontWeight: 700, background: '#4F46E5', color: 'white', 
-                          padding: '2px 8px', borderRadius: '10px', textTransform: 'uppercase', letterSpacing: '0.4px',
-                          display: 'inline-flex', alignItems: 'center', gap: '4px'
-                        }}>
-                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ADE80', display: 'inline-block' }}></span> Live Now
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-text-main, #334155)' }}>{cls.cls}</span>
-                      <span>•</span>
-                      <span>{cls.roomNumber || 'Room 201'}</span>
-                      <span>•</span>
-                      <span>{cls.students}</span>
-                    </div>
-                  </div>
-                </div>
+            {effectiveSchedule.map((cls, i) => {
+              const isStarted = isClassTimeStarted(cls.time);
+              const isLive = isClassLiveNow(cls.time);
+              const isCompleted = cls.status === 'Completed';
+              const { startLabel } = parseTimeRangeMinutes(cls.time);
+              const cardBorderColor = isCompleted ? '#16A34A' : isLive ? '#4F46E5' : isStarted ? '#F59E0B' : '#94A3B8';
 
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  {/* View Details / Roster Button */}
-                  {cls.cls !== 'Staff Room' && (
-                    <button 
-                      onClick={() => handleOpenRoster(cls)}
-                      className="teacher-roster-pill hover-lift"
-                      style={{ 
-                        padding: '7px 14px', borderRadius: '18px', 
-                        fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      Class Roster
-                    </button>
-                  )}
+              return (
+                <div key={i} className="teacher-schedule-card" style={{ 
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                  padding: '16px 20px', 
+                  borderRadius: '14px', 
+                  borderLeft: `5px solid ${cardBorderColor}`,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                  transition: 'all 0.2s'
+                }}>
+                  <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right', minWidth: '135px' }}>
+                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{cls.time.split(' - ')[0]}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{cls.time.split(' - ')[1]}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '36px', background: 'var(--color-border)' }}></div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 800, fontSize: '1.02rem', color: 'var(--color-text-main)' }}>{cls.subject}</span>
+                        {(cls.status === 'In Progress' || (isLive && !isCompleted)) && (
+                          <span style={{ 
+                            fontSize: '0.7rem', fontWeight: 700, background: '#4F46E5', color: 'white', 
+                            padding: '2px 8px', borderRadius: '10px', textTransform: 'uppercase', letterSpacing: '0.4px',
+                            display: 'inline-flex', alignItems: 'center', gap: '4px'
+                          }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ADE80', display: 'inline-block' }}></span> Live Now
+                          </span>
+                        )}
+                        {!isStarted && !isCompleted && (
+                          <span style={{ 
+                            fontSize: '0.68rem', fontWeight: 600, background: 'rgba(241, 245, 249, 0.8)', color: '#64748B', 
+                            padding: '2px 8px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            border: '1px solid #E2E8F0'
+                          }}>
+                            <Clock size={11} /> Starts {startLabel || cls.time.split(' - ')[0]}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 600, color: 'var(--color-text-main, #334155)' }}>{cls.cls}</span>
+                        <span>•</span>
+                        <span>{cls.roomNumber || 'Room 201'}</span>
+                        <span>•</span>
+                        <span>{cls.students}</span>
+                      </div>
+                    </div>
+                  </div>
 
-                  {/* Attendance / Status Button */}
-                  <button 
-                    onClick={() => {
-                      if (cls.cls !== 'Staff Room') handleOpenAttendance(cls);
-                    }}
-                    className={`teacher-status-action-pill ${cls.status === 'In Progress' ? 'in-progress' : cls.status === 'Completed' ? 'completed' : 'upcoming'} ${cls.status === 'In Progress' ? 'hover-lift' : ''}`}
-                    style={{ 
-                      padding: '8px 18px', borderRadius: '20px', 
-                      fontSize: '0.8rem', fontWeight: 700, 
-                      cursor: cls.cls === 'Staff Room' ? 'default' : 'pointer', 
-                      transition: 'all 0.2s',
-                      display: 'flex', alignItems: 'center', gap: '6px'
-                    }} 
-                  >
-                    {cls.status === 'Completed' ? (
-                      <>
-                        <Check size={14} /> Attendance Done
-                      </>
-                    ) : cls.status === 'In Progress' ? (
-                      <>
-                        <UserCheck size={14} /> Mark Attendance
-                      </>
-                    ) : (
-                      'Upcoming'
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    {/* View Details / Roster Button */}
+                    {cls.cls !== 'Staff Room' && (
+                      <button 
+                        onClick={() => handleOpenRoster(cls)}
+                        className="teacher-roster-pill hover-lift"
+                        style={{ 
+                          padding: '7px 14px', borderRadius: '18px', 
+                          fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        Class Roster
+                      </button>
                     )}
-                  </button>
+
+                    {/* Attendance / Status Button */}
+                    {isCompleted ? (
+                      <button 
+                        disabled
+                        className="teacher-status-action-pill completed"
+                        style={{ 
+                          padding: '8px 18px', borderRadius: '20px', 
+                          fontSize: '0.8rem', fontWeight: 700, 
+                          cursor: 'default',
+                          display: 'flex', alignItems: 'center', gap: '6px'
+                        }} 
+                      >
+                        <Check size={14} /> Attendance Done
+                      </button>
+                    ) : !isStarted ? (
+                      <button 
+                        disabled
+                        className="teacher-status-action-pill upcoming disabled"
+                        title={`Attendance locked until class start time (${startLabel || cls.time.split(' - ')[0]})`}
+                        style={{ 
+                          padding: '8px 18px', borderRadius: '20px', 
+                          fontSize: '0.8rem', fontWeight: 700, 
+                          cursor: 'not-allowed',
+                          opacity: 0.7,
+                          display: 'flex', alignItems: 'center', gap: '6px'
+                        }} 
+                      >
+                        <Clock size={14} /> Upcoming
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          if (cls.cls !== 'Staff Room') handleOpenAttendance(cls);
+                        }}
+                        className="teacher-status-action-pill in-progress hover-lift"
+                        style={{ 
+                          padding: '8px 18px', borderRadius: '20px', 
+                          fontSize: '0.8rem', fontWeight: 700, 
+                          cursor: cls.cls === 'Staff Room' ? 'default' : 'pointer', 
+                          transition: 'all 0.2s',
+                          display: 'flex', alignItems: 'center', gap: '6px'
+                        }} 
+                      >
+                        <UserCheck size={14} /> Mark Attendance
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -1175,6 +1351,14 @@ const TeacherDashboard = () => {
               )}
             </div>
 
+            {/* Early attendance warning if opened for future slot today */}
+            {selectedClassForAttendance && attendanceDate === new Date().toISOString().split('T')[0] && !isClassTimeStarted(selectedClassForAttendance.time) && (
+              <div style={{ padding: '10px 24px', background: '#FEF2F2', borderTop: '1px solid #FECACA', color: '#991B1B', fontSize: '0.82rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={15} color="#DC2626" />
+                <span>Attendance is locked: The scheduled start time ({selectedClassForAttendance.time.split(' - ')[0]}) has not arrived yet.</span>
+              </div>
+            )}
+
             {/* Modal Footer */}
             <div style={{
               padding: '16px 24px', borderTop: '1px solid #e2e8f0',
@@ -1193,8 +1377,19 @@ const TeacherDashboard = () => {
                   Cancel
                 </button>
                 <button 
+                  disabled={selectedClassForAttendance && attendanceDate === new Date().toISOString().split('T')[0] && !isClassTimeStarted(selectedClassForAttendance.time)}
                   onClick={handleSaveAttendance}
-                  style={{ background: 'linear-gradient(135deg, #16A34A, #15803D)', border: 'none', padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, color: 'white', cursor: 'pointer', boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' }}
+                  style={{ 
+                    background: selectedClassForAttendance && attendanceDate === new Date().toISOString().split('T')[0] && !isClassTimeStarted(selectedClassForAttendance.time)
+                      ? '#94A3B8'
+                      : 'linear-gradient(135deg, #16A34A, #15803D)', 
+                    border: 'none', padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, 
+                    color: 'white', 
+                    cursor: selectedClassForAttendance && attendanceDate === new Date().toISOString().split('T')[0] && !isClassTimeStarted(selectedClassForAttendance.time)
+                      ? 'not-allowed'
+                      : 'pointer', 
+                    boxShadow: '0 4px 10px rgba(22, 163, 74, 0.3)' 
+                  }}
                 >
                   Save Attendance
                 </button>

@@ -5,6 +5,8 @@ const bcrypt = require('bcryptjs');
 
 const Store = require('../models/Store'); // Local Store/Tenant metadata mapping
 const User = require('../models/User');   // Local School Users (Staff, Teachers, Students, Accountants)
+const Staff = require('../models/Staff'); // School Staff & Faculty
+const Student = require('../models/Student'); // School Students
 const { PragatiTenant, PragatiUser } = require('../models/PragatiDb');
 const { protect } = require('../middleware/auth');
 
@@ -494,6 +496,74 @@ router.put('/profile', protect, async (req, res) => {
 
     const updatedUserDoc = localUser || pragatiUser;
     const resolvedUsername = updatedUserDoc.uniqueId || updatedUserDoc.username || currentUsername;
+
+    // Synchronize Staff record (Principal, Administrator, Teacher, Staff, etc.)
+    const userRole = (localUser?.role || req.user?.role || '').toLowerCase();
+    const staffQueries = [];
+    if (localUser?.referenceId) {
+      staffQueries.push({ _id: localUser.referenceId });
+    }
+    if (resolvedUsername && entityId) {
+      staffQueries.push({ entityId, portalUsername: resolvedUsername });
+      staffQueries.push({ entityId, portalUsername: new RegExp(`^${resolvedUsername}$`, 'i') });
+    }
+    if (userRole === 'principal' && entityId) {
+      staffQueries.push({
+        entityId,
+        role: 'Principal',
+        ...(localUser?.schoolSlug ? { schoolSlug: localUser.schoolSlug } : {})
+      });
+      staffQueries.push({ entityId, role: 'Principal' });
+    }
+    if (userRole === 'admin' && entityId) {
+      staffQueries.push({
+        entityId,
+        role: 'Administrator',
+        ...(localUser?.schoolSlug ? { schoolSlug: localUser.schoolSlug } : {})
+      });
+      staffQueries.push({ entityId, role: 'Administrator' });
+    }
+
+    if (staffQueries.length > 0) {
+      try {
+        const staffDoc = await Staff.findOne({ $or: staffQueries });
+        if (staffDoc) {
+          if (name !== undefined && name.trim()) staffDoc.name = name.trim();
+          if (email !== undefined && email.trim()) staffDoc.email = email.trim().toLowerCase();
+          await staffDoc.save().catch(err => {
+            console.warn('Staff profile sync warning:', err.message);
+          });
+
+          // Ensure localUser referenceId is established if it was missing
+          if (localUser && !localUser.referenceId) {
+            localUser.referenceId = staffDoc._id;
+            localUser.onModel = 'Staff';
+            await localUser.save().catch(() => null);
+          }
+        }
+      } catch (staffErr) {
+        console.warn('Staff profile sync lookup error:', staffErr.message);
+      }
+    }
+
+    // Synchronize Student record if user is a student
+    if (userRole === 'student' || localUser?.onModel === 'Student') {
+      try {
+        const studentQueries = [];
+        if (localUser?.referenceId) studentQueries.push({ _id: localUser.referenceId });
+        if (resolvedUsername && entityId) studentQueries.push({ entityId, rollNo: resolvedUsername });
+        if (studentQueries.length > 0) {
+          const studentDoc = await Student.findOne({ $or: studentQueries });
+          if (studentDoc) {
+            if (name !== undefined && name.trim()) studentDoc.name = name.trim();
+            if (email !== undefined && email.trim()) studentDoc.email = email.trim().toLowerCase();
+            await studentDoc.save().catch(() => null);
+          }
+        }
+      } catch (studErr) {
+        console.warn('Student profile sync lookup error:', studErr.message);
+      }
+    }
     const updatedUser = {
       ...req.user,
       uniqueId: resolvedUsername,

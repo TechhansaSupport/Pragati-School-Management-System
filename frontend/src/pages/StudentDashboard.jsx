@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Calendar, Clock, Award, AlertCircle, Target } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { BookOpen, Calendar, Clock, Award, AlertCircle, Target, FileText, CheckCircle2, Paperclip, X, Download, Send } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 const skillData = [
@@ -28,15 +29,32 @@ const StudentDashboard = () => {
     timetable: []
   });
 
+  const [classMaterials, setClassMaterials] = useState([]);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [activeMaterialTab, setActiveMaterialTab] = useState('all'); // 'all', 'notes', 'assignments'
+
   useEffect(() => {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
 
+    // Fetch Student Summary
     fetch('http://localhost:5000/api/dashboard/student-summary', { headers })
       .then(res => res.ok ? res.json() : null)
       .then(data => {
-        if (data) setStudentSummary(prev => ({ ...prev, ...data }));
+        if (data) {
+          setStudentSummary(prev => ({ ...prev, ...data }));
+          const targetClass = `${data.grade || 'Class 10'} - ${data.section || 'A'}`;
+          // Fetch live class materials for student's class
+          fetch(`http://localhost:5000/api/communication/class-materials?classSection=${encodeURIComponent(targetClass)}`, { headers })
+            .then(mRes => mRes.ok ? mRes.json() : null)
+            .then(mData => {
+              if (mData && Array.isArray(mData.materials)) {
+                setClassMaterials(mData.materials);
+              }
+            })
+            .catch(e => console.warn('Class materials fetch error:', e));
+        }
       })
       .catch(err => console.warn('Student summary error:', err));
   }, [tenantSlug]);
@@ -47,6 +65,12 @@ const StudentDashboard = () => {
     { time: '10:15 AM - 11:15 AM', subject: 'English', teacher: 'Mr. Kumar', status: 'Upcoming', color: '#60A5FA' },
     { time: '11:15 AM - 12:15 PM', subject: 'Computer Science', teacher: 'Ms. Gupta', status: 'Upcoming', color: '#4F46E5' }
   ];
+
+  const filteredMaterials = classMaterials.filter(m => {
+    if (activeMaterialTab === 'notes') return m.type !== 'Assignment';
+    if (activeMaterialTab === 'assignments') return m.type === 'Assignment';
+    return true;
+  });
 
   return (
     <div className="dashboard-grid">
@@ -65,7 +89,7 @@ const StudentDashboard = () => {
         <div>
           <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Hi, {studentSummary.studentName}! 🎓</h2>
           <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            You have {studentSummary.pendingTasks || 2} pending tasks and classes in {studentSummary.grade} - Section {studentSummary.section}.
+            You have {classMaterials.filter(m => m.type === 'Assignment').length} pending assignment(s) and {classMaterials.filter(m => m.type !== 'Assignment').length} study note(s) for {studentSummary.grade} - Section {studentSummary.section}.
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -81,8 +105,8 @@ const StudentDashboard = () => {
           {[
             { label: 'Attendance', value: studentSummary.attendance, icon: Clock, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
             { label: 'Avg Grade', value: studentSummary.avgGrade, icon: Award, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)' },
-            { label: 'Pending Tasks', value: studentSummary.pendingTasks, icon: BookOpen, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
-            { label: 'Next Exam', value: studentSummary.nextExam, icon: Calendar, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
+            { label: 'Class Notes', value: classMaterials.filter(m => m.type !== 'Assignment').length, icon: BookOpen, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
+            { label: 'Assignments', value: classMaterials.filter(m => m.type === 'Assignment').length, icon: Calendar, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' }
           ].map((kpi, i) => (
             <div key={i} className="card hover-lift" style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '18px 22px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', transition: 'all 0.3s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -98,8 +122,139 @@ const StudentDashboard = () => {
           ))}
         </div>
 
+        {/* Class Notes & Assignments Feed for This Student */}
+        <div className="card" style={{ marginTop: '16px' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BookOpen size={20} color="#0F766E" />
+              <div className="card-title">Class Notes & Learning Materials ({studentSummary.grade} - {studentSummary.section})</div>
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                onClick={() => setActiveMaterialTab('all')}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: activeMaterialTab === 'all' ? '#0F766E' : '#f1f5f9',
+                  color: activeMaterialTab === 'all' ? 'white' : '#64748b'
+                }}
+              >
+                All ({classMaterials.length})
+              </button>
+              <button
+                onClick={() => setActiveMaterialTab('notes')}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: activeMaterialTab === 'notes' ? '#10B981' : '#f1f5f9',
+                  color: activeMaterialTab === 'notes' ? 'white' : '#64748b'
+                }}
+              >
+                Notes ({classMaterials.filter(m => m.type !== 'Assignment').length})
+              </button>
+              <button
+                onClick={() => setActiveMaterialTab('assignments')}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: activeMaterialTab === 'assignments' ? '#4F46E5' : '#f1f5f9',
+                  color: activeMaterialTab === 'assignments' ? 'white' : '#64748b'
+                }}
+              >
+                Assignments ({classMaterials.filter(m => m.type === 'Assignment').length})
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
+            {filteredMaterials.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '0.88rem' }}>
+                No materials broadcast to your class yet. Check back soon!
+              </div>
+            ) : (
+              filteredMaterials.map((mat) => {
+                const isAsg = mat.type === 'Assignment';
+                return (
+                  <div 
+                    key={mat._id || mat.id}
+                    onClick={() => setSelectedMaterial(mat)}
+                    className="hover-lift"
+                    style={{
+                      padding: '16px 20px',
+                      background: 'var(--color-bg, #f8fafc)',
+                      borderRadius: '14px',
+                      borderLeft: `4px solid ${isAsg ? '#4F46E5' : '#10B981'}`,
+                      border: '1px solid var(--color-border, #e2e8f0)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                        <span style={{ 
+                          fontSize: '0.72rem', 
+                          fontWeight: 800, 
+                          padding: '2px 8px', 
+                          borderRadius: '10px',
+                          background: isAsg ? 'rgba(79,70,229,0.1)' : 'rgba(16,185,129,0.12)',
+                          color: isAsg ? '#4F46E5' : '#10B981'
+                        }}>
+                          {isAsg ? 'Assignment' : 'Study Notes'}
+                        </span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>
+                          {mat.subject}
+                        </span>
+                        {mat.chapter && (
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>• {mat.chapter}</span>
+                        )}
+                      </div>
+                      <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>
+                        {mat.title}
+                      </h4>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {mat.content}
+                      </p>
+                    </div>
+
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      {isAsg ? (
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#DC2626' }}>
+                          Due: {mat.dueDate ? new Date(mat.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Soon'}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0F766E' }}>
+                          {mat.attachments?.length > 0 ? `${mat.attachments.length} Attachment` : 'Read Notes'}
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                        {mat.teacherName}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
         {/* Timetable */}
-        <div className="card">
+        <div className="card" style={{ marginTop: '16px' }}>
           <div className="card-header">
             <div className="card-title">Today's Class Schedule (Live DB)</div>
             <div style={{ fontSize: '0.85rem', color: '#0F766E', fontWeight: 600, cursor: 'pointer' }}>Enrolled Subjects</div>
@@ -163,34 +318,141 @@ const StudentDashboard = () => {
           </div>
         </div>
 
-        {/* Pending Tasks */}
+        {/* Active Homework & Tasks */}
         <div className="card" style={{ flex: 1 }}>
           <div className="card-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <AlertCircle size={20} color="#F59E0B" />
-              <div className="card-title">Pending Tasks</div>
+              <div className="card-title">Class Assignments Queue</div>
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="hover-lift" style={{ padding: '16px', background: 'rgba(15, 118, 110,0.05)', border: '1px solid rgba(15, 118, 110,0.2)', borderRadius: '12px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, color: '#1e293b' }}>Mathematics Unit Test Paper</div>
-                <div style={{ background: '#0F766E', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700 }}>Due Soon</div>
+            {classMaterials.filter(m => m.type === 'Assignment').length === 0 ? (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                No pending assignments for your class!
               </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>Topic: Quadratic Equations & Trigonometry</div>
-            </div>
-            
-            <div className="hover-lift" style={{ padding: '16px', background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '12px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontWeight: 600, color: '#1e293b' }}>Physics Lab Experiment Report</div>
-                <div style={{ color: '#F59E0B', fontSize: '0.75rem', fontWeight: 700 }}>Next Week</div>
-              </div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '8px' }}>Experiment: Light Refraction & Snell's Law</div>
-            </div>
+            ) : (
+              classMaterials.filter(m => m.type === 'Assignment').map((asg) => (
+                <div 
+                  key={asg._id || asg.id} 
+                  onClick={() => setSelectedMaterial(asg)}
+                  className="hover-lift" 
+                  style={{ padding: '16px', background: 'rgba(79, 70, 229, 0.05)', border: '1px solid rgba(79, 70, 229, 0.2)', borderRadius: '12px', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.92rem' }}>{asg.title}</div>
+                    <div style={{ background: '#4F46E5', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700 }}>
+                      Max {asg.maxMarks || 50}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '6px' }}>
+                    {asg.subject} • Due {asg.dueDate ? new Date(asg.dueDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Soon'}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
-
       </div>
+
+      {/* STUDENT MATERIAL DETAIL MODAL */}
+      {selectedMaterial && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '640px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden',
+            border: '1px solid #e2e8f0', maxHeight: '85vh', display: 'flex', flexDirection: 'column'
+          }}>
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+              background: '#f8fafc', flexShrink: 0
+            }}>
+              <div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, background: selectedMaterial.type === 'Assignment' ? 'rgba(79, 70, 229, 0.1)' : 'rgba(16, 185, 129, 0.12)', color: selectedMaterial.type === 'Assignment' ? '#4F46E5' : '#10B981', padding: '3px 9px', borderRadius: '12px' }}>
+                    {selectedMaterial.type === 'Assignment' ? 'Homework Assignment' : 'Class Study Notes'}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, background: '#e2e8f0', color: '#334155', padding: '3px 9px', borderRadius: '12px' }}>
+                    {selectedMaterial.subject}
+                  </span>
+                </div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                  {selectedMaterial.title}
+                </h3>
+                {selectedMaterial.chapter && (
+                  <div style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '4px' }}>
+                    {selectedMaterial.chapter}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedMaterial(null)}
+                style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <X size={16} style={{ color: '#64748b' }} />
+              </button>
+            </div>
+
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {selectedMaterial.type === 'Assignment' && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', background: 'rgba(79, 70, 229, 0.05)', borderRadius: '12px', border: '1px solid rgba(79, 70, 229, 0.15)', fontSize: '0.85rem' }}>
+                  <div style={{ fontWeight: 700, color: '#4F46E5' }}>
+                    📅 Due: {selectedMaterial.dueDate ? new Date(selectedMaterial.dueDate).toLocaleDateString() : 'N/A'}
+                  </div>
+                  <div style={{ fontWeight: 800, color: '#0f172a' }}>
+                    ⭐ Max Score: {selectedMaterial.maxMarks || 50} Marks
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h5 style={{ margin: '0 0 8px 0', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B' }}>
+                  {selectedMaterial.type === 'Assignment' ? 'Assignment Questions & Instructions:' : 'Lecture Notes Content:'}
+                </h5>
+                <div style={{ 
+                  background: '#f8fafc', 
+                  padding: '16px 20px', 
+                  borderRadius: '12px', 
+                  border: '1px solid #e2e8f0',
+                  fontSize: '0.92rem', 
+                  lineHeight: 1.6, 
+                  color: '#1e293b', 
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {selectedMaterial.content}
+                </div>
+              </div>
+
+              {selectedMaterial.attachments && selectedMaterial.attachments.length > 0 && (
+                <div>
+                  <h5 style={{ margin: '0 0 8px 0', fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748B' }}>Attached Reference Materials:</h5>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    {selectedMaterial.attachments.map((att, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: 'white', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontSize: '0.85rem' }}>
+                        <Paperclip size={16} color="#0F766E" />
+                        <span style={{ fontWeight: 600, color: '#0f172a' }}>{att.title}</span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>({att.fileSize || '1.5 MB'})</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '12px', fontSize: '0.82rem', color: '#64748B', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Teacher: <strong>{selectedMaterial.teacherName || 'Class Faculty'}</strong></span>
+                <span>Target: <strong>{selectedMaterial.classSection}</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

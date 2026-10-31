@@ -144,6 +144,7 @@ app.use('/api/timetable', require('./routes/timetableRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/lab', require('./routes/labRoutes'));
 app.use('/api/support', require('./routes/supportRoutes'));
+app.use('/api/calendar', require('./routes/calendarRoutes'));
 
 // 404 handler
 app.use((req, res) => {

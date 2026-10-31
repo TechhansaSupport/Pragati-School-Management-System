@@ -4,10 +4,71 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   CalendarDays, Clock, Users, Building, Building2, ShieldCheck, RefreshCw, 
   FileText, CheckCircle2, AlertTriangle, Award, X, Sparkles, BookOpen, Plus,
-  Trash2, Coffee, SlidersHorizontal, Check
+  Trash2, Coffee, SlidersHorizontal, Check, LayoutGrid, RotateCcw, Edit3, Grid
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
+
+const COMMON_SUBJECTS = [
+  'Mathematics',
+  'Science',
+  'English',
+  'Hindi',
+  'Social Science',
+  'Physics',
+  'Chemistry',
+  'Biology',
+  'Computer Science',
+  'History',
+  'Geography',
+  'Economics',
+  'Physical Education',
+  'Art & Craft',
+  'Music',
+  'Environmental Studies (EVS)',
+  'Library',
+  'Moral Science',
+  'General Knowledge (GK)'
+];
+
+// Helper to ensure recess does NOT replace any academic period and is appointed as recess only
+const getAcademicPeriodLabel = (period, index, allPeriods) => {
+  if (!period) return `P${index + 1}`;
+  const isRecess = Boolean(
+    period.isRecess ||
+    period.type === 'Recess' ||
+    period.type === 'Break' ||
+    (period.periodName && period.periodName.toLowerCase().trim() === 'recess') ||
+    (period.subject && period.subject.toLowerCase().trim().startsWith('recess'))
+  );
+  if (isRecess) return 'Recess';
+
+  let academicNumber = 1;
+  if (Array.isArray(allPeriods)) {
+    for (let i = 0; i < index; i++) {
+      const p = allPeriods[i];
+      const pIsRecess = Boolean(
+        p && (
+          p.isRecess ||
+          p.type === 'Recess' ||
+          p.type === 'Break' ||
+          (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
+          (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
+        )
+      );
+      if (!pIsRecess) {
+        academicNumber++;
+      }
+    }
+  } else {
+    academicNumber = index + 1;
+  }
+
+  if (period.periodName && !/^P\d+$/i.test(period.periodName) && period.periodName !== 'New Period') {
+    return period.periodName;
+  }
+  return `P${academicNumber}`;
+};
 
 const Timetable = () => {
   const navigate = useNavigate();
@@ -43,13 +104,58 @@ const Timetable = () => {
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [timetableNotification, setTimetableNotification] = useState('');
   
+  // Master Timetable Structure for ALL Classes Modal State (Super Admin & Admin)
+  const [isMasterStructureModalOpen, setIsMasterStructureModalOpen] = useState(false);
+  const [isApplyingMasterStructure, setIsApplyingMasterStructure] = useState(false);
+  const [masterStructureConfig, setMasterStructureConfig] = useState({
+    periodsPerDay: 8,
+    startTime: '08:30',
+    periodDurationMinutes: 50,
+    includeSaturday: false,
+    includeRecess: true,
+    recessAfterPeriod: 4,
+    recessDurationMinutes: 20,
+    applyMode: 'blank', // 'blank' | 'sync_times' | 'auto'
+    targetClasses: 'all', // 'all' | 'custom'
+    selectedClassesList: []
+  });
+
   // Quick Setup Class Modal State
   const [isSetupClassModalOpen, setIsSetupClassModalOpen] = useState(false);
   const [newClassSetup, setNewClassSetup] = useState({
     className: 'Class 6',
     section: 'A',
-    academicSession: '2026-2027'
+    academicSession: '2026-2027',
+    mode: 'scratch',
+    periodsPerDay: 8,
+    startTime: '08:30',
+    periodDurationMinutes: 50,
+    includeSaturday: false,
+    includeRecess: true,
+    recessAfterPeriod: 4,
+    recessDurationMinutes: 20,
+    blankSlots: true
   });
+
+  // Reset to Scratch Modal State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetOptions, setResetOptions] = useState({
+    resetType: 'blank_slots', // 'blank_slots' | 'clear_all'
+    periodsPerDay: 8,
+    startTime: '08:30',
+    periodDurationMinutes: 50,
+    includeSaturday: false,
+    includeRecess: true,
+    recessAfterPeriod: 4,
+    recessDurationMinutes: 20
+  });
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Working Days & Off Days State
+  const [offDays, setOffDays] = useState(['Sunday']);
+  const [isWorkingDaysModalOpen, setIsWorkingDaysModalOpen] = useState(false);
+  const [workingDaysDraftOffDays, setWorkingDaysDraftOffDays] = useState(['Sunday']);
+  const [isSavingWorkingDays, setIsSavingWorkingDays] = useState(false);
 
   // Add Period Modal State (Super Admin & Admin)
   const [isAddPeriodModalOpen, setIsAddPeriodModalOpen] = useState(false);
@@ -82,7 +188,7 @@ const Timetable = () => {
       periodName: 'P1',
       startTime: '08:30',
       endTime: '09:20',
-      subject: 'Mathematics',
+      subject: '',
       teacher: '',
       room: 'Room 201',
       type: 'Lecture',
@@ -140,8 +246,41 @@ const Timetable = () => {
           const cData = await classesRes.json();
           const list = cData.classes || [];
           setClassesList(list);
-          if (list.length > 0) {
-            setSelectedTimetableClass(`${list[0].className} - ${list[0].section}`);
+          
+          // Check URL query parameters for pre-selected class from Academics or navigation
+          const searchParams = new URLSearchParams(window.location.search);
+          const qClass = searchParams.get('class');
+          const qSection = searchParams.get('section');
+          const qAction = searchParams.get('action');
+
+          if (qAction === 'master-structure') {
+            setIsMasterStructureModalOpen(true);
+          }
+
+          let initialClass = '';
+          if (qClass) {
+            const cleanQClass = qClass.trim().toLowerCase();
+            const cleanQSection = (qSection || '').trim().toLowerCase();
+            const matched = list.find(c => {
+              const fullFormatted = `${c.className} - ${c.section}`.toLowerCase();
+              if (cleanQSection) {
+                return c.className.toLowerCase() === cleanQClass && c.section.toLowerCase() === cleanQSection;
+              }
+              return c.className.toLowerCase() === cleanQClass || fullFormatted === cleanQClass;
+            });
+            if (matched) {
+              initialClass = `${matched.className} - ${matched.section}`;
+            } else if (cleanQSection) {
+              initialClass = `${qClass} - ${qSection}`;
+            } else {
+              initialClass = qClass;
+            }
+          } else if (list.length > 0) {
+            initialClass = `${list[0].className} - ${list[0].section}`;
+          }
+
+          if (initialClass) {
+            setSelectedTimetableClass(initialClass);
           }
         }
         if (teachersRes.ok) {
@@ -169,8 +308,15 @@ const Timetable = () => {
         const data = await res.json();
         if (data.timetable && data.timetable.schedule) {
           setTimetableSchedule(data.timetable.schedule);
+          if (Array.isArray(data.timetable.offDays)) {
+            setOffDays(data.timetable.offDays);
+          } else {
+            const satPeriods = data.timetable.schedule?.Saturday || [];
+            setOffDays(satPeriods.length === 0 ? ['Saturday', 'Sunday'] : ['Sunday']);
+          }
         } else {
           setTimetableSchedule({});
+          setOffDays(['Sunday']);
         }
       }
     } catch (err) {
@@ -210,6 +356,91 @@ const Timetable = () => {
     } finally {
       setIsValidatingConflicts(false);
       setTimeout(() => setTimetableNotification(''), 4500);
+    }
+  };
+
+  // Helper to calculate live slots preview for the master structure modal
+  const calculateMasterSlotsPreview = (config) => {
+    const [startH, startM] = (config.startTime || '08:30').split(':').map(Number);
+    let curMins = (isNaN(startH) ? 8 : startH) * 60 + (isNaN(startM) ? 30 : startM);
+    const formatTime = (mins) => {
+      const h = Math.floor(mins / 60) % 24;
+      const m = mins % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+    const count = Number(config.periodsPerDay) || 8;
+    const dur = Number(config.periodDurationMinutes) || 50;
+    const rDur = Number(config.recessDurationMinutes) || 20;
+    const rAfter = Number(config.recessAfterPeriod) || 4;
+
+    const slots = [];
+    for (let i = 1; i <= count; i++) {
+      const s = formatTime(curMins);
+      curMins += dur;
+      const e = formatTime(curMins);
+      slots.push({ name: `P${i}`, periodNumber: i, start: s, end: e, isRecess: false });
+      if (config.includeRecess && i === rAfter) {
+        const rs = formatTime(curMins);
+        curMins += rDur;
+        const re = formatTime(curMins);
+        slots.push({ name: 'Recess', periodNumber: i, start: rs, end: re, isRecess: true });
+      }
+    }
+    return slots;
+  };
+
+  // Handle Apply Master Timetable Structure to ALL classes at once
+  const handleApplyMasterStructure = async () => {
+    if (!canSetup) return;
+    setIsApplyingMasterStructure(true);
+    try {
+      let targetClassesPayload = 'all';
+      if (masterStructureConfig.targetClasses !== 'all') {
+        targetClassesPayload = masterStructureConfig.selectedClassesList.map(item => {
+          const parts = item.split(' - ');
+          return {
+            className: parts[0]?.trim(),
+            section: parts[1]?.trim() || 'A'
+          };
+        });
+      }
+
+      const res = await fetch(`${API_BASE}/timetable/structure-all`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          periodsPerDay: Number(masterStructureConfig.periodsPerDay) || 8,
+          startTime: masterStructureConfig.startTime || '08:30',
+          periodDurationMinutes: Number(masterStructureConfig.periodDurationMinutes) || 50,
+          includeSaturday: Boolean(masterStructureConfig.includeSaturday),
+          includeRecess: Boolean(masterStructureConfig.includeRecess),
+          recessAfterPeriod: Number(masterStructureConfig.recessAfterPeriod) || 4,
+          recessDurationMinutes: Number(masterStructureConfig.recessDurationMinutes) || 20,
+          applyMode: masterStructureConfig.applyMode,
+          targetClasses: targetClassesPayload,
+          schoolSlug: effectiveSchoolSlug
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTimetableNotification(`🏛️ Master Timetable Structure (${data.periodsPerDay || 8} periods + Recess) applied across all ${data.totalClasses || ''} classes! You can now assign periods separately for each class.`);
+        setIsMasterStructureModalOpen(false);
+        // Refresh current selected class schedule
+        if (selectedTimetableClass) {
+          const parts = selectedTimetableClass.split(' - ');
+          fetchLiveTimetable(parts[0], parts[1]);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTimetableNotification(`⚠️ ${err.message || 'Error applying master structure'}`);
+      }
+    } catch (err) {
+      console.error('Error applying master timetable structure:', err);
+      setTimetableNotification('⚠️ Network error applying master structure');
+    } finally {
+      setIsApplyingMasterStructure(false);
+      setTimeout(() => setTimetableNotification(''), 6000);
     }
   };
 
@@ -259,28 +490,52 @@ const Timetable = () => {
     if (!canSetup) return;
     setIsAutoGenerating(true);
     try {
-      const res = await fetch(`${API_BASE}/timetable/auto-generate`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          className: newClassSetup.className.trim(),
-          section: newClassSetup.section.trim().toUpperCase(),
-          schoolSlug: effectiveSchoolSlug
-        })
-      });
+      const cleanClass = newClassSetup.className.trim();
+      const cleanSection = newClassSetup.section.trim().toUpperCase();
+
+      let res;
+      if (newClassSetup.mode === 'scratch') {
+        res = await fetch(`${API_BASE}/timetable/reset`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            className: cleanClass,
+            section: cleanSection,
+            periodsPerDay: Number(newClassSetup.periodsPerDay) || 8,
+            startTime: newClassSetup.startTime || '08:30',
+            periodDurationMinutes: Number(newClassSetup.periodDurationMinutes) || 50,
+            includeSaturday: Boolean(newClassSetup.includeSaturday),
+            includeRecess: Boolean(newClassSetup.includeRecess),
+            recessAfterPeriod: Number(newClassSetup.recessAfterPeriod) || 4,
+            recessDurationMinutes: Number(newClassSetup.recessDurationMinutes) || 20,
+            blankSlots: Boolean(newClassSetup.blankSlots),
+            schoolSlug: effectiveSchoolSlug
+          })
+        });
+      } else {
+        res = await fetch(`${API_BASE}/timetable/auto-generate`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            className: cleanClass,
+            section: cleanSection,
+            schoolSlug: effectiveSchoolSlug
+          })
+        });
+      }
 
       if (res.ok) {
         const data = await res.json();
-        const formatted = `${newClassSetup.className.trim()} - ${newClassSetup.section.trim().toUpperCase()}`;
+        const formatted = `${cleanClass} - ${cleanSection}`;
         if (!classesList.some(c => `${c.className} - ${c.section}` === formatted)) {
-          setClassesList(prev => [...prev, { className: newClassSetup.className, section: newClassSetup.section, _id: Date.now().toString() }]);
+          setClassesList(prev => [...prev, { className: cleanClass, section: cleanSection, _id: Date.now().toString() }]);
         }
         setSelectedTimetableClass(formatted);
         if (data.timetable?.schedule) {
           setTimetableSchedule(data.timetable.schedule);
         }
         setIsSetupClassModalOpen(false);
-        setTimetableNotification(`✅ Successfully initialized timetable for ${formatted}!`);
+        setTimetableNotification(`✅ Timetable initialized for ${formatted}!`);
         setTimeout(() => setTimetableNotification(''), 4500);
       } else {
         const err = await res.json().catch(() => ({}));
@@ -378,6 +633,157 @@ const Timetable = () => {
     }
   };
 
+  const handleResetTimetable = async () => {
+    if (!canSetup) return;
+    setIsResetting(true);
+    try {
+      const parts = selectedTimetableClass.split(' - ');
+      const className = parts[0] || selectedTimetableClass;
+      const section = parts[1] || 'A';
+
+      if (resetOptions.resetType === 'clear_all') {
+        const res = await fetch(`${API_BASE}/timetable`, {
+          method: 'DELETE',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            className,
+            section,
+            clearOnly: true,
+            schoolSlug: effectiveSchoolSlug
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.timetable?.schedule) {
+            setTimetableSchedule(data.timetable.schedule);
+          }
+          setIsResetModalOpen(false);
+          setTimetableNotification(`✅ Timetable wiped to 0 periods for ${selectedTimetableClass}.`);
+        }
+      } else {
+        const res = await fetch(`${API_BASE}/timetable/reset`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({
+            className,
+            section,
+            periodsPerDay: Number(resetOptions.periodsPerDay) || 8,
+            startTime: resetOptions.startTime || '08:30',
+            periodDurationMinutes: Number(resetOptions.periodDurationMinutes) || 50,
+            includeSaturday: Boolean(resetOptions.includeSaturday),
+            includeRecess: Boolean(resetOptions.includeRecess),
+            recessAfterPeriod: Number(resetOptions.recessAfterPeriod) || 4,
+            recessDurationMinutes: Number(resetOptions.recessDurationMinutes) || 20,
+            blankSlots: true,
+            schoolSlug: effectiveSchoolSlug
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.timetable?.schedule) {
+            setTimetableSchedule(data.timetable.schedule);
+          }
+          if (Array.isArray(data.timetable?.offDays)) {
+            setOffDays(data.timetable.offDays);
+          }
+          setIsResetModalOpen(false);
+          setTimetableNotification(`✅ Timetable reset to clean blank matrix from scratch for ${selectedTimetableClass}!`);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          setTimetableNotification(`⚠️ ${err.message || 'Failed to reset timetable'}`);
+        }
+      }
+    } catch (err) {
+      setTimetableNotification('⚠️ Network error resetting timetable');
+    } finally {
+      setIsResetting(false);
+      setTimeout(() => setTimetableNotification(''), 4500);
+    }
+  };
+
+  const handleOpenWorkingDaysModal = () => {
+    setWorkingDaysDraftOffDays([...offDays]);
+    setIsWorkingDaysModalOpen(true);
+  };
+
+  const handleToggleDayStatus = async (day, targetIsOff) => {
+    if (!canSetup) return;
+    const parts = selectedTimetableClass.split(' - ');
+    const className = parts[0] || selectedTimetableClass;
+    const section = parts[1] || 'A';
+
+    try {
+      const res = await fetch(`${API_BASE}/timetable/toggle-day`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          className,
+          section,
+          day,
+          isOff: targetIsOff,
+          schoolSlug: effectiveSchoolSlug
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.timetable?.schedule) {
+          setTimetableSchedule(data.timetable.schedule);
+        }
+        if (Array.isArray(data.timetable?.offDays)) {
+          setOffDays(data.timetable.offDays);
+        }
+        setTimetableNotification(
+          targetIsOff
+            ? `🏖️ ${day} has been marked as an OFF DAY (Holiday) for ${selectedTimetableClass}!`
+            : `✅ ${day} has been enabled as an ACTIVE WORKING DAY (ON) for ${selectedTimetableClass}!`
+        );
+      }
+    } catch (err) {
+      console.error('Error toggling day status:', err);
+    } finally {
+      setTimeout(() => setTimetableNotification(''), 4000);
+    }
+  };
+
+  const handleSaveWorkingDays = async () => {
+    if (!canSetup) return;
+    setIsSavingWorkingDays(true);
+    try {
+      const parts = selectedTimetableClass.split(' - ');
+      const className = parts[0] || selectedTimetableClass;
+      const section = parts[1] || 'A';
+
+      const res = await fetch(`${API_BASE}/timetable/working-days`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          className,
+          section,
+          offDays: workingDaysDraftOffDays,
+          schoolSlug: effectiveSchoolSlug
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.timetable?.schedule) {
+          setTimetableSchedule(data.timetable.schedule);
+        }
+        if (Array.isArray(data.timetable?.offDays)) {
+          setOffDays(data.timetable.offDays);
+        }
+        setIsWorkingDaysModalOpen(false);
+        setTimetableNotification(`✅ Working Days and Off Days updated successfully for ${selectedTimetableClass}!`);
+      }
+    } catch (err) {
+      console.error('Error saving working days:', err);
+    } finally {
+      setIsSavingWorkingDays(false);
+      setTimeout(() => setTimetableNotification(''), 4500);
+    }
+  };
+
   const handleDeletePeriod = async (deleteFromAllDays = false) => {
     if (!canSetup || !editPeriodModal.open) return;
     const periodName = editPeriodModal.data.periodName || `P${editPeriodModal.periodIndex + 1}`;
@@ -437,11 +843,13 @@ const Timetable = () => {
       template = [
         { periodNumber: 1, periodName: 'P1', startTime: '08:30', endTime: '09:20', type: 'Lecture', isRecess: false },
         { periodNumber: 2, periodName: 'P2', startTime: '09:20', endTime: '10:10', type: 'Lecture', isRecess: false },
-        { periodNumber: 3, periodName: 'Recess', startTime: '10:10', endTime: '10:30', type: 'Recess', isRecess: true },
-        { periodNumber: 4, periodName: 'P3', startTime: '10:30', endTime: '11:20', type: 'Lecture', isRecess: false },
-        { periodNumber: 5, periodName: 'P4', startTime: '11:20', endTime: '12:10', type: 'Lecture', isRecess: false },
-        { periodNumber: 6, periodName: 'P5', startTime: '12:45', endTime: '01:35', type: 'Lecture', isRecess: false },
-        { periodNumber: 7, periodName: 'P6', startTime: '01:35', endTime: '02:25', type: 'Lecture', isRecess: false }
+        { periodNumber: 3, periodName: 'P3', startTime: '10:10', endTime: '11:00', type: 'Lecture', isRecess: false },
+        { periodNumber: 4, periodName: 'P4', startTime: '11:00', endTime: '11:50', type: 'Lecture', isRecess: false },
+        { periodNumber: 4, periodName: 'Recess', startTime: '11:50', endTime: '12:10', type: 'Recess', isRecess: true },
+        { periodNumber: 5, periodName: 'P5', startTime: '12:10', endTime: '13:00', type: 'Lecture', isRecess: false },
+        { periodNumber: 6, periodName: 'P6', startTime: '13:00', endTime: '13:50', type: 'Lecture', isRecess: false },
+        { periodNumber: 7, periodName: 'P7', startTime: '13:50', endTime: '14:40', type: 'Lecture', isRecess: false },
+        { periodNumber: 8, periodName: 'P8', startTime: '14:40', endTime: '15:30', type: 'Lecture', isRecess: false }
       ];
     } else {
       template = template.map((p, idx) => ({
@@ -518,10 +926,11 @@ const Timetable = () => {
           periodData: {
             ...editPeriodModal.data,
             isRecess: isRecess,
+            periodName: isRecess ? 'Recess' : (editPeriodModal.data.periodName || 'P1'),
             type: isRecess ? (editPeriodModal.data.type === 'Break' ? 'Break' : 'Recess') : (editPeriodModal.data.type || 'Lecture'),
-            subject: isRecess ? (editPeriodModal.data.subject || 'Recess / Break') : editPeriodModal.data.subject,
-            teacher: isRecess ? 'Duty Staff' : editPeriodModal.data.teacher,
-            room: isRecess ? 'Campus / Cafeteria' : editPeriodModal.data.room,
+            subject: isRecess ? (editPeriodModal.data.subject?.trim() || 'Recess / Break') : editPeriodModal.data.subject,
+            teacher: isRecess ? (editPeriodModal.data.teacher?.trim() || 'Duty Staff') : editPeriodModal.data.teacher,
+            room: isRecess ? (editPeriodModal.data.room?.trim() || 'Campus / Cafeteria') : editPeriodModal.data.room,
           },
           schoolSlug: effectiveSchoolSlug
         })
@@ -546,6 +955,10 @@ const Timetable = () => {
     }
   };
 
+  const isDayOff = (day) => {
+    return offDays.includes(day);
+  };
+
   // Determine dynamic master periods template across days
   const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   let masterPeriods = [];
@@ -556,16 +969,19 @@ const Timetable = () => {
   }
   if (masterPeriods.length === 0) {
     masterPeriods = [
-      { periodNumber: 1, periodName: 'P1', startTime: '08:30', endTime: '09:20' },
-      { periodNumber: 2, periodName: 'P2', startTime: '09:20', endTime: '10:10' },
-      { periodNumber: 3, periodName: 'P3', startTime: '10:25', endTime: '11:15' },
-      { periodNumber: 4, periodName: 'P4', startTime: '11:15', endTime: '12:05' },
-      { periodNumber: 5, periodName: 'P5', startTime: '12:45', endTime: '01:35' },
-      { periodNumber: 6, periodName: 'P6', startTime: '01:35', endTime: '02:25' }
+      { periodNumber: 1, periodName: 'P1', startTime: '08:30', endTime: '09:20', isRecess: false },
+      { periodNumber: 2, periodName: 'P2', startTime: '09:20', endTime: '10:10', isRecess: false },
+      { periodNumber: 3, periodName: 'P3', startTime: '10:10', endTime: '11:00', isRecess: false },
+      { periodNumber: 4, periodName: 'P4', startTime: '11:00', endTime: '11:50', isRecess: false },
+      { periodNumber: 4, periodName: 'Recess', startTime: '11:50', endTime: '12:10', isRecess: true, type: 'Recess' },
+      { periodNumber: 5, periodName: 'P5', startTime: '12:10', endTime: '13:00', isRecess: false },
+      { periodNumber: 6, periodName: 'P6', startTime: '13:00', endTime: '13:50', isRecess: false },
+      { periodNumber: 7, periodName: 'P7', startTime: '13:50', endTime: '14:40', isRecess: false },
+      { periodNumber: 8, periodName: 'P8', startTime: '14:40', endTime: '15:30', isRecess: false }
     ];
   }
   const maxPeriodCount = Math.max(masterPeriods.length, 1);
-  const gridColumnsTemplate = `110px repeat(${maxPeriodCount}, minmax(132px, 1fr))`;
+  const gridColumnsTemplate = `minmax(78px, 94px) repeat(${maxPeriodCount}, minmax(0, 1fr))`;
 
   const formatSlugToTitle = (slug) => {
     if (!slug) return '';
@@ -685,11 +1101,6 @@ const Timetable = () => {
           <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
             Master Timetable & Period Architecture
           </h1>
-          <div style={{ fontSize: '0.84rem', opacity: 0.85, marginTop: '4px' }}>
-            {isSuperAdmin 
-              ? `Governing schedule matrix across all campuses. Target Campus: ${schoolsList.find(s => s.slug === effectiveSchoolSlug)?.name || effectiveSchoolSlug}` 
-              : `Operating branch schedule matrix for ${effectiveSchoolSlug}`}
-          </div>
         </div>
 
         {/* Right Header Area: Campus Selector (SuperAdmin) & Nav Button */}
@@ -801,6 +1212,38 @@ const Timetable = () => {
 
           {canSetup && (
             <>
+              {/* PRIMARY MASTER STRUCTURE BUTTON FOR ALL CLASSES AT ONCE */}
+              <button
+                onClick={() => {
+                  const allNames = classesList.map(c => `${c.className} - ${c.section}`);
+                  setMasterStructureConfig(prev => ({
+                    ...prev,
+                    targetClasses: 'all',
+                    selectedClassesList: allNames
+                  }));
+                  setIsMasterStructureModalOpen(true);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '7px',
+                  padding: '9px 18px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4338ca 100%)',
+                  color: 'white',
+                  fontWeight: 800,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(55, 48, 163, 0.35)',
+                  transition: 'all 0.15s'
+                }}
+                title="Super Admin & Admin: Structure the timetable for all school classes at once (8 periods + dedicated recess), then assign periods separately"
+              >
+                <Sparkles size={16} color="#a5b4fc" />
+                <span>Structure All Classes (Master)</span>
+              </button>
+
               <button
                 onClick={() => handleOpenAddPeriodModal()}
                 style={{
@@ -868,24 +1311,45 @@ const Timetable = () => {
               </button>
 
               <button
-                onClick={() => setIsSetupClassModalOpen(true)}
+                onClick={() => setIsResetModalOpen(true)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   padding: '9px 16px',
                   borderRadius: '10px',
-                  border: '1px solid #c7d2fe',
-                  background: '#eef2ff',
-                  color: '#4338ca',
+                  border: '1.5px solid #fecaca',
+                  background: '#fff1f2',
+                  color: '#e11d48',
                   fontWeight: 700,
                   fontSize: '0.85rem',
                   cursor: 'pointer'
                 }}
-                title="Configure and initialize timetable for a new class"
+                title="Reset this class' schedule to blank scratch matrix"
               >
-                <Plus size={15} />
-                <span>Setup Class Schedule</span>
+                <RotateCcw size={14} color="#e11d48" />
+                <span>Reset to Scratch</span>
+              </button>
+
+              <button
+                onClick={handleOpenWorkingDaysModal}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '9px 16px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #fed7aa',
+                  background: '#fff7ed',
+                  color: '#c2410c',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+                title="Manage instructional working days & off days (e.g. make Saturday or any day ON or OFF)"
+              >
+                <CalendarDays size={15} color="#ea580c" />
+                <span>Days ON / OFF</span>
               </button>
             </>
           )}
@@ -965,7 +1429,7 @@ const Timetable = () => {
           <div>
             <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Weekly Periods Quota</div>
             <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a' }}>
-              30 / 30 Periods (100%)
+              {masterPeriods.filter(p => !p.isRecess && p.type !== 'Recess').length * 5} Periods / Week
             </div>
           </div>
         </div>
@@ -986,42 +1450,117 @@ const Timetable = () => {
       {/* 6-DAY INTERACTIVE TIMETABLE MATRIX GRID */}
       <div className="chart-card timetable-main-card" style={{ padding: '24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
         
+        {/* CLASS SELECTOR RIBBON: ASSIGN PERIODS SEPARATELY FOR EACH CLASS */}
+        <div className="no-print" style={{
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          border: '1.5px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '12px 16px',
+          marginBottom: '18px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '6px' }}>
+              <BookOpen size={16} color="#4f46e5" />
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                Select Class to Assign Periods:
+              </span>
+            </div>
+            
+            {(classesList.length > 0 ? classesList : [
+              { className: 'Class 10', section: 'A' },
+              { className: 'Class 11', section: 'SCIENCE' },
+              { className: 'Class 9', section: 'B' },
+              { className: 'Class 8', section: 'A' }
+            ]).map(c => {
+              const classKey = `${c.className} - ${c.section}`;
+              const isSelected = selectedTimetableClass.toLowerCase() === classKey.toLowerCase();
+              return (
+                <button
+                  key={c._id || classKey}
+                  type="button"
+                  onClick={() => setSelectedTimetableClass(classKey)}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: '8px',
+                    border: isSelected ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+                    background: isSelected ? 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)' : 'white',
+                    color: isSelected ? 'white' : '#334155',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: isSelected ? '0 3px 10px rgba(79, 70, 229, 0.3)' : '0 1px 3px rgba(0,0,0,0.04)',
+                    transition: 'all 0.15s'
+                  }}
+                  title={`View and assign period schedule for ${classKey}`}
+                >
+                  <span>🏫 {c.className} - {c.section}</span>
+                  {isSelected && (
+                    <span style={{ fontSize: '0.62rem', background: 'rgba(255, 255, 255, 0.25)', padding: '1px 5px', borderRadius: '4px' }}>
+                      Active Class
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Day Filter Tabs & Scrolling Helper */}
         <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginRight: '6px', textTransform: 'uppercase' }}>
               View:
             </span>
-            {['ALL', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setSelectedDayTab(d)}
-                style={{
-                  padding: '6px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid',
-                  borderColor: selectedDayTab === d ? '#4F46E5' : '#e2e8f0',
-                  background: selectedDayTab === d ? '#4F46E5' : '#f8fafc',
-                  color: selectedDayTab === d ? 'white' : '#475569',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                  boxShadow: selectedDayTab === d ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
-                  transition: 'all 0.15s'
-                }}
-              >
-                {d === 'ALL' ? '📅 Weekly Overview' : d}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ fontSize: '0.75rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>
-              {canSetup 
-                ? '💡 Super Admin & Admin Authority: Click any period card to modify subject, faculty, or classroom allocation' 
-                : '💡 Read-Only View: Timetable setup and period allocation are managed by Super Admin and Admin'}
-            </span>
+            {['ALL', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((d) => {
+              const isOff = d !== 'ALL' && isDayOff(d);
+              const isSelected = selectedDayTab === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setSelectedDayTab(d)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid',
+                    borderColor: isSelected ? '#4F46E5' : isOff ? '#fca5a5' : '#e2e8f0',
+                    background: isSelected ? '#4F46E5' : isOff ? '#fff1f2' : '#f8fafc',
+                    color: isSelected ? 'white' : isOff ? '#be123c' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    boxShadow: isSelected ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <span>{d === 'ALL' ? '📅 Weekly Overview' : d}</span>
+                  {isOff && (
+                    <span style={{
+                      fontSize: '0.62rem',
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      background: isSelected ? 'rgba(255, 255, 255, 0.3)' : '#fee2e2',
+                      color: isSelected ? 'white' : '#991b1b',
+                      fontWeight: 800,
+                      textTransform: 'uppercase'
+                    }}>
+                      OFF
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1057,61 +1596,78 @@ const Timetable = () => {
             </div>
             <div className="print-info-item">
               <span className="info-lbl">ALLOCATED PERIODS:</span>
-              <span className="info-val">{masterPeriods.filter(p => !p.isRecess && p.type !== 'Recess').length * 6} Periods / Week (100% Coverage)</span>
+              <span className="info-val">{masterPeriods.filter(p => !p.isRecess && p.type !== 'Recess').length * 5} Periods / Week (100% Coverage)</span>
             </div>
           </div>
         </div>
 
-        {/* Scrollable Matrix Area */}
-        <div className="timetable-scroll-container timetable-print-container" style={{ overflowX: 'auto', paddingBottom: '8px', '--period-count': maxPeriodCount }}>
-          <div className="timetable-inner-matrix" style={{ minWidth: '880px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Full-Width 8-Period Timetable Grid Container (No Horizontal Scrollbar) */}
+        <div className="timetable-scroll-container timetable-print-container" style={{ width: '100%', overflowX: 'hidden', paddingBottom: '4px', '--period-count': maxPeriodCount }}>
+          <div className="timetable-inner-matrix" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             
             {/* Period Column Headers */}
             <div className="timetable-header-row" style={{
               display: 'grid',
               gridTemplateColumns: gridColumnsTemplate,
-              gap: '10px',
+              gap: '6px',
               paddingBottom: '2px'
             }}>
-              <div style={{
-                background: '#f1f5f9',
-                borderRadius: '10px',
-                padding: '8px 10px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '0.75rem',
-                color: '#475569',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Day
+              {/* Corner "Day" Header */}
+              <div 
+                className="timetable-corner-header"
+                style={{
+                  background: '#f1f5f9',
+                  borderRadius: '10px',
+                  padding: '6px 4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '0.74rem',
+                  color: '#475569',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  position: 'sticky',
+                  left: 0,
+                  zIndex: 4,
+                  boxShadow: '2px 0 6px rgba(0,0,0,0.03)'
+                }}
+              >
+                <span style={{ whiteSpace: 'nowrap' }}>Day</span>
               </div>
 
               {masterPeriods.map((ph, idx) => {
-                const isRecessHeader = ph.isRecess || ph.type === 'Recess' || ph.type === 'Break';
+                const isRecessHeader = Boolean(
+                  ph.isRecess ||
+                  ph.type === 'Recess' ||
+                  ph.type === 'Break' ||
+                  (ph.periodName && ph.periodName.toLowerCase().trim() === 'recess') ||
+                  (ph.subject && ph.subject.toLowerCase().trim().startsWith('recess'))
+                );
+                const periodLabel = getAcademicPeriodLabel(ph, idx, masterPeriods);
                 return (
                   <div key={idx} style={{
                     background: isRecessHeader ? '#fffbeb' : '#f8fafc',
                     border: `1.5px ${isRecessHeader ? 'dashed #f59e0b' : 'solid #e2e8f0'}`,
                     borderRadius: '10px',
-                    padding: '8px 10px',
-                    textAlign: 'center'
+                    padding: '6px 4px',
+                    textAlign: 'center',
+                    minWidth: 0
                   }}>
                     <div style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '5px',
-                      fontSize: '0.82rem',
+                      gap: '4px',
+                      fontSize: '0.76rem',
                       fontWeight: 800,
-                      color: isRecessHeader ? '#b45309' : '#1e3a8a'
+                      color: isRecessHeader ? '#b45309' : '#1e3a8a',
+                      whiteSpace: 'nowrap'
                     }}>
-                      {isRecessHeader && <Coffee size={13} color="#d97706" />}
-                      <span>{ph.periodName || `P${idx + 1}`}</span>
+                      {isRecessHeader && <Coffee size={12} color="#d97706" />}
+                      <span>{periodLabel}</span>
                     </div>
-                    <div style={{ fontSize: '0.7rem', color: isRecessHeader ? '#92400e' : '#64748b', fontWeight: 600, marginTop: '2px' }}>
+                    <div style={{ fontSize: '0.64rem', color: isRecessHeader ? '#92400e' : '#64748b', fontWeight: 600, marginTop: '1px', whiteSpace: 'nowrap' }}>
                       {ph.startTime} - {ph.endTime}
                     </div>
                   </div>
@@ -1125,101 +1681,443 @@ const Timetable = () => {
                 <div>Loading live timetable schedule from MongoDB...</div>
               </div>
             ) : Object.keys(timetableSchedule).length === 0 ? (
-              <div style={{ padding: '50px', textAlign: 'center', color: '#64748b' }}>
-                <p style={{ margin: '0 0 12px', fontWeight: 700 }}>No timetable schedule saved yet for {selectedTimetableClass}.</p>
-                <button
-                  onClick={handleAutoGenerateTimetable}
-                  style={{
-                    background: '#4F46E5', color: 'white', border: 'none', padding: '10px 20px',
-                    borderRadius: '10px', fontWeight: 700, cursor: 'pointer'
-                  }}
-                >
-                  Auto-Generate Schedule for {selectedTimetableClass}
-                </button>
+              <div style={{ padding: '50px 20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '16px', border: '2px dashed #cbd5e1' }}>
+                <p style={{ margin: '0 0 8px', fontWeight: 800, fontSize: '1.1rem', color: '#1e3a8a' }}>
+                  No timetable schedule exists yet for {selectedTimetableClass}.
+                </p>
+                <p style={{ margin: '0 0 20px', fontSize: '0.88rem', color: '#64748b' }}>
+                  Structure all classes at once or build this class' schedule:
+                </p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      const allNames = classesList.map(c => `${c.className} - ${c.section}`);
+                      setMasterStructureConfig(prev => ({
+                        ...prev,
+                        targetClasses: 'all',
+                        selectedClassesList: allNames
+                      }));
+                      setIsMasterStructureModalOpen(true);
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4338ca 100%)',
+                      color: 'white', border: 'none', padding: '11px 22px',
+                      borderRadius: '10px', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      boxShadow: '0 4px 14px rgba(55, 48, 163, 0.35)'
+                    }}
+                  >
+                    <Sparkles size={16} /> Structure All Classes at Once
+                  </button>
+                  <button
+                    onClick={handleAutoGenerateTimetable}
+                    disabled={isAutoGenerating}
+                    style={{
+                      background: '#4F46E5', color: 'white', border: 'none', padding: '11px 22px',
+                      borderRadius: '10px', fontWeight: 700, fontSize: '0.88rem',
+                      cursor: isAutoGenerating ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
+                    }}
+                  >
+                    <RefreshCw size={15} className={isAutoGenerating ? 'spin' : ''} />
+                    Auto-Generate Single Class
+                  </button>
+                </div>
               </div>
             ) : (
               /* Filtered Day Rows */
-              Object.entries(timetableSchedule)
-                .filter(([day]) => selectedDayTab === 'ALL' || selectedDayTab === day)
-                .filter(([day]) => day !== 'Saturday' || (timetableSchedule[day] && timetableSchedule[day].length > 0))
-                .map(([day, periods]) => (
-                  <div key={day} className="timetable-grid-row" style={{ display: 'grid', gridTemplateColumns: gridColumnsTemplate, gap: '10px', alignItems: 'stretch' }}>
-                    
-                    {/* Sticky Day Label Header */}
-                    <div className="timetable-day-header" style={{ 
-                      background: 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)', 
-                      color: 'white', 
-                      borderRadius: '12px', 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      padding: '12px 6px',
-                      fontWeight: 800,
-                      fontSize: '0.92rem',
-                      position: 'sticky',
-                      left: 0,
-                      zIndex: 3,
-                      boxShadow: '2px 0 8px rgba(0,0,0,0.08)'
-                    }}>
-                      <span className="day-name">{day}</span>
-                      <span className="day-periods-count" style={{ fontSize: '0.68rem', opacity: 0.8, fontWeight: 500, marginTop: '2px' }}>
-                        {periods?.length || 0} Periods
-                      </span>
-                      {canSetup && (
-                        <button
-                          type="button"
-                          className="no-print"
-                          onClick={() => handleOpenAddPeriodModal(day)}
-                          style={{
-                            marginTop: '8px',
-                            background: 'rgba(255, 255, 255, 0.18)',
-                            border: '1px solid rgba(255, 255, 255, 0.3)',
-                            borderRadius: '6px',
-                            color: 'white',
-                            fontSize: '0.68rem',
-                            fontWeight: 700,
-                            padding: '3px 8px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}
-                          title={`Add period or recess to ${day}`}
-                        >
-                          <Plus size={11} /> Add
-                        </button>
-                      )}
-                    </div>
+              daysOrder
+                .filter((day) => selectedDayTab === 'ALL' || selectedDayTab === day)
+                .map((day) => {
+                  const periods = timetableSchedule[day] || [];
+                  const isOff = isDayOff(day);
+                  return (
+                    <div key={day} className="timetable-grid-row" style={{ display: 'grid', gridTemplateColumns: gridColumnsTemplate, gap: '6px', alignItems: 'stretch' }}>
+                      
+                      {/* Day Label Header */}
+                      <div className="timetable-day-header" style={{ 
+                        background: isOff
+                          ? 'linear-gradient(135deg, #475569 0%, #334155 100%)'
+                          : 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)', 
+                        color: 'white', 
+                        borderRadius: '10px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        padding: '10px 4px',
+                        fontWeight: 800,
+                        fontSize: '0.84rem',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 4,
+                        boxShadow: '2px 0 8px rgba(0,0,0,0.1)'
+                      }}>
+                        <span className="day-name" style={{ whiteSpace: 'nowrap' }}>{day}</span>
+                        {isOff ? (
+                          <span style={{
+                            fontSize: '0.58rem',
+                            background: 'rgba(239, 68, 68, 0.35)',
+                            border: '1px solid rgba(254, 202, 202, 0.5)',
+                            color: '#fecaca',
+                            padding: '1px 4px',
+                            borderRadius: '4px',
+                            fontWeight: 800,
+                            marginTop: '3px',
+                            letterSpacing: '0.3px',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            🏖️ OFF DAY
+                          </span>
+                        ) : (
+                          <span className="day-periods-count" style={{ fontSize: '0.62rem', opacity: 0.8, fontWeight: 500, marginTop: '2px', whiteSpace: 'nowrap' }}>
+                            {periods?.length || 0} Periods
+                          </span>
+                        )}
 
-                    {/* Period Cards */}
-                    {(periods || []).map((p, pIdx) => {
-                      const isRecess = p.isRecess || p.type === 'Recess' || p.type === 'Break';
-                      const isLab = p.type === 'Lab';
-                      const isTutorial = p.type === 'Tutorial';
-                      const isActivity = p.type === 'Activity';
-                      const isAssess = p.type === 'Assessment';
+                        {canSetup && (
+                          <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '6px', width: '92%' }}>
+                            {isOff ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleDayStatus(day, false)}
+                                style={{
+                                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  color: 'white',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  padding: '4px 6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '3px',
+                                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+                                }}
+                                title={`Make ${day} an active instructional working day (Turn ON)`}
+                              >
+                                <Check size={11} /> Turn ON
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenAddPeriodModal(day)}
+                                  style={{
+                                    background: 'rgba(255, 255, 255, 0.18)',
+                                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                                    borderRadius: '6px',
+                                    color: 'white',
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    padding: '3px 8px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '3px'
+                                  }}
+                                  title={`Add period or recess to ${day}`}
+                                >
+                                  <Plus size={11} /> Add
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleDayStatus(day, true)}
+                                  style={{
+                                    background: 'rgba(239, 68, 68, 0.25)',
+                                    border: '1px solid rgba(248, 113, 113, 0.4)',
+                                    borderRadius: '6px',
+                                    color: '#fecaca',
+                                    fontSize: '0.64rem',
+                                    fontWeight: 700,
+                                    padding: '2px 6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '2px'
+                                  }}
+                                  title={`Mark ${day} as an Off Day / Holiday`}
+                                >
+                                  Set OFF
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                      if (isRecess) {
+                      {/* Handle OFF DAY state */}
+                      {isOff ? (
+                        <div style={{
+                          gridColumn: `2 / span ${maxPeriodCount}`,
+                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                          border: '1.5px dashed #cbd5e1',
+                          borderRadius: '12px',
+                          padding: '24px 20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '16px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '12px',
+                              background: '#fee2e2',
+                              color: '#dc2626',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '1.4rem'
+                            }}>
+                              🏖️
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#334155' }}>
+                                {day} is marked as an OFF DAY (Weekend / Holiday)
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                                No regular instructional periods are scheduled for {selectedTimetableClass} on {day}.
+                              </div>
+                            </div>
+                          </div>
+
+                          {canSetup && (
+                            <div className="no-print" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleDayStatus(day, false)}
+                                style={{
+                                  background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '9px',
+                                  padding: '9px 18px',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
+                                }}
+                              >
+                                <Check size={14} />
+                                <span>Make {day} a Working Day (Turn ON)</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (!periods || periods.length === 0) ? (
+                        <div style={{
+                          gridColumn: `2 / span ${maxPeriodCount}`,
+                          background: '#f8fafc',
+                          border: '2px dashed #cbd5e1',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '12px',
+                          color: '#64748b'
+                        }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>No periods scheduled for {day} yet.</span>
+                          {canSetup && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddPeriodModal(day)}
+                              style={{
+                                background: '#4F46E5', color: 'white', border: 'none',
+                                borderRadius: '8px', padding: '6px 14px', fontSize: '0.78rem',
+                                fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                              }}
+                            >
+                              <Plus size={13} /> Add First Period
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                      /* Period Cards */
+                      periods.map((p, pIdx) => {
+                        const isRecess = Boolean(
+                          p.isRecess ||
+                          p.type === 'Recess' ||
+                          p.type === 'Break' ||
+                          (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
+                          (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
+                        );
+                        const isLab = p.type === 'Lab';
+                        const isTutorial = p.type === 'Tutorial';
+                        const isActivity = p.type === 'Activity';
+                        const isAssess = p.type === 'Assessment';
+                        const isUnassigned = !isRecess && (!p.subject || p.subject.trim() === '' || p.subject.toLowerCase() === 'unassigned');
+                        const periodNumberLabel = getAcademicPeriodLabel(p, pIdx, periods);
+
+                        if (isRecess) {
+                          return (
+                            <div 
+                              key={pIdx}
+                              className="timetable-card recess-card"
+                              style={{
+                                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                                border: '1.5px dashed #f59e0b',
+                                borderRadius: '10px',
+                                padding: '7px 7px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                boxShadow: '0 1px 3px rgba(245, 158, 11, 0.08)',
+                                transition: 'transform 0.15s, box-shadow 0.15s',
+                                cursor: canSetup ? 'pointer' : 'default',
+                                position: 'relative',
+                                minWidth: 0
+                              }}
+                              onMouseOver={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(245, 158, 11, 0.15)'; } }}
+                              onMouseOut={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(245, 158, 11, 0.08)'; } }}
+                              onClick={() => {
+                                if (!canSetup) return;
+                                setEditPeriodModal({
+                                  open: true,
+                                  day,
+                                  periodIndex: pIdx,
+                                  applyToAllDays: true,
+                                  data: {
+                                    periodNumber: p.periodNumber || pIdx + 1,
+                                    periodName: 'Recess',
+                                    startTime: p.startTime || '11:50',
+                                    endTime: p.endTime || '12:10',
+                                    subject: p.subject || 'Recess / Break',
+                                    teacher: p.teacher || 'Duty Staff',
+                                    room: p.room || 'Campus / Cafeteria',
+                                    type: 'Recess',
+                                    isRecess: true
+                                  }
+                                });
+                              }}
+                              title={canSetup ? "Super Admin & Admin: Click to edit Recess timing or remove" : "Recess / Break Slot"}
+                            >
+                              <div>
+                                <div className="recess-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                  <span className="recess-tag" style={{ fontSize: '0.68rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                    <Coffee size={11} color="#d97706" /> Recess
+                                  </span>
+                                  <span style={{ fontSize: '0.55rem', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: '#f59e0b', color: 'white', textTransform: 'uppercase' }}>
+                                    RECESS
+                                  </span>
+                                </div>
+                                <div className="recess-title" style={{ fontWeight: 800, color: '#78350f', fontSize: '0.78rem', lineHeight: 1.2 }}>
+                                  {p.subject || 'Recess / Break'}
+                                </div>
+                              </div>
+
+                              <div className="recess-footer-meta" style={{ fontSize: '0.64rem', color: '#92400e', display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px dashed #fde68a', paddingTop: '4px' }}>
+                                <span className="recess-time-meta" style={{ fontWeight: 600, color: '#78350f', whiteSpace: 'nowrap' }}>
+                                  ⏰ {p.startTime}-{p.endTime}
+                                </span>
+                                <span className="recess-room-meta" style={{ color: '#b45309', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  📍 {p.room || 'Campus Area'}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // Unassigned / Blank scratch period slot
+                        if (isUnassigned) {
+                          return (
+                            <div 
+                              key={pIdx}
+                              className="timetable-card unassigned-card"
+                              style={{
+                                background: '#fafbfc',
+                                border: '1.5px dashed #cbd5e1',
+                                borderRadius: '10px',
+                                padding: '7px 7px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'space-between',
+                                boxShadow: 'none',
+                                transition: 'all 0.15s ease',
+                                cursor: canSetup ? 'pointer' : 'default',
+                                position: 'relative',
+                                minWidth: 0
+                              }}
+                              onMouseOver={e => { if (canSetup) { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.background = '#f5f3ff'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+                              onMouseOut={e => { if (canSetup) { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = '#fafbfc'; e.currentTarget.style.transform = 'translateY(0)'; } }}
+                              onClick={() => {
+                                if (!canSetup) return;
+                                setEditPeriodModal({
+                                  open: true,
+                                  day,
+                                  periodIndex: pIdx,
+                                  applyToAllDays: false,
+                                  data: {
+                                    periodNumber: p.periodNumber || pIdx + 1,
+                                    periodName: p.periodName || periodNumberLabel,
+                                    startTime: p.startTime || '08:30',
+                                    endTime: p.endTime || '09:20',
+                                    subject: '',
+                                    teacher: '',
+                                    room: p.room || 'Room 101',
+                                    type: 'Lecture',
+                                    isRecess: false
+                                  }
+                                });
+                              }}
+                              title={canSetup ? `Click to assign subject & teacher for ${periodNumberLabel} (${day})` : "Unassigned slot"}
+                            >
+                              <div>
+                                <div className="card-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                  <span className="card-period-tag" style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
+                                    {periodNumberLabel}
+                                  </span>
+                                  <span style={{ fontSize: '0.55rem', fontWeight: 800, padding: '1px 5px', borderRadius: '4px', background: '#e2e8f0', color: '#475569', textTransform: 'uppercase' }}>
+                                    BLANK SLOT
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#4f46e5', fontWeight: 700, fontSize: '0.76rem', minHeight: '30px' }}>
+                                  <Plus size={12} /> <span>Assign</span>
+                                </div>
+                              </div>
+
+                              <div className="card-footer-meta" style={{ fontSize: '0.64rem', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed #e2e8f0', paddingTop: '4px' }}>
+                                <span style={{ fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>⏰ {p.startTime}-{p.endTime}</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        const cardBg = isLab ? '#f0fdf4' : isTutorial ? '#eff6ff' : isActivity ? '#fefce8' : isAssess ? '#fef2f2' : '#f8fafc';
+                        const cardBorder = isLab ? '#bbf7d0' : isTutorial ? '#bfdbfe' : isActivity ? '#fef08a' : isAssess ? '#fecaca' : '#e2e8f0';
+                        const subjectColor = isLab ? '#166534' : isTutorial ? '#1e40af' : isActivity ? '#854d0e' : isAssess ? '#991b1b' : '#1e3a8a';
+
                         return (
                           <div 
                             key={pIdx}
-                            className="timetable-card recess-card"
+                            className="timetable-card regular-card"
                             style={{
-                              background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-                              border: '1.5px dashed #f59e0b',
-                              borderRadius: '12px',
-                              padding: '10px 12px',
+                              background: cardBg,
+                              border: `1px solid ${cardBorder}`,
+                              borderRadius: '10px',
+                              padding: '7px 7px',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              boxShadow: '0 1px 4px rgba(245, 158, 11, 0.08)',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
                               transition: 'transform 0.15s, box-shadow 0.15s',
                               cursor: canSetup ? 'pointer' : 'default',
-                              position: 'relative'
+                              position: 'relative',
+                              minWidth: 0
                             }}
-                            onMouseOver={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(245, 158, 11, 0.15)'; } }}
-                            onMouseOut={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(245, 158, 11, 0.08)'; } }}
+                            onMouseOver={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.08)'; } }}
+                            onMouseOut={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'; } }}
                             onClick={() => {
                               if (!canSetup) return;
                               setEditPeriodModal({
@@ -1229,155 +2127,66 @@ const Timetable = () => {
                                 applyToAllDays: false,
                                 data: {
                                   periodNumber: p.periodNumber || pIdx + 1,
-                                  periodName: p.periodName || 'Recess',
-                                  startTime: p.startTime || '10:10',
-                                  endTime: p.endTime || '10:30',
-                                  subject: p.subject || 'Recess / Break',
-                                  teacher: p.teacher || 'Duty Staff',
-                                  room: p.room || 'Campus / Cafeteria',
-                                  type: p.type || 'Recess',
-                                  isRecess: true
+                                  periodName: p.periodName || periodNumberLabel,
+                                  startTime: p.startTime || '08:30',
+                                  endTime: p.endTime || '09:20',
+                                  subject: p.subject || '',
+                                  teacher: p.teacher || '',
+                                  room: p.room || 'Room 201',
+                                  type: p.type || 'Lecture',
+                                  isRecess: false
                                 }
                               });
                             }}
-                            title={canSetup ? "Super Admin & Admin: Click to edit Recess timing or remove" : "Recess / Break Slot"}
+                            title={canSetup ? `Super Admin & Admin: Click to edit ${periodNumberLabel} (${day})` : `${periodNumberLabel} Lecture`}
                           >
                             <div>
-                              <div className="recess-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                                <span className="recess-tag" style={{ fontSize: '0.72rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Coffee size={13} color="#d97706" /> {p.periodName || 'Recess'}
+                              <div className="card-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                <span className="card-period-tag" style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>
+                                  {periodNumberLabel}
                                 </span>
-                                <span className="recess-pill" style={{ fontSize: '0.62rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: '#f59e0b', color: 'white', letterSpacing: '0.3px', textTransform: 'uppercase' }}>
-                                  Recess
+                                <span className="card-type-tag" style={{
+                                  fontSize: '0.55rem', fontWeight: 800, padding: '1px 5px', borderRadius: '4px',
+                                  background: isLab ? '#dcfce7' : isTutorial ? '#dbeafe' : isActivity ? '#fef9c3' : isAssess ? '#fee2e2' : '#f1f5f9',
+                                  color: isLab ? '#15803d' : isTutorial ? '#1d4ed8' : isActivity ? '#a16207' : isAssess ? '#b91c1c' : '#475569',
+                                  textTransform: 'uppercase'
+                                }}>
+                                  {p.type || 'Lecture'}
                                 </span>
                               </div>
-                              <div className="recess-subject-title" style={{ fontSize: '0.86rem', fontWeight: 800, color: '#78350f', lineHeight: 1.25, marginBottom: '6px' }}>
-                                {p.subject || 'Break & Refreshment'}
+
+                              <div className="card-subject-name" style={{ fontWeight: 800, color: subjectColor, fontSize: '0.78rem', lineHeight: 1.2, marginBottom: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {p.subject}
                               </div>
                             </div>
 
-                            <div className="recess-footer-meta" style={{ fontSize: '0.72rem', color: '#92400e', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px dashed #fde68a', paddingTop: '6px' }}>
-                              <span className="recess-time-meta" style={{ fontWeight: 600, color: '#78350f' }}>
-                                ⏰ {p.startTime} - {p.endTime}
-                              </span>
-                              <span className="recess-room-meta" style={{ color: '#b45309' }}>
-                                📍 {p.room || 'Campus Area'}
-                              </span>
+                            <div className="card-footer-meta" style={{ fontSize: '0.64rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '2px', borderTop: '1px solid #f1f5f9', paddingTop: '4px' }}>
+                              <div className="card-teacher-name" style={{ display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600, color: '#334155', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                <Users size={10} color="#6366f1" style={{ flexShrink: 0 }} />
+                                <span>{p.teacher || 'Unassigned'}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8' }}>
+                                <span className="card-room-name" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60px' }}>
+                                  📍 {p.room || 'Room 201'}
+                                </span>
+                                <span className="card-time-span" style={{ whiteSpace: 'nowrap', fontWeight: 600, color: '#64748b' }}>
+                                  {p.startTime}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
-                      }
-
-                      const cardBg = isLab ? '#f0fdf4' : isTutorial ? '#eff6ff' : isActivity ? '#fefce8' : isAssess ? '#fef2f2' : '#f8fafc';
-                      const cardBorder = isLab ? '#bbf7d0' : isTutorial ? '#bfdbfe' : isActivity ? '#fef08a' : isAssess ? '#fecaca' : '#e2e8f0';
-                      const subjectColor = isLab ? '#166534' : isTutorial ? '#1e40af' : isActivity ? '#854d0e' : isAssess ? '#991b1b' : '#1e3a8a';
-                      const periodNumberLabel = p.periodName || `P${p.periodNumber || pIdx + 1}`;
-
-                      return (
-                        <div 
-                          key={pIdx}
-                          className="timetable-card regular-card"
-                          style={{
-                            background: cardBg,
-                            border: `1px solid ${cardBorder}`,
-                            borderRadius: '12px',
-                            padding: '10px 12px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'space-between',
-                            boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
-                            transition: 'transform 0.15s, box-shadow 0.15s',
-                            cursor: canSetup ? 'pointer' : 'default',
-                            position: 'relative'
-                          }}
-                          onMouseOver={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.08)'; } }}
-                          onMouseOut={e => { if (canSetup) { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.02)'; } }}
-                          onClick={() => {
-                            if (!canSetup) return;
-                            setEditPeriodModal({
-                              open: true,
-                              day,
-                              periodIndex: pIdx,
-                              applyToAllDays: false,
-                              data: {
-                                periodNumber: p.periodNumber || pIdx + 1,
-                                periodName: p.periodName || periodNumberLabel,
-                                startTime: p.startTime || '08:30',
-                                endTime: p.endTime || '09:20',
-                                subject: p.subject || '',
-                                teacher: p.teacher || '',
-                                room: p.room || 'Room 201',
-                                type: p.type || 'Lecture',
-                                isRecess: false
-                              }
-                            });
-                          }}
-                          title={canSetup ? "Super Admin & Admin: Click to edit subject, faculty, timings, or delete" : "View-only period schedule"}
-                        >
-                          <div>
-                            <div className="card-top-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                              <span className="card-period-tag" style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b' }}>
-                                {periodNumberLabel}
-                              </span>
-                              <span className="card-type-tag" style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: 'white', color: subjectColor, border: `1px solid ${cardBorder}` }}>
-                                {p.type}
-                              </span>
-                            </div>
-                            <div className="card-subject-title" style={{ fontSize: '0.86rem', fontWeight: 800, color: subjectColor, lineHeight: 1.25, marginBottom: '8px', wordBreak: 'break-word' }}>
-                              {p.subject}
-                            </div>
-                          </div>
-
-                          <div className="card-footer-meta" style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '3px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '6px' }}>
-                            <span className="card-teacher-meta" style={{ fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.teacher}>
-                              👤 {p.teacher}
-                            </span>
-                            <div className="card-room-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span className="card-room-meta" style={{ color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.room}>
-                                📍 {p.room}
-                              </span>
-                              <span className="card-time-meta" style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>
-                                {p.startTime}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                      })
+                    )}
                   </div>
-                ))
+                );
+              })
             )}
-
-          </div>
-        </div>
-
-        {/* OFFICIAL TIMETABLE PRINT FOOTER / SIGNATURE BLOCKS */}
-        <div className="print-only timetable-print-footer">
-          <div className="print-signature-grid">
-            <div className="print-signature-block">
-              <div className="sig-line"></div>
-              <div className="sig-title">Class Teacher Signature</div>
-              <div className="sig-sub">Attendance & Routine Verification</div>
-            </div>
-            <div className="print-signature-block">
-              <div className="sig-line"></div>
-              <div className="sig-title">Timetable Coordinator</div>
-              <div className="sig-sub">Schedule Matrix & Allocation Head</div>
-            </div>
-            <div className="print-signature-block">
-              <div className="sig-line"></div>
-              <div className="sig-title">Principal / Campus Authority</div>
-              <div className="sig-sub">Official Institutional Stamp & Signature</div>
-            </div>
-          </div>
-          <div className="print-footer-notice">
-            <span>Official Academic Document • Pragati School Management System (Enterprise Architecture)</span>
-            <span>Printed on: {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
           </div>
         </div>
       </div>
 
-      {/* EDIT PERIOD MODAL (SUPER ADMIN & ADMIN ACCESS TO MODIFY, DELETE, SET RECESS) */}
+      {/* EDIT / ASSIGN PERIOD MODAL */}
       {editPeriodModal.open && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -1397,10 +2206,10 @@ const Timetable = () => {
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: editPeriodModal.data.isRecess ? '#92400e' : '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {editPeriodModal.data.isRecess ? <Coffee size={20} color="#d97706" /> : <Clock size={20} color="#3b82f6" />}
-                  <span>{editPeriodModal.data.isRecess ? 'Configure Recess / Break Slot' : 'Edit Period Allocation'}</span>
+                  <span>{editPeriodModal.data.isRecess ? 'Configure Recess / Break Slot' : 'Assign Period Allocation'}</span>
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  {selectedTimetableClass} • {editPeriodModal.day} ({editPeriodModal.data.periodName})
+                  Target Class: <strong>{selectedTimetableClass}</strong> • {editPeriodModal.day} ({editPeriodModal.data.periodName})
                 </div>
               </div>
               <button
@@ -1413,50 +2222,31 @@ const Timetable = () => {
 
             <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '72vh', overflowY: 'auto' }}>
               
-              {/* Recess / Break Toggle Card */}
-              <div 
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  background: editPeriodModal.data.isRecess ? '#fffbeb' : '#f8fafc',
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  border: `1.5px solid ${editPeriodModal.data.isRecess ? '#f59e0b' : '#e2e8f0'}`,
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  const nextRecess = !editPeriodModal.data.isRecess;
-                  setEditPeriodModal(prev => ({
-                    ...prev,
-                    data: {
-                      ...prev.data,
-                      isRecess: nextRecess,
-                      type: nextRecess ? 'Recess' : (prev.data.type === 'Recess' ? 'Lecture' : prev.data.type),
-                      subject: nextRecess ? (prev.data.subject || 'Recess / Break') : prev.data.subject,
-                      teacher: nextRecess ? 'Duty Staff' : prev.data.teacher,
-                      room: nextRecess ? 'Campus / Cafeteria' : prev.data.room,
-                    }
-                  }));
-                }}
-              >
-                <input
-                  type="checkbox"
-                  id="editPeriodRecessToggle"
-                  checked={Boolean(editPeriodModal.data.isRecess)}
-                  onChange={() => {}}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f59e0b' }}
-                />
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: editPeriodModal.data.isRecess ? '#b45309' : '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Coffee size={15} color={editPeriodModal.data.isRecess ? '#d97706' : '#64748b'} />
-                    <span>Mark as Recess / Break Slot</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    Recess slots designate lunch, snacks, or recreation breaks without standard faculty teaching.
+              {/* Recess Banner */}
+              {editPeriodModal.data.isRecess ? (
+                <div 
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    background: '#fffbeb',
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    border: '1.5px solid #f59e0b'
+                  }}
+                >
+                  <Coffee size={22} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>Appointed as Dedicated Institutional Recess</span>
+                      <span style={{ fontSize: '0.62rem', background: '#f59e0b', color: 'white', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase' }}>Recess Only</span>
+                    </div>
+                    <div style={{ fontSize: '0.74rem', color: '#78350f', marginTop: '3px', lineHeight: 1.4 }}>
+                      This slot is appointed strictly as Recess/Break. It does NOT consume or replace any academic period.
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
 
               {/* Period Code & Slot Type */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
@@ -1466,13 +2256,19 @@ const Timetable = () => {
                   </label>
                   <input
                     type="text"
-                    value={editPeriodModal.data.periodName || ''}
+                    value={editPeriodModal.data.isRecess ? 'Recess' : (editPeriodModal.data.periodName || '')}
+                    disabled={editPeriodModal.data.isRecess}
                     onChange={(e) => setEditPeriodModal(prev => ({
                       ...prev,
                       data: { ...prev.data, periodName: e.target.value }
                     }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                    placeholder="e.g. P1, P2, Recess, Zero Period"
+                    style={{ 
+                      width: '100%', padding: '10px 14px', borderRadius: '10px', 
+                      border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600,
+                      background: editPeriodModal.data.isRecess ? '#f1f5f9' : 'white',
+                      color: editPeriodModal.data.isRecess ? '#92400e' : '#1e293b'
+                    }}
+                    placeholder={editPeriodModal.data.isRecess ? "Recess" : "e.g. P1, P2"}
                   />
                 </div>
 
@@ -1480,43 +2276,55 @@ const Timetable = () => {
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                     Slot Type
                   </label>
-                  <select
-                    value={editPeriodModal.data.type || 'Lecture'}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const isR = val === 'Recess' || val === 'Break';
-                      setEditPeriodModal(prev => ({
-                        ...prev,
-                        data: {
-                          ...prev.data,
-                          type: val,
-                          isRecess: isR || prev.data.isRecess,
-                          subject: isR ? (prev.data.subject || 'Recess / Break') : prev.data.subject,
-                          teacher: isR ? 'Duty Staff' : prev.data.teacher,
-                        }
-                      }));
-                    }}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
-                  >
-                    <option value="Lecture">Lecture</option>
-                    <option value="Lab">Lab (Practical)</option>
-                    <option value="Recess">Recess / Lunch</option>
-                    <option value="Break">Short Break</option>
-                    <option value="Assembly">Assembly / Devotion</option>
-                    <option value="Zero Period">Zero Period / Extra Class</option>
-                    <option value="Tutorial">Tutorial / Problem Solving</option>
-                    <option value="Activity">Activity / Sports / Arts</option>
-                    <option value="Assessment">Assessment / Remedial</option>
-                    <option value="Self Study">Self Study / Library</option>
-                  </select>
+                  {editPeriodModal.data.isRecess ? (
+                    <select
+                      value={editPeriodModal.data.type === 'Break' ? 'Break' : 'Recess'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditPeriodModal(prev => ({
+                          ...prev,
+                          data: { ...prev.data, type: val, isRecess: true }
+                        }));
+                      }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #f59e0b', fontSize: '0.9rem', fontWeight: 700, background: '#fffbeb', color: '#92400e' }}
+                    >
+                      <option value="Recess">Recess / Lunch (Break)</option>
+                      <option value="Break">Short Refreshment Break</option>
+                    </select>
+                  ) : (
+                    <select
+                      value={editPeriodModal.data.type || 'Lecture'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditPeriodModal(prev => ({
+                          ...prev,
+                          data: { ...prev.data, type: val }
+                        }));
+                      }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
+                    >
+                      <option value="Lecture">Lecture</option>
+                      <option value="Lab">Lab (Practical)</option>
+                      <option value="Tutorial">Tutorial / Problem Solving</option>
+                      <option value="Activity">Activity / Sports / Arts</option>
+                      <option value="Assessment">Assessment / Remedial</option>
+                      <option value="Self Study">Self Study / Library</option>
+                      <option value="Zero Period">Zero Period / Extra Class</option>
+                    </select>
+                  )}
                 </div>
               </div>
 
               {/* Subject */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  {editPeriodModal.data.isRecess ? 'Recess / Break Title' : 'Subject Name'}
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                    {editPeriodModal.data.isRecess ? 'Recess Title' : 'Subject Name'}
+                  </label>
+                  {!editPeriodModal.data.isRecess && (
+                    <span style={{ fontSize: '0.72rem', color: '#6366f1', fontWeight: 600 }}>Type or click curriculum below</span>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={editPeriodModal.data.subject || ''}
@@ -1525,8 +2333,45 @@ const Timetable = () => {
                     data: { ...prev.data, subject: e.target.value }
                   }))}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                  placeholder={editPeriodModal.data.isRecess ? "e.g. Lunch & Nutrition Break" : "e.g. Mathematics, Chemistry Lab, English"}
+                  placeholder={editPeriodModal.data.isRecess ? "e.g. Lunch & Nutrition Break" : "e.g. Mathematics, Physics, English"}
                 />
+
+                {/* Class Curriculum Subjects Quick Chips */}
+                {!editPeriodModal.data.isRecess && (
+                  <div style={{ marginTop: '8px' }}>
+                    {(() => {
+                      const curCls = classesList.find(c => `${c.className} - ${c.section}`.toLowerCase() === selectedTimetableClass.toLowerCase());
+                      const subs = (curCls?.subjects && curCls.subjects.length > 0)
+                        ? curCls.subjects
+                        : ['Mathematics', 'Science', 'English', 'Hindi', 'Social Science', 'Physics', 'Chemistry', 'Computer Science', 'Physical Education'];
+                      return (
+                        <>
+                          <div style={{ fontSize: '0.72rem', color: '#4338ca', fontWeight: 700, marginBottom: '5px' }}>
+                            Curriculum Subjects for {selectedTimetableClass}:
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {subs.map(s => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setEditPeriodModal(prev => ({ ...prev, data: { ...prev.data, subject: s } }))}
+                                style={{
+                                  background: editPeriodModal.data.subject === s ? '#e0e7ff' : '#f8fafc',
+                                  border: `1.5px solid ${editPeriodModal.data.subject === s ? '#4f46e5' : '#cbd5e1'}`,
+                                  color: editPeriodModal.data.subject === s ? '#3730a3' : '#334155',
+                                  padding: '4px 10px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer',
+                                  transition: 'all 0.1s'
+                                }}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
 
               {/* Teacher Assignment (if not Recess) */}
@@ -1543,7 +2388,7 @@ const Timetable = () => {
                     }))}
                     style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
                   >
-                    <option value="">-- Select Teacher --</option>
+                    <option value="">-- Select Faculty / Teacher --</option>
                     {teachersList.map((t, idx) => {
                       const tName = t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.portalUsername;
                       return (
@@ -1567,7 +2412,7 @@ const Timetable = () => {
               {/* Classroom / Location */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  {editPeriodModal.data.isRecess ? 'Break Location' : 'Classroom / Lab'}
+                  {editPeriodModal.data.isRecess ? 'Recess Area' : 'Classroom / Lab Location'}
                 </label>
                 <input
                   type="text"
@@ -1577,11 +2422,11 @@ const Timetable = () => {
                     data: { ...prev.data, room: e.target.value }
                   }))}
                   style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                  placeholder={editPeriodModal.data.isRecess ? "e.g. Cafeteria, Campus Grounds" : "e.g. Room 201, IT Lab 2"}
+                  placeholder={editPeriodModal.data.isRecess ? "Campus / Cafeteria" : "e.g. Room 201, Physics Lab"}
                 />
               </div>
 
-              {/* Start & End Time */}
+              {/* Start & End Times */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
@@ -1632,18 +2477,17 @@ const Timetable = () => {
                   style={{ width: '17px', height: '17px', cursor: 'pointer', accentColor: '#4F46E5' }}
                 />
                 <label htmlFor="editApplyAllDaysCheck" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
-                  Sync timing & Recess status across all weekdays (Monday – Friday)
+                  Sync this allocation across all weekdays (Monday – Friday)
                 </label>
               </div>
 
             </div>
 
-            {/* Modal Actions with Delete & Save */}
+            {/* Modal Actions */}
             <div style={{
               padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px'
             }}>
-              {/* Delete Buttons */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   type="button"
@@ -1659,28 +2503,35 @@ const Timetable = () => {
                   title={`Delete period from ${editPeriodModal.day} only`}
                 >
                   <Trash2 size={13} />
-                  <span>Delete ({editPeriodModal.day})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDeletePeriod(true)}
-                  disabled={isPeriodSaving}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '5px',
-                    padding: '8px 12px', borderRadius: '8px',
-                    border: '1px solid #fee2e2', background: '#dc2626',
-                    color: 'white', fontWeight: 700, fontSize: '0.78rem',
-                    cursor: isPeriodSaving ? 'not-allowed' : 'pointer'
-                  }}
-                  title="Delete this period slot across Monday through Friday"
-                >
-                  <Trash2 size={13} />
-                  <span>Delete (All Weekdays)</span>
+                  <span>Delete Slot</span>
                 </button>
               </div>
 
-              {/* Cancel & Save */}
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {!editPeriodModal.data.isRecess && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditPeriodModal(prev => ({
+                        ...prev,
+                        data: {
+                          ...prev.data,
+                          subject: '',
+                          teacher: '',
+                          type: 'Lecture'
+                        }
+                      }));
+                    }}
+                    style={{
+                      padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1',
+                      background: '#f8fafc', color: '#64748b', fontWeight: 700, fontSize: '0.78rem',
+                      cursor: 'pointer'
+                    }}
+                    title="Clear subject and teacher to leave as Blank Slot"
+                  >
+                    Clear to Blank
+                  </button>
+                )}
                 <button
                   onClick={() => setEditPeriodModal({ open: false, day: '', periodIndex: 0, applyToAllDays: false, data: {} })}
                   style={{
@@ -1709,7 +2560,810 @@ const Timetable = () => {
         document.body
       )}
 
-      {/* ADD PERIOD MODAL (SUPER ADMIN & ADMIN ACCESS) */}
+      {/* MASTER TIMETABLE & BELL SCHEDULE STRUCTURE MODAL (APPLY TO ALL CLASSES AT ONCE) */}
+      {isMasterStructureModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '640px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden',
+            maxHeight: '90vh', display: 'flex', flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 26px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e3a8a 100%)',
+              color: 'white'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={20} color="#a5b4fc" />
+                  <span>Master Timetable Structure (All Classes)</span>
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#c7d2fe', marginTop: '3px' }}>
+                  Define the universal period slots & recess once, then assign subjects separately per class.
+                </div>
+              </div>
+              <button
+                onClick={() => setIsMasterStructureModalOpen(false)}
+                style={{ background: 'rgba(255, 255, 255, 0.15)', border: '1px solid rgba(255, 255, 255, 0.3)', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex', color: 'white' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px 26px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* Step 1: Periods per Day */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.3px' }}>
+                  1. Academic Periods Per Day
+                </label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {[6, 7, 8, 9, 10].map(num => {
+                    const isSel = masterStructureConfig.periodsPerDay === num;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setMasterStructureConfig(prev => ({ ...prev, periodsPerDay: num }))}
+                        style={{
+                          flex: '1 1 80px',
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          border: `2px solid ${isSel ? '#4f46e5' : '#cbd5e1'}`,
+                          background: isSel ? '#eef2ff' : 'white',
+                          color: isSel ? '#4338ca' : '#475569',
+                          fontWeight: 800,
+                          fontSize: '0.88rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '2px',
+                          boxShadow: isSel ? '0 2px 8px rgba(79, 70, 229, 0.2)' : 'none'
+                        }}
+                      >
+                        <span>{num} Periods</span>
+                        {num === 8 && (
+                          <span style={{ fontSize: '0.6rem', color: isSel ? '#4f46e5' : '#059669', fontWeight: 800 }}>
+                            ⭐ Recommended
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Step 2: Start Time & Period Duration */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    School Day Starts At
+                  </label>
+                  <input
+                    type="time"
+                    value={masterStructureConfig.startTime}
+                    onChange={(e) => setMasterStructureConfig(prev => ({ ...prev, startTime: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 700, color: '#1e3a8a' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Period Duration (Minutes)
+                  </label>
+                  <select
+                    value={masterStructureConfig.periodDurationMinutes}
+                    onChange={(e) => setMasterStructureConfig(prev => ({ ...prev, periodDurationMinutes: Number(e.target.value) }))}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 700, background: 'white' }}
+                  >
+                    <option value={40}>40 Minutes</option>
+                    <option value={45}>45 Minutes</option>
+                    <option value={50}>50 Minutes (Standard)</option>
+                    <option value={55}>55 Minutes</option>
+                    <option value={60}>60 Minutes (1 Hour)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Step 3: Dedicated Institutional Recess */}
+              <div style={{ background: '#fffbeb', border: '1.5px solid #fde68a', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: masterStructureConfig.includeRecess ? '12px' : 0 }}>
+                  <input
+                    type="checkbox"
+                    id="masterRecessCheckbox"
+                    checked={masterStructureConfig.includeRecess}
+                    onChange={(e) => setMasterStructureConfig(prev => ({ ...prev, includeRecess: e.target.checked }))}
+                    style={{ width: '18px', height: '18px', accentColor: '#d97706', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="masterRecessCheckbox" style={{ fontSize: '0.88rem', fontWeight: 800, color: '#92400e', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Coffee size={16} color="#d97706" />
+                    <span>Include Dedicated Institutional Recess / Lunch Break</span>
+                  </label>
+                </div>
+
+                {masterStructureConfig.includeRecess && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #fcd34d' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#78350f', marginBottom: '5px' }}>
+                        Recess Placement (After Period)
+                      </label>
+                      <select
+                        value={masterStructureConfig.recessAfterPeriod}
+                        onChange={(e) => setMasterStructureConfig(prev => ({ ...prev, recessAfterPeriod: Number(e.target.value) }))}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #f59e0b', fontSize: '0.85rem', fontWeight: 700, background: 'white', color: '#92400e' }}
+                      >
+                        <option value={3}>After Period 3</option>
+                        <option value={4}>After Period 4 (Mid-Day Break ⭐ Recommended)</option>
+                        <option value={5}>After Period 5</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#78350f', marginBottom: '5px' }}>
+                        Recess Duration
+                      </label>
+                      <select
+                        value={masterStructureConfig.recessDurationMinutes}
+                        onChange={(e) => setMasterStructureConfig(prev => ({ ...prev, recessDurationMinutes: Number(e.target.value) }))}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #f59e0b', fontSize: '0.85rem', fontWeight: 700, background: 'white', color: '#92400e' }}
+                      >
+                        <option value={15}>15 Minutes</option>
+                        <option value={20}>20 Minutes (Standard)</option>
+                        <option value={25}>25 Minutes</option>
+                        <option value={30}>30 Minutes</option>
+                        <option value={40}>40 Minutes (Lunch)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 4: Live Calculated Slot Schedule Preview */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                    Calculated Bell Schedule Matrix Preview:
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 800 }}>
+                    ✓ 100% Full-Width Scaled
+                  </span>
+                </div>
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1.5px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  gap: '6px',
+                  overflowX: 'auto',
+                  alignItems: 'center'
+                }}>
+                  {calculateMasterSlotsPreview(masterStructureConfig).map((slot, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        flex: '1 1 auto',
+                        minWidth: '55px',
+                        background: slot.isRecess ? '#fef3c7' : 'white',
+                        border: `1.5px ${slot.isRecess ? 'dashed #d97706' : 'solid #cbd5e1'}`,
+                        borderRadius: '6px',
+                        padding: '6px 4px',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.74rem', fontWeight: 800, color: slot.isRecess ? '#b45309' : '#1e3a8a' }}>
+                        {slot.name}
+                      </div>
+                      <div style={{ fontSize: '0.62rem', fontWeight: 600, color: slot.isRecess ? '#92400e' : '#64748b', marginTop: '1px', whiteSpace: 'nowrap' }}>
+                        {slot.start} - {slot.end}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Step 5: Target Classes Selection */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.3px' }}>
+                  2. Apply Structure to Classes
+                </label>
+                <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="masterTargetRadio"
+                      checked={masterStructureConfig.targetClasses === 'all'}
+                      onChange={() => setMasterStructureConfig(prev => ({ ...prev, targetClasses: 'all' }))}
+                      style={{ accentColor: '#4f46e5' }}
+                    />
+                    <span>All School Classes ({classesList.length > 0 ? classesList.length : 4} Classes)</span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="masterTargetRadio"
+                      checked={masterStructureConfig.targetClasses === 'custom'}
+                      onChange={() => setMasterStructureConfig(prev => ({
+                        ...prev,
+                        targetClasses: 'custom',
+                        selectedClassesList: classesList.map(c => `${c.className} - ${c.section}`)
+                      }))}
+                      style={{ accentColor: '#4f46e5' }}
+                    />
+                    <span>Select Specific Classes</span>
+                  </label>
+                </div>
+
+                {masterStructureConfig.targetClasses === 'custom' && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', background: '#f8fafc', padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    {(classesList.length > 0 ? classesList : [
+                      { className: 'Class 10', section: 'A' },
+                      { className: 'Class 11', section: 'SCIENCE' },
+                      { className: 'Class 9', section: 'B' },
+                      { className: 'Class 8', section: 'A' }
+                    ]).map(c => {
+                      const key = `${c.className} - ${c.section}`;
+                      const isChecked = masterStructureConfig.selectedClassesList.includes(key);
+                      return (
+                        <label
+                          key={key}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: isChecked ? '#e0e7ff' : 'white',
+                            border: `1px solid ${isChecked ? '#6366f1' : '#cbd5e1'}`,
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            color: isChecked ? '#4338ca' : '#475569',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setMasterStructureConfig(prev => ({
+                                  ...prev,
+                                  selectedClassesList: [...prev.selectedClassesList, key]
+                                }));
+                              } else {
+                                setMasterStructureConfig(prev => ({
+                                  ...prev,
+                                  selectedClassesList: prev.selectedClassesList.filter(k => k !== key)
+                                }));
+                              }
+                            }}
+                            style={{ accentColor: '#4f46e5' }}
+                          />
+                          <span>{key}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Step 6: Application Mode */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.3px' }}>
+                  3. Application Mode
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  
+                  {/* Mode 1: Clean Blank Slots (Recommended) */}
+                  <div
+                    onClick={() => setMasterStructureConfig(prev => ({ ...prev, applyMode: 'blank' }))}
+                    style={{
+                      padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                      border: `1.5px solid ${masterStructureConfig.applyMode === 'blank' ? '#059669' : '#e2e8f0'}`,
+                      background: masterStructureConfig.applyMode === 'blank' ? '#ecfdf5' : 'white',
+                      display: 'flex', alignItems: 'flex-start', gap: '10px',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="masterApplyMode"
+                      checked={masterStructureConfig.applyMode === 'blank'}
+                      onChange={() => {}}
+                      style={{ marginTop: '3px', accentColor: '#059669' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#065f46' }}>
+                        Initialize Clean Structured Slots (P1..P{masterStructureConfig.periodsPerDay} + Recess) — ⭐ Recommended
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#047857', marginTop: '2px' }}>
+                        Sets up standardized period timings and recess for all classes with blank slots, allowing you to assign subjects and teachers separately per class.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mode 2: Synchronize Timings Only */}
+                  <div
+                    onClick={() => setMasterStructureConfig(prev => ({ ...prev, applyMode: 'sync_times' }))}
+                    style={{
+                      padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                      border: `1.5px solid ${masterStructureConfig.applyMode === 'sync_times' ? '#4f46e5' : '#e2e8f0'}`,
+                      background: masterStructureConfig.applyMode === 'sync_times' ? '#eef2ff' : 'white',
+                      display: 'flex', alignItems: 'flex-start', gap: '10px',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="masterApplyMode"
+                      checked={masterStructureConfig.applyMode === 'sync_times'}
+                      onChange={() => {}}
+                      style={{ marginTop: '3px', accentColor: '#4f46e5' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#3730a3' }}>
+                        Synchronize Period Timings & Recess Only
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#4338ca', marginTop: '2px' }}>
+                        Applies new period timings across all classes while keeping any existing subject & teacher allocations intact.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mode 3: AI Auto-Generate Curriculum */}
+                  <div
+                    onClick={() => setMasterStructureConfig(prev => ({ ...prev, applyMode: 'auto' }))}
+                    style={{
+                      padding: '12px 14px', borderRadius: '10px', cursor: 'pointer',
+                      border: `1.5px solid ${masterStructureConfig.applyMode === 'auto' ? '#0891b2' : '#e2e8f0'}`,
+                      background: masterStructureConfig.applyMode === 'auto' ? '#ecfeff' : 'white',
+                      display: 'flex', alignItems: 'flex-start', gap: '10px',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="masterApplyMode"
+                      checked={masterStructureConfig.applyMode === 'auto'}
+                      onChange={() => {}}
+                      style={{ marginTop: '3px', accentColor: '#0891b2' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#155e75' }}>
+                        Auto-Populate Curriculum with AI for All Classes
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#0e7490', marginTop: '2px' }}>
+                        Automatically fills subjects and teachers for each class based on registered curriculum, preventing teacher clashes.
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 26px', borderTop: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: '#f8fafc'
+            }}>
+              <button
+                type="button"
+                onClick={() => setIsMasterStructureModalOpen(false)}
+                style={{
+                  padding: '9px 18px', borderRadius: '10px', border: '1px solid #cbd5e1',
+                  background: 'white', color: '#475569', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleApplyMasterStructure}
+                disabled={isApplyingMasterStructure}
+                style={{
+                  padding: '10px 24px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4338ca 100%)',
+                  color: 'white', fontWeight: 800, fontSize: '0.88rem',
+                  cursor: isApplyingMasterStructure ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  boxShadow: '0 4px 14px rgba(55, 48, 163, 0.35)'
+                }}
+              >
+                {isApplyingMasterStructure ? (
+                  <>
+                    <RefreshCw size={15} className="spin" />
+                    <span>Structuring All Classes...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    <span>Apply Structure to All Classes</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* SETUP NEW CLASS SCHEDULE MODAL (CREATE FROM SCRATCH OR AI) */}
+      {isSetupClassModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '580px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Plus size={20} color="#4F46E5" /> Setup Class Schedule Matrix
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Target Campus: <strong>{effectiveSchoolSlug}</strong>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSetupClassModalOpen(false)}
+                style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewClassTimetable} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '75vh', overflowY: 'auto' }}>
+              
+              {/* Mode Selector Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1.5px solid #e2e8f0', marginBottom: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setNewClassSetup(prev => ({ ...prev, mode: 'scratch' }))}
+                  style={{
+                    flex: 1, padding: '10px 12px', background: 'none', border: 'none',
+                    borderBottom: newClassSetup.mode === 'scratch' ? '2.5px solid #059669' : '2.5px solid transparent',
+                    fontWeight: 800, fontSize: '0.88rem',
+                    color: newClassSetup.mode === 'scratch' ? '#065f46' : '#64748b',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                  }}
+                >
+                  <Sparkles size={16} color={newClassSetup.mode === 'scratch' ? '#059669' : '#94a3b8'} />
+                  <span>Build from Scratch</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewClassSetup(prev => ({ ...prev, mode: 'auto' }))}
+                  style={{
+                    flex: 1, padding: '10px 12px', background: 'none', border: 'none',
+                    borderBottom: newClassSetup.mode === 'auto' ? '2.5px solid #4F46E5' : '2.5px solid transparent',
+                    fontWeight: 800, fontSize: '0.88rem',
+                    color: newClassSetup.mode === 'auto' ? '#4338ca' : '#64748b',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+                  }}
+                >
+                  <RefreshCw size={15} color={newClassSetup.mode === 'auto' ? '#4F46E5' : '#94a3b8'} />
+                  <span>AI Auto-Generate</span>
+                </button>
+              </div>
+
+              {/* Class & Section Inputs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Class Grade
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newClassSetup.className}
+                    onChange={(e) => setNewClassSetup(prev => ({ ...prev, className: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
+                    placeholder="e.g. Class 6, Class 10"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Section
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newClassSetup.section}
+                    onChange={(e) => setNewClassSetup(prev => ({ ...prev, section: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
+                    placeholder="e.g. A, B, SCIENCE"
+                  />
+                </div>
+              </div>
+
+              {/* Advanced Parameters for Scratch Mode */}
+              {newClassSetup.mode === 'scratch' && (
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                      Periods Per Day
+                    </label>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {[6, 7, 8, 9, 10].map(num => (
+                        <button
+                          key={num}
+                          type="button"
+                          onClick={() => setNewClassSetup(prev => ({ ...prev, periodsPerDay: num }))}
+                          style={{
+                            flex: 1, padding: '7px 4px', borderRadius: '8px',
+                            border: `1.5px solid ${newClassSetup.periodsPerDay === num ? '#059669' : '#cbd5e1'}`,
+                            background: newClassSetup.periodsPerDay === num ? '#ecfdf5' : 'white',
+                            color: newClassSetup.periodsPerDay === num ? '#065f46' : '#475569',
+                            fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer'
+                          }}
+                        >
+                          {num}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Day Start Time
+                      </label>
+                      <input
+                        type="time"
+                        value={newClassSetup.startTime}
+                        onChange={(e) => setNewClassSetup(prev => ({ ...prev, startTime: e.target.value }))}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Period Duration (Mins)
+                      </label>
+                      <input
+                        type="number"
+                        min="20"
+                        max="120"
+                        value={newClassSetup.periodDurationMinutes}
+                        onChange={(e) => setNewClassSetup(prev => ({ ...prev, periodDurationMinutes: Number(e.target.value) }))}
+                        style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsSetupClassModalOpen(false)}
+                  style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAutoGenerating}
+                  style={{
+                    padding: '9px 20px', borderRadius: '10px', border: 'none',
+                    background: newClassSetup.mode === 'scratch' ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : '#4F46E5',
+                    color: 'white', fontWeight: 700, cursor: isAutoGenerating ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isAutoGenerating ? 'Initializing...' : 'Initialize Timetable'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* RESET TIMETABLE TO SCRATCH MODAL */}
+      {isResetModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #fecaca',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#9f1239', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <RotateCcw size={18} color="#e11d48" /> Reset Timetable to Scratch
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#be123c', marginTop: '2px' }}>
+                  Target: <strong>{selectedTimetableClass}</strong>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsResetModalOpen(false)}
+                style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div 
+                onClick={() => setResetOptions(prev => ({ ...prev, resetType: 'blank_slots' }))}
+                style={{
+                  padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                  border: `2px solid ${resetOptions.resetType === 'blank_slots' ? '#059669' : '#e2e8f0'}`,
+                  background: resetOptions.resetType === 'blank_slots' ? '#ecfdf5' : 'white'
+                }}
+              >
+                <div style={{ fontWeight: 800, color: '#065f46' }}>
+                  Initialize Clean Blank Slots (P1 to P{resetOptions.periodsPerDay})
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '2px' }}>
+                  Creates 8 blank slots ready to assign subjects individually.
+                </div>
+              </div>
+
+              <div 
+                onClick={() => setResetOptions(prev => ({ ...prev, resetType: 'clear_all' }))}
+                style={{
+                  padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                  border: `2px solid ${resetOptions.resetType === 'clear_all' ? '#dc2626' : '#e2e8f0'}`,
+                  background: resetOptions.resetType === 'clear_all' ? '#fef2f2' : 'white'
+                }}
+              >
+                <div style={{ fontWeight: 800, color: '#991b1b' }}>
+                  Wipe to 0 Periods Completely
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#b91c1c', marginTop: '2px' }}>
+                  Clears all periods for this class.
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetTimetable}
+                disabled={isResetting}
+                style={{
+                  padding: '9px 20px', borderRadius: '10px', border: 'none',
+                  background: resetOptions.resetType === 'clear_all' ? '#dc2626' : '#059669',
+                  color: 'white', fontWeight: 700, cursor: isResetting ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isResetting ? 'Resetting...' : 'Confirm Reset'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* WORKING DAYS & OFF DAYS MODAL */}
+      {isWorkingDaysModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: '20px'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '480px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #fed7aa',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#9a3412', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CalendarDays size={18} color="#ea580c" /> Working Days & Holidays
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#c2410c', marginTop: '2px' }}>
+                  Target: <strong>{selectedTimetableClass}</strong>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsWorkingDaysModalOpen(false)}
+                style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                const isOff = workingDaysDraftOffDays.includes(day);
+                return (
+                  <div
+                    key={day}
+                    onClick={() => {
+                      if (isOff) {
+                        setWorkingDaysDraftOffDays(prev => prev.filter(d => d !== day));
+                      } else {
+                        setWorkingDaysDraftOffDays(prev => [...prev, day]);
+                      }
+                    }}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '12px 16px', borderRadius: '10px', cursor: 'pointer',
+                      border: `1.5px solid ${isOff ? '#fca5a5' : '#86efac'}`,
+                      background: isOff ? '#fef2f2' : '#f0fdf4'
+                    }}
+                  >
+                    <span style={{ fontWeight: 800, color: isOff ? '#991b1b' : '#166534' }}>{day}</span>
+                    <span style={{
+                      fontSize: '0.74rem', fontWeight: 800, padding: '3px 8px', borderRadius: '6px',
+                      background: isOff ? '#fee2e2' : '#dcfce7', color: isOff ? '#dc2626' : '#15803d'
+                    }}>
+                      {isOff ? '🏖️ OFF DAY' : '✅ WORKING DAY'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsWorkingDaysModalOpen(false)}
+                style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveWorkingDays}
+                disabled={isSavingWorkingDays}
+                style={{
+                  padding: '9px 20px', borderRadius: '10px', border: 'none',
+                  background: '#ea580c', color: 'white', fontWeight: 700, cursor: isSavingWorkingDays ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isSavingWorkingDays ? 'Saving...' : 'Save Days Configuration'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ADD PERIOD MODAL */}
       {isAddPeriodModalOpen && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -1718,7 +3372,7 @@ const Timetable = () => {
           zIndex: 10000, padding: '20px'
         }}>
           <div style={{
-            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '540px',
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '520px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
           }}>
             <div style={{
@@ -1727,11 +3381,11 @@ const Timetable = () => {
               background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Plus size={20} color="#059669" /> Add New Period / Recess Slot
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Plus size={20} color="#059669" /> Add Period Slot
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#047857', marginTop: '2px' }}>
-                  {selectedTimetableClass} • Campus: {effectiveSchoolSlug}
+                  Target Class: <strong>{selectedTimetableClass}</strong>
                 </div>
               </div>
               <button
@@ -1742,163 +3396,40 @@ const Timetable = () => {
               </button>
             </div>
 
-            <form onSubmit={handleAddPeriodSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '72vh', overflowY: 'auto' }}>
-              
-              {/* Recess / Break Toggle Card */}
-              <div 
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  background: newPeriodData.isRecess ? '#fffbeb' : '#f8fafc',
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  border: `1.5px solid ${newPeriodData.isRecess ? '#f59e0b' : '#e2e8f0'}`,
-                  cursor: 'pointer'
-                }}
-                onClick={() => {
-                  const nextR = !newPeriodData.isRecess;
-                  setNewPeriodData(prev => ({
-                    ...prev,
-                    isRecess: nextR,
-                    type: nextR ? 'Recess' : 'Lecture',
-                    periodName: nextR ? 'Recess' : (prev.periodName === 'Recess' ? 'New Period' : prev.periodName),
-                    subject: nextR ? 'Recess / Lunch' : '',
-                    teacher: nextR ? 'Duty Staff' : '',
-                    room: nextR ? 'Campus / Cafeteria' : 'Room 201'
-                  }));
-                }}
-              >
-                <input
-                  type="checkbox"
-                  id="addPeriodRecessToggle"
-                  checked={Boolean(newPeriodData.isRecess)}
-                  onChange={() => {}}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#f59e0b' }}
-                />
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: newPeriodData.isRecess ? '#b45309' : '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Coffee size={15} color={newPeriodData.isRecess ? '#d97706' : '#64748b'} />
-                    <span>Designate as Recess / Break Slot</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    Recess slots designate lunch, snacks, or recreation breaks without standard faculty teaching.
-                  </div>
-                </div>
-              </div>
-
-              {/* Target Scope */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  Weekly Scope
-                </label>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                  <label style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '8px 14px', borderRadius: '10px',
-                    border: `1.5px solid ${newPeriodData.applyToAllDays ? '#059669' : '#cbd5e1'}`,
-                    background: newPeriodData.applyToAllDays ? '#ecfdf5' : 'white',
-                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700,
-                    color: newPeriodData.applyToAllDays ? '#065f46' : '#475569'
-                  }}>
-                    <input
-                      type="radio"
-                      name="periodScope"
-                      checked={newPeriodData.applyToAllDays}
-                      onChange={() => setNewPeriodData(prev => ({ ...prev, applyToAllDays: true }))}
-                      style={{ accentColor: '#059669' }}
-                    />
-                    <span>All Weekdays (Monday – Friday)</span>
-                  </label>
-
-                  <label style={{
-                    display: 'flex', alignItems: 'center', gap: '8px',
-                    padding: '8px 14px', borderRadius: '10px',
-                    border: `1.5px solid ${!newPeriodData.applyToAllDays ? '#059669' : '#cbd5e1'}`,
-                    background: !newPeriodData.applyToAllDays ? '#ecfdf5' : 'white',
-                    cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700,
-                    color: !newPeriodData.applyToAllDays ? '#065f46' : '#475569'
-                  }}>
-                    <input
-                      type="radio"
-                      name="periodScope"
-                      checked={!newPeriodData.applyToAllDays}
-                      onChange={() => setNewPeriodData(prev => ({ ...prev, applyToAllDays: false }))}
-                      style={{ accentColor: '#059669' }}
-                    />
-                    <span>Specific Day Only</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Day selection if specific day */}
-              {!newPeriodData.applyToAllDays && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                    Select Target Day
-                  </label>
-                  <select
-                    value={newPeriodData.day}
-                    onChange={(e) => setNewPeriodData(prev => ({ ...prev, day: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
-                  >
-                    {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Period Code & Slot Type */}
+            <form onSubmit={handleAddPeriodSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                    Period Code / Label
+                    Period Label
                   </label>
                   <input
                     type="text"
+                    required
                     value={newPeriodData.periodName}
                     onChange={(e) => setNewPeriodData(prev => ({ ...prev, periodName: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                    placeholder="e.g. P7, Recess, Zero Period"
-                    required
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}
+                    placeholder="e.g. P1, P8"
                   />
                 </div>
-
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                    Slot Type
+                    Type
                   </label>
                   <select
                     value={newPeriodData.type}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const isR = val === 'Recess' || val === 'Break';
-                      setNewPeriodData(prev => ({
-                        ...prev,
-                        type: val,
-                        isRecess: isR,
-                        periodName: isR ? (val === 'Break' ? 'Break' : 'Recess') : prev.periodName,
-                        subject: isR ? 'Recess / Break' : prev.subject
-                      }));
-                    }}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
+                    onChange={(e) => setNewPeriodData(prev => ({ ...prev, type: e.target.value, isRecess: e.target.value === 'Recess' }))}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600, background: 'white' }}
                   >
                     <option value="Lecture">Lecture</option>
                     <option value="Lab">Lab (Practical)</option>
-                    <option value="Recess">Recess / Lunch</option>
-                    <option value="Break">Short Break</option>
-                    <option value="Assembly">Assembly / Devotion</option>
-                    <option value="Zero Period">Zero Period / Extra Class</option>
-                    <option value="Tutorial">Tutorial / Problem Solving</option>
-                    <option value="Activity">Activity / Sports / Arts</option>
-                    <option value="Assessment">Assessment / Remedial</option>
-                    <option value="Self Study">Self Study / Library</option>
+                    <option value="Tutorial">Tutorial</option>
+                    <option value="Activity">Activity / Sports</option>
+                    <option value="Assessment">Assessment</option>
+                    <option value="Recess">Recess Break</option>
                   </select>
                 </div>
               </div>
 
-              {/* Start & End Time */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
@@ -1908,8 +3439,7 @@ const Timetable = () => {
                     type="time"
                     value={newPeriodData.startTime}
                     onChange={(e) => setNewPeriodData(prev => ({ ...prev, startTime: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                    required
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}
                   />
                 </div>
                 <div>
@@ -1920,84 +3450,29 @@ const Timetable = () => {
                     type="time"
                     value={newPeriodData.endTime}
                     onChange={(e) => setNewPeriodData(prev => ({ ...prev, endTime: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                    required
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 600 }}
                   />
                 </div>
               </div>
 
-              {/* Subject Name */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  {newPeriodData.isRecess ? 'Break / Recess Description' : 'Subject Name'}
-                </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', padding: '10px 14px', borderRadius: '8px' }}>
                 <input
-                  type="text"
-                  value={newPeriodData.subject}
-                  onChange={(e) => setNewPeriodData(prev => ({ ...prev, subject: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                  placeholder={newPeriodData.isRecess ? "e.g. Lunch & Nutrition, Refreshment Break" : "e.g. Mathematics, Computer Science, Biology"}
+                  type="checkbox"
+                  id="addPeriodApplyAllCheck"
+                  checked={newPeriodData.applyToAllDays}
+                  onChange={(e) => setNewPeriodData(prev => ({ ...prev, applyToAllDays: e.target.checked }))}
+                  style={{ width: '16px', height: '16px', accentColor: '#059669', cursor: 'pointer' }}
                 />
+                <label htmlFor="addPeriodApplyAllCheck" style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', cursor: 'pointer' }}>
+                  Apply to all active weekdays (Monday – Friday)
+                </label>
               </div>
 
-              {/* Teacher & Room (if not recess) */}
-              {!newPeriodData.isRecess && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '14px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                      Faculty / Teacher
-                    </label>
-                    <select
-                      value={newPeriodData.teacher}
-                      onChange={(e) => setNewPeriodData(prev => ({ ...prev, teacher: e.target.value }))}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
-                    >
-                      <option value="">-- Select Teacher --</option>
-                      {teachersList.map((t, idx) => {
-                        const tName = t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim() || t.portalUsername;
-                        return (
-                          <option key={t._id || idx} value={tName}>
-                            {tName} {t.department ? `(${t.department})` : ''}
-                          </option>
-                        );
-                      })}
-                      <option value="Mr. Ramesh Singh">Mr. Ramesh Singh (Mathematics)</option>
-                      <option value="Dr. Vikram Malhotra">Dr. Vikram Malhotra (Science)</option>
-                      <option value="Ms. Sunita Sharma">Ms. Sunita Sharma (Languages)</option>
-                      <option value="Mr. Rajesh Verma">Mr. Rajesh Verma (Humanities)</option>
-                      <option value="Mrs. Priya Sen">Mrs. Priya Sen (Technology)</option>
-                      <option value="Coach R. Yadav">Coach R. Yadav (Sports)</option>
-                      <option value="Principal Office">Principal Office</option>
-                      <option value="Librarian Incharge">Librarian Incharge</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                      Classroom / Lab
-                    </label>
-                    <input
-                      type="text"
-                      value={newPeriodData.room}
-                      onChange={(e) => setNewPeriodData(prev => ({ ...prev, room: e.target.value }))}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                      placeholder="e.g. Room 201"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div style={{
-                paddingTop: '12px', borderTop: '1px solid #e2e8f0',
-                display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '6px'
-              }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                 <button
                   type="button"
                   onClick={() => setIsAddPeriodModalOpen(false)}
-                  style={{
-                    padding: '10px 18px', borderRadius: '10px', border: '1px solid #cbd5e1',
-                    background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer'
-                  }}
+                  style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -2005,23 +3480,20 @@ const Timetable = () => {
                   type="submit"
                   disabled={isAddingPeriod}
                   style={{
-                    padding: '10px 22px', borderRadius: '10px', border: 'none',
-                    background: '#059669', color: 'white', fontWeight: 700,
-                    cursor: isAddingPeriod ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)'
+                    padding: '9px 20px', borderRadius: '10px', border: 'none',
+                    background: '#059669', color: 'white', fontWeight: 700, cursor: isAddingPeriod ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {isAddingPeriod ? 'Adding Slot...' : 'Add Period to Database'}
+                  {isAddingPeriod ? 'Adding...' : 'Add Period'}
                 </button>
               </div>
-
             </form>
           </div>
         </div>,
         document.body
       )}
 
-      {/* BELL SCHEDULE & RECESS TIMINGS MODAL (SUPER ADMIN & ADMIN ACCESS) */}
+      {/* BELL SCHEDULE MODAL */}
       {isBellScheduleModalOpen && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
@@ -2030,7 +3502,7 @@ const Timetable = () => {
           zIndex: 10000, padding: '20px'
         }}>
           <div style={{
-            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '780px',
+            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '600px',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
           }}>
             <div style={{
@@ -2043,7 +3515,7 @@ const Timetable = () => {
                   <Coffee size={20} color="#ea580c" /> Bell Schedule & Recess Timings
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#c2410c', marginTop: '2px' }}>
-                  Super Admin & Admin: Synchronize master period timings & Recess slots across all weekdays (Mon–Fri)
+                  Target Class: <strong>{selectedTimetableClass}</strong>
                 </div>
               </div>
               <button
@@ -2054,195 +3526,54 @@ const Timetable = () => {
               </button>
             </div>
 
-            <div style={{ padding: '24px', maxHeight: '72vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
-              <div style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                padding: '12px 16px',
-                fontSize: '0.82rem',
-                color: '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}>
-                <Clock size={18} color="#0284c7" />
-                <span>
-                  Adjust Start & End times or toggle <strong>Recess</strong> slots below. Changes will apply to <strong>{selectedTimetableClass}</strong> across Monday through Friday.
-                </span>
-              </div>
-
-              {/* Table of periods */}
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                      <th style={{ padding: '10px 14px', fontWeight: 800, color: '#334155' }}>#</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 800, color: '#334155' }}>Period Code / Name</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 800, color: '#334155' }}>Start Time</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 800, color: '#334155' }}>End Time</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 800, color: '#b45309', textAlign: 'center' }}>Recess Break?</th>
-                      <th style={{ padding: '10px 14px', fontWeight: 800, color: '#dc2626', textAlign: 'center' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bellScheduleList.map((item, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: item.isRecess ? '#fffbeb' : 'white' }}>
-                        <td style={{ padding: '10px 14px', fontWeight: 800, color: '#64748b' }}>
-                          {idx + 1}
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <input
-                            type="text"
-                            value={item.periodName}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBellScheduleList(prev => {
-                                const copy = [...prev];
-                                copy[idx].periodName = val;
-                                return copy;
-                              });
-                            }}
-                            style={{
-                              width: '130px', padding: '6px 10px', borderRadius: '8px',
-                              border: '1.5px solid #cbd5e1', fontWeight: 700, fontSize: '0.85rem'
-                            }}
-                          />
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <input
-                            type="time"
-                            value={item.startTime}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBellScheduleList(prev => {
-                                const copy = [...prev];
-                                copy[idx].startTime = val;
-                                return copy;
-                              });
-                            }}
-                            style={{ padding: '6px 10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontWeight: 600, fontSize: '0.85rem' }}
-                          />
-                        </td>
-                        <td style={{ padding: '10px 14px' }}>
-                          <input
-                            type="time"
-                            value={item.endTime}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setBellScheduleList(prev => {
-                                const copy = [...prev];
-                                copy[idx].endTime = val;
-                                return copy;
-                              });
-                            }}
-                            style={{ padding: '6px 10px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontWeight: 600, fontSize: '0.85rem' }}
-                          />
-                        </td>
-                        <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', cursor: 'pointer', padding: '4px 10px', borderRadius: '8px', background: item.isRecess ? '#fef3c7' : '#f8fafc', border: `1px solid ${item.isRecess ? '#f59e0b' : '#cbd5e1'}` }}>
-                            <input
-                              type="checkbox"
-                              checked={Boolean(item.isRecess)}
-                              onChange={(e) => {
-                                const checked = e.target.checked;
-                                setBellScheduleList(prev => {
-                                  const copy = [...prev];
-                                  copy[idx].isRecess = checked;
-                                  copy[idx].type = checked ? 'Recess' : 'Lecture';
-                                  if (checked && (!copy[idx].periodName || copy[idx].periodName.startsWith('P'))) {
-                                    copy[idx].periodName = 'Recess';
-                                  }
-                                  return copy;
-                                });
-                              }}
-                              style={{ width: '16px', height: '16px', accentColor: '#f59e0b', cursor: 'pointer' }}
-                            />
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: item.isRecess ? '#b45309' : '#64748b' }}>
-                              {item.isRecess ? 'Recess' : 'No'}
-                            </span>
-                          </label>
-                        </td>
-                        <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBellScheduleList(prev => prev.filter((_, i) => i !== idx));
-                            }}
-                            style={{
-                              background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px',
-                              padding: '5px 8px', color: '#dc2626', cursor: 'pointer', display: 'inline-flex'
-                            }}
-                            title="Remove this slot row"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Add row button */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextNum = bellScheduleList.length + 1;
-                    let nextStart = '01:35';
-                    let nextEnd = '02:25';
-                    if (bellScheduleList.length > 0) {
-                      const last = bellScheduleList[bellScheduleList.length - 1];
-                      if (last.endTime) {
-                        nextStart = last.endTime;
-                        const [h, m] = last.endTime.split(':').map(Number);
-                        if (!isNaN(h) && !isNaN(m)) {
-                          const endTotal = h * 60 + m + 50;
-                          const nh = Math.floor(endTotal / 60) % 24;
-                          const nm = endTotal % 60;
-                          nextEnd = `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`;
-                        }
-                      }
-                    }
-                    setBellScheduleList(prev => [
-                      ...prev,
-                      {
-                        periodNumber: nextNum,
-                        periodName: `P${nextNum}`,
-                        startTime: nextStart,
-                        endTime: nextEnd,
-                        type: 'Lecture',
-                        isRecess: false
-                      }
-                    ]);
-                  }}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflowY: 'auto' }}>
+              {bellScheduleList.map((item, idx) => (
+                <div
+                  key={idx}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    padding: '8px 14px', borderRadius: '8px',
-                    border: '1px dashed #cbd5e1', background: '#f8fafc',
-                    color: '#4338ca', fontWeight: 700, fontSize: '0.82rem',
-                    cursor: 'pointer'
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '10px 14px', borderRadius: '10px',
+                    border: `1.5px solid ${item.isRecess ? '#f59e0b' : '#e2e8f0'}`,
+                    background: item.isRecess ? '#fffbeb' : '#f8fafc'
                   }}
                 >
-                  <Plus size={14} /> Add Another Period Slot
-                </button>
-              </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '90px' }}>
+                    {item.isRecess ? <Coffee size={14} color="#d97706" /> : <Clock size={14} color="#4f46e5" />}
+                    <span style={{ fontWeight: 800, fontSize: '0.85rem', color: item.isRecess ? '#b45309' : '#1e3a8a' }}>
+                      {item.periodName}
+                    </span>
+                  </div>
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="time"
+                      value={item.startTime}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBellScheduleList(prev => prev.map((p, i) => i === idx ? { ...p, startTime: val } : p));
+                      }}
+                      style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}
+                    />
+                    <span>-</span>
+                    <input
+                      type="time"
+                      value={item.endTime}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBellScheduleList(prev => prev.map((p, i) => i === idx ? { ...p, endTime: val } : p));
+                      }}
+                      style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div style={{
-              padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc',
-              display: 'flex', justifyContent: 'flex-end', gap: '12px'
-            }}>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 type="button"
                 onClick={() => setIsBellScheduleModalOpen(false)}
-                style={{
-                  padding: '10px 18px', borderRadius: '10px', border: '1px solid #cbd5e1',
-                  background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer'
-                }}
+                style={{ padding: '9px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -2251,113 +3582,13 @@ const Timetable = () => {
                 onClick={handleSaveBellSchedule}
                 disabled={isSavingBellSchedule}
                 style={{
-                  padding: '10px 22px', borderRadius: '10px', border: 'none',
-                  background: '#ea580c', color: 'white', fontWeight: 700,
-                  cursor: isSavingBellSchedule ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 12px rgba(234, 88, 12, 0.25)'
+                  padding: '9px 20px', borderRadius: '10px', border: 'none',
+                  background: '#ea580c', color: 'white', fontWeight: 700, cursor: isSavingBellSchedule ? 'not-allowed' : 'pointer'
                 }}
               >
-                {isSavingBellSchedule ? 'Saving Bell Schedule...' : 'Save Bell Schedule to All Weekdays'}
+                {isSavingBellSchedule ? 'Saving...' : 'Save Bell Schedule'}
               </button>
             </div>
-
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* SETUP NEW CLASS SCHEDULE MODAL */}
-      {isSetupClassModalOpen && createPortal(
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 10000, padding: '20px'
-        }}>
-          <div style={{
-            background: 'white', borderRadius: '20px', width: '100%', maxWidth: '480px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
-          }}>
-            <div style={{
-              padding: '20px 24px', borderBottom: '1px solid #e2e8f0',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)'
-            }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Plus size={18} color="#4F46E5" /> Setup Class Schedule Matrix
-                </h3>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                  Target Campus: {effectiveSchoolSlug}
-                </div>
-              </div>
-              <button
-                onClick={() => setIsSetupClassModalOpen(false)}
-                style={{ background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '6px', cursor: 'pointer', display: 'flex' }}
-              >
-                <X size={18} color="#64748b" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewClassTimetable} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  Class / Grade Level
-                </label>
-                <select
-                  value={newClassSetup.className}
-                  onChange={(e) => setNewClassSetup(prev => ({ ...prev, className: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, background: 'white' }}
-                >
-                  {['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10', 'Class 11', 'Class 12'].map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  Section / Stream
-                </label>
-                <input
-                  type="text"
-                  value={newClassSetup.section}
-                  onChange={(e) => setNewClassSetup(prev => ({ ...prev, section: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
-                  placeholder="e.g. A, B, Science, Commerce"
-                  required
-                />
-              </div>
-
-              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#64748b' }}>
-                💡 <strong>Admin Notice:</strong> The intelligent scheduler will auto-populate 6 periods/day across Monday to Friday using active teachers from {effectiveSchoolSlug}.
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsSetupClassModalOpen(false)}
-                  style={{
-                    padding: '10px 18px', borderRadius: '10px', border: '1px solid #cbd5e1',
-                    background: 'white', color: '#64748b', fontWeight: 700, cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isAutoGenerating}
-                  style={{
-                    padding: '10px 22px', borderRadius: '10px', border: 'none',
-                    background: '#4F46E5', color: 'white', fontWeight: 700,
-                    cursor: isAutoGenerating ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
-                  }}
-                >
-                  {isAutoGenerating ? 'Generating Grid...' : 'Initialize & Generate Schedule'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>,
         document.body

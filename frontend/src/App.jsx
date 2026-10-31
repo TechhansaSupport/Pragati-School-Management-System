@@ -24,11 +24,21 @@ import Attendance from './pages/Attendance';
 import Timetable from './pages/Timetable';
 import LabDashboard from './pages/LabDashboard';
 import SupportStaffDashboard from './pages/SupportStaffDashboard';
+import CalendarView from './components/CalendarModal';
+import CalendarPage from './pages/CalendarPage';
 import { AlertTriangle, ShieldAlert, X as CloseIcon } from 'lucide-react';
 import './index.css';
 
 const MainLayout = ({ children }) => {
+  const location = useLocation();
   const [isLayoutManagerOpen, setIsLayoutManagerOpen] = useState(false);
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpenCalendar = () => setIsCalendarModalOpen(true);
+    window.addEventListener('openCalendarModal', handleOpenCalendar);
+    return () => window.removeEventListener('openCalendarModal', handleOpenCalendar);
+  }, []);
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const token = sessionStorage.getItem('token') || '';
 
@@ -169,7 +179,12 @@ const MainLayout = ({ children }) => {
       
       <div className="sub-header">
         <div className="sub-header-left">
-          <div className="sub-header-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div 
+            className="sub-header-item" 
+            onClick={() => setIsCalendarModalOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+            title="Open School Calendar & Holiday Schedule"
+          >
             <Calendar size={15} style={{ color: '#4F46E5' }} />
             <span style={{ fontWeight: 600, color: 'var(--color-text-main)' }}>
               {formattedDate}
@@ -229,10 +244,16 @@ const MainLayout = ({ children }) => {
 
       <div className="main-wrapper">
         <Sidebar />
-        <div className="content-layer">
+        <div 
+          className="content-layer"
+          style={location.pathname.includes('/calendar') ? { padding: '8px 14px', overflow: 'hidden', height: '100%' } : {}}
+        >
           {children}
         </div>
       </div>
+
+      {/* Global School Calendar Modal */}
+      <CalendarView isOpen={isCalendarModalOpen} onClose={() => setIsCalendarModalOpen(false)} />
 
       {/* Dark Overlay when Drawer is Open */}
       {isLayoutManagerOpen && (
@@ -458,9 +479,10 @@ const AppRoutes = () => {
         
         {/* Academic Duties Routes (Restricted for Accounts, Lab Assistant & Support Staff) */}
         <Route path="/:tenantSlug/academics" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Academics />} />
+        <Route path="/:tenantSlug/calendar" element={<CalendarPage />} />
         <Route path="/:tenantSlug/timetable" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Timetable />} />
         <Route path="/:tenantSlug/attendance" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Attendance />} />
-        <Route path="/:tenantSlug/students" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Students />} />
+        <Route path="/:tenantSlug/students" element={isLabAssistant ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Students />} />
         <Route path="/:tenantSlug/staff" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
         <Route path="/:tenantSlug/teachers" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance?tab=salaries`} replace /> : <Staff />} />
         <Route path="/:tenantSlug/reports" element={(isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isAccountant ? <Navigate to={`/${tenantSlug}/finance`} replace /> : <Reports />} />
