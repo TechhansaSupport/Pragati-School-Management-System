@@ -256,6 +256,50 @@ const Attendance = () => {
     });
   }, [roster, searchQuery, filterStatus]);
 
+  // Natural sorting for Class names (e.g. Class 8, Class 9, Class 10, Class 11)
+  const uniqueClassNames = useMemo(() => {
+    const names = Array.from(new Set(classesList.map(c => c.className).filter(Boolean)));
+    return names.sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ''), 10);
+      const numB = parseInt(b.replace(/\D/g, ''), 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b);
+    });
+  }, [classesList]);
+
+  const selectedClassName = useMemo(() => {
+    if (!selectedClass) return uniqueClassNames[0] || '';
+    return selectedClass.split(' - ')[0] || selectedClass;
+  }, [selectedClass, uniqueClassNames]);
+
+  const selectedSectionName = useMemo(() => {
+    if (!selectedClass) return 'A';
+    const parts = selectedClass.split(' - ');
+    return parts.length > 1 ? parts[1] : 'A';
+  }, [selectedClass]);
+
+  const availableSections = useMemo(() => {
+    if (!selectedClassName) return [{ section: 'A', enrolled: 0 }];
+    const matching = classesList.filter(c => c.className === selectedClassName);
+    if (matching.length === 0) return [{ section: 'A', enrolled: 0 }];
+    return matching.map(c => ({
+      section: c.section,
+      enrolled: c.enrolledStudents || 0,
+      id: c._id
+    }));
+  }, [classesList, selectedClassName]);
+
+  const handleClassChange = (newClassName) => {
+    const matching = classesList.filter(c => c.className === newClassName);
+    const hasSameSection = matching.some(c => c.section === selectedSectionName);
+    const newSection = hasSameSection ? selectedSectionName : (matching[0]?.section || 'A');
+    setSelectedClass(`${newClassName} - ${newSection}`);
+  };
+
+  const handleSectionChange = (newSectionName) => {
+    setSelectedClass(`${selectedClassName} - ${newSectionName}`);
+  };
+
   const currentClassObj = classesList.find(c => `${c.className} - ${c.section}` === selectedClass);
 
   return (
@@ -481,13 +525,15 @@ const Attendance = () => {
           {/* Class Selector & Roll Call Controls Header */}
           <div className="card" style={{ padding: '22px 26px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              {/* Separate Class Dropdown */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
-                  Select Grade & Section
+                  Class
                 </label>
                 <select
-                  value={selectedClass}
-                  onChange={(e) => setSelectedClass(e.target.value)}
+                  aria-label="Select Class"
+                  value={selectedClassName}
+                  onChange={(e) => handleClassChange(e.target.value)}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '10px',
@@ -497,12 +543,41 @@ const Attendance = () => {
                     color: '#1e3a8a',
                     background: '#f8fafc',
                     cursor: 'pointer',
-                    minWidth: '220px'
+                    minWidth: '140px'
                   }}
                 >
-                  {classesList.map(c => (
-                    <option key={c._id} value={`${c.className} - ${c.section}`}>
-                      {c.className} - Section {c.section} ({c.enrolledStudents || 0} students)
+                  {uniqueClassNames.map(cls => (
+                    <option key={cls} value={cls}>
+                      {cls}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Separate Section Dropdown */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  Section
+                </label>
+                <select
+                  aria-label="Select Section"
+                  value={selectedSectionName}
+                  onChange={(e) => handleSectionChange(e.target.value)}
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    color: '#1e3a8a',
+                    background: '#f8fafc',
+                    cursor: 'pointer',
+                    minWidth: '130px'
+                  }}
+                >
+                  {availableSections.map(s => (
+                    <option key={s.section} value={s.section}>
+                      Section {s.section}
                     </option>
                   ))}
                 </select>

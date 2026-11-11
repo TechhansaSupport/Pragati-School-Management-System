@@ -477,7 +477,7 @@ const Finance = () => {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', paddingBottom: '32px' }}>
       {renderTransactionDrawer()}
 
       {/* Financial KPI Cards — Collections, Expenses, Due Fees, Due Salaries, Balance */}
@@ -565,7 +565,7 @@ const Finance = () => {
 
       {/* Main Ledger Table Card */}
       <div className="card" style={{
-        flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0,
+        display: 'flex', flexDirection: 'column',
         background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0',
         padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
       }}>
@@ -690,7 +690,7 @@ const Finance = () => {
         )}
 
         {/* Table View */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div style={{ width: '100%', overflowX: 'auto' }}>
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
               <RefreshCw size={28} className="animate-spin" style={{ margin: '0 auto 10px', color: '#4F46E5' }} />

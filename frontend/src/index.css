@@ -245,19 +245,59 @@ body.dark-mode .main-wrapper::before {
   box-sizing: border-box;
 }
 
-/* Custom modern scrollbar for content layer */
-.content-layer::-webkit-scrollbar {
-  width: 8px;
+/* ========================================================
+   GLOBAL MODERN SLEEK SCROLLBAR SYSTEM
+   Applies unified sleek, slim, rounded scrollbars to all
+   modals, popups, tables, cards, and page containers
+   ======================================================== */
+html,
+body,
+*,
+*::before,
+*::after {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
 }
-.content-layer::-webkit-scrollbar-track {
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
   background: transparent;
 }
-.content-layer::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.3);
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
   border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease;
 }
-.content-layer::-webkit-scrollbar-thumb:hover {
-  background: rgba(79, 70, 229, 0.6);
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(79, 70, 229, 0.75);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Dark mode scrollbars */
+body.dark-mode,
+body.dark-mode *,
+body.dark-mode *::before,
+body.dark-mode *::after {
+  scrollbar-color: rgba(100, 116, 139, 0.5) transparent;
+}
+
+body.dark-mode *::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.45);
+}
+
+body.dark-mode *::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.85);
 }
 
 /* Utility to completely hide scrollbar while preserving smooth scrolling */
@@ -1806,47 +1846,11 @@ MOBILE
   height: 0 !important;
 }
 
-/* Custom modern scrollbar for content layer & timetable */
-.content-layer {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-}
-
-.timetable-scroll-container {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
-}
-
-.timetable-scroll-container::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
-}
-
-.content-layer::-webkit-scrollbar {
-  width: 7px;
-  height: 0px !important;
-}
-
+/* Specific horizontal scrollbar suppression for vertical content layer */
 .content-layer::-webkit-scrollbar:horizontal {
   display: none !important;
   height: 0px !important;
   width: 0px !important;
-}
-
-.content-layer::-webkit-scrollbar-track,
-.timetable-scroll-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.content-layer::-webkit-scrollbar-thumb,
-.timetable-scroll-container::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.4);
-  border-radius: 10px;
-}
-
-.content-layer::-webkit-scrollbar-thumb:hover,
-.timetable-scroll-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(79, 70, 229, 0.7);
 }
 
 .support-dashboard-grid {

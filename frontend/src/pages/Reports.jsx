@@ -144,7 +144,7 @@ const Reports = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', paddingBottom: '32px' }}>
       {renderConfigurationDrawer()}
 
       {/* Top Banner */}
