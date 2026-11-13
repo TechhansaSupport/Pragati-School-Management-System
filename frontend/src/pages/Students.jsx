@@ -87,7 +87,9 @@ const Students = () => {
     address: '',
     attendance: 100,
     status: 'Active',
-    portalPassword: 'student123'
+    userId: '',
+    portalPassword: 'student123',
+    credentialMode: 'auto' // 'auto' | 'manual'
   };
   const [formData, setFormData] = useState(initialForm);
   const [formError, setFormError] = useState('');
@@ -232,7 +234,9 @@ const Students = () => {
       grade: defaultGrade,
       section: defaultSection,
       rollNo: nextRollNo,
-      portalPassword: 'student123'
+      userId: nextRollNo,
+      portalPassword: 'student123',
+      credentialMode: 'auto'
     });
     setFormError('');
     setShowModalPassword(false);
@@ -244,6 +248,8 @@ const Students = () => {
   const handleOpenEditModal = (student, e) => {
     if (e) e.stopPropagation();
     setEditingStudent(student);
+    const hasCustomUser = Boolean(student.userId && student.userId !== student.rollNo);
+    const hasCustomPwd = Boolean(student.portalPassword && student.portalPassword !== 'student123');
     setFormData({
       name: student.name || '',
       rollNo: student.rollNo || '',
@@ -257,7 +263,9 @@ const Students = () => {
       address: student.address || '',
       attendance: student.attendance !== undefined ? student.attendance : 100,
       status: student.status || 'Active',
-      portalPassword: student.portalPassword || 'student123'
+      userId: student.userId || student.rollNo || '',
+      portalPassword: student.portalPassword || 'student123',
+      credentialMode: (hasCustomUser || hasCustomPwd) ? 'manual' : 'auto'
     });
     setFormError('');
     setShowModalPassword(false);
@@ -285,10 +293,21 @@ const Students = () => {
         : `${API_BASE}/students`;
       const method = editingStudent ? 'PUT' : 'POST';
 
+      const finalUserId = formData.credentialMode === 'manual'
+        ? (formData.userId || formData.rollNo || '').trim()
+        : (formData.rollNo || '').trim();
+
+      const payload = {
+        ...formData,
+        userId: finalUserId,
+        portalUsername: finalUserId,
+        portalPassword: (formData.portalPassword || 'student123').trim()
+      };
+
       const res = await fetch(url, {
         method,
         headers: getAuthHeaders(),
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
@@ -299,7 +318,7 @@ const Students = () => {
         fetchMetadata();
         window.dispatchEvent(new CustomEvent('schoolListUpdated'));
         if (selectedStudent && editingStudent && selectedStudent._id === editingStudent._id) {
-          setSelectedStudent({ ...selectedStudent, ...formData });
+          setSelectedStudent({ ...selectedStudent, ...payload });
         }
       } else {
         setFormError(data.message || 'Operation failed');
@@ -689,8 +708,13 @@ const Students = () => {
                     <div style={{ background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                       <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>PORTAL USER ID</div>
                       <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b', marginTop: '2px', fontFamily: 'monospace' }}>
-                        {s.rollNo}
+                        {s.userId || s.rollNo}
                       </div>
+                      {s.userId && s.userId !== s.rollNo && (
+                        <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>
+                          ID: {s.rollNo}
+                        </div>
+                      )}
                     </div>
                     <div style={{ background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -714,7 +738,7 @@ const Students = () => {
                     type="button"
                     onClick={() => {
                       const portalUrl = `${window.location.origin}/${tenantSlug || 'neel-public-school'}/login`;
-                      const text = `Student Portal Login Details:\nPortal URL: ${portalUrl}\nStudent ID / User ID: ${s.rollNo}\nPassword: ${s.portalPassword || 'student123'}\nStudent Name: ${s.name}`;
+                      const text = `Student Portal Login Details:\nPortal URL: ${portalUrl}\nStudent ID / User ID: ${s.userId || s.rollNo}\nPassword: ${s.portalPassword || 'student123'}\nStudent Name: ${s.name}`;
                       navigator.clipboard?.writeText(text);
                       setCopiedNotice(s._id);
                       setTimeout(() => setCopiedNotice(''), 2500);
@@ -1260,77 +1284,6 @@ const Students = () => {
           </div>
         )}
 
-        {/* Table Selection Context Banner */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 18px',
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '12px',
-          marginBottom: '16px',
-          flexWrap: 'wrap',
-          gap: '10px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '0.95rem'
-            }}>
-              🏫
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1e3a8a' }}>
-                {gradeFilter === 'All' ? 'All Classes' : gradeFilter}
-                {sectionFilter !== 'All' ? ` — Section ${sectionFilter}` : ''}
-              </span>
-              <span style={{
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '6px',
-                background: studentsList.length > 0 ? '#e0e7ff' : '#f1f5f9',
-                color: studentsList.length > 0 ? '#3730a3' : '#64748b'
-              }}>
-                {studentsList.length} Student{studentsList.length !== 1 ? 's' : ''} Enrolled
-              </span>
-            </div>
-          </div>
-
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => handleOpenAddModal(gradeFilter !== 'All' ? gradeFilter : null, sectionFilter !== 'All' ? sectionFilter : null)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: '1px solid #c7d2fe',
-                background: '#eef2ff',
-                color: '#4338ca',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-              onMouseOver={e => { e.currentTarget.style.background = '#4f46e5'; e.currentTarget.style.color = 'white'; }}
-              onMouseOut={e => { e.currentTarget.style.background = '#eef2ff'; e.currentTarget.style.color = '#4338ca'; }}
-            >
-              <Plus size={13} strokeWidth={2.6} /> Admit Student {gradeFilter !== 'All' ? `to ${gradeFilter}` : ''}
-            </button>
-          )}
-        </div>
-
         {/* Unified Student Directory Table */}
         <div style={{ width: '100%' }}>
           {isLoading ? (
@@ -1582,7 +1535,14 @@ const Students = () => {
                       required
                       placeholder="e.g. STU-1001"
                       value={formData.rollNo}
-                      onChange={e => setFormData({ ...formData, rollNo: e.target.value })}
+                      onChange={e => {
+                        const newRoll = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          rollNo: newRoll,
+                          ...(prev.credentialMode === 'auto' ? { userId: newRoll } : {})
+                        }));
+                      }}
                       style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
@@ -1736,57 +1696,187 @@ const Students = () => {
                 <div style={{
                   background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
                   border: '1.5px solid #bfdbfe',
-                  borderRadius: '12px',
-                  padding: '14px',
+                  borderRadius: '14px',
+                  padding: '16px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px'
+                  gap: '12px'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '0.82rem', color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       <Key size={15} color="#2563eb" /> Student Portal Login Credentials
                     </div>
-                    <span style={{ fontSize: '0.72rem', background: '#dbeafe', color: '#1d4ed8', fontWeight: 700, padding: '2px 8px', borderRadius: '6px' }}>
-                      Student Access
-                    </span>
+
+                    {/* Mode Selector Toggle: Auto vs Set Manually */}
+                    <div style={{ display: 'inline-flex', background: '#dbeafe', padding: '3px', borderRadius: '10px', gap: '3px', border: '1px solid #bfdbfe' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            credentialMode: 'auto',
+                            userId: prev.rollNo || '',
+                            portalPassword: 'student123'
+                          }));
+                        }}
+                        style={{
+                          border: 'none',
+                          background: formData.credentialMode === 'auto' ? '#ffffff' : 'transparent',
+                          color: formData.credentialMode === 'auto' ? '#1d4ed8' : '#64748b',
+                          fontWeight: 700,
+                          fontSize: '0.73rem',
+                          padding: '4px 10px',
+                          borderRadius: '7px',
+                          cursor: 'pointer',
+                          boxShadow: formData.credentialMode === 'auto' ? '0 1px 4px rgba(37,99,235,0.15)' : 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span>⚡ Auto (Default)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            credentialMode: 'manual',
+                            userId: prev.userId || prev.rollNo || ''
+                          }));
+                        }}
+                        style={{
+                          border: 'none',
+                          background: formData.credentialMode === 'manual' ? '#2563eb' : 'transparent',
+                          color: formData.credentialMode === 'manual' ? '#ffffff' : '#64748b',
+                          fontWeight: 700,
+                          fontSize: '0.73rem',
+                          padding: '4px 10px',
+                          borderRadius: '7px',
+                          cursor: 'pointer',
+                          boxShadow: formData.credentialMode === 'manual' ? '0 2px 6px rgba(37,99,235,0.3)' : 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span>✏️ Set Manually</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
+                    {/* Portal User ID (Login ID) */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                        Portal User ID (Login ID)
-                      </label>
-                      <input 
-                        type="text"
-                        readOnly
-                        value={formData.rollNo || 'Auto-assigned'}
-                        style={{
-                          width: '100%', padding: '9px 12px', borderRadius: '8px',
-                          border: '1px solid #cbd5e1', background: '#f1f5f9',
-                          color: '#1e293b', fontWeight: 700, fontSize: '0.88rem',
-                          boxSizing: 'border-box', outline: 'none'
-                        }}
-                      />
-                      <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px' }}>
-                        Students sign in using their Student ID (<code>{formData.rollNo || 'STU-XXXX'}</code>) or email.
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                          Portal User ID (Login ID)
+                        </label>
+                        {formData.credentialMode === 'auto' ? (
+                          <span style={{ fontSize: '0.67rem', color: '#15803d', background: '#dcfce7', padding: '1px 7px', borderRadius: '4px', fontWeight: 700 }}>
+                            Auto (Student ID)
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.67rem', color: '#2563eb', background: '#dbeafe', padding: '1px 7px', borderRadius: '4px', fontWeight: 700 }}>
+                            Manual Custom ID
+                          </span>
+                        )}
+                      </div>
+
+                      {formData.credentialMode === 'auto' ? (
+                        <input 
+                          type="text"
+                          readOnly
+                          value={formData.rollNo || 'Auto-assigned'}
+                          style={{
+                            width: '100%', padding: '9px 12px', borderRadius: '8px',
+                            border: '1px solid #cbd5e1', background: '#f1f5f9',
+                            color: '#1e293b', fontWeight: 700, fontSize: '0.88rem',
+                            boxSizing: 'border-box', outline: 'none'
+                          }}
+                        />
+                      ) : (
+                        <input 
+                          type="text"
+                          required
+                          placeholder="e.g. aarav.sharma or custom login ID"
+                          value={formData.userId ?? ''}
+                          onChange={e => setFormData({ ...formData, userId: e.target.value.trim() })}
+                          style={{
+                            width: '100%', padding: '9px 12px', borderRadius: '8px',
+                            border: '1.5px solid #3b82f6', background: '#ffffff',
+                            color: '#1e293b', fontWeight: 700, fontSize: '0.88rem',
+                            boxSizing: 'border-box', outline: 'none',
+                            boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.12)'
+                          }}
+                        />
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '4px' }}>
+                        {formData.credentialMode === 'auto' ? (
+                          <>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                              Sign in via Student ID (<code>{formData.rollNo || 'STU-XXXX'}</code>) or email.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, credentialMode: 'manual', userId: formData.userId || formData.rollNo })}
+                              style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                            >
+                              Edit Manually
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                              Custom login ID for student portal.
+                            </span>
+                            {formData.rollNo && formData.userId !== formData.rollNo && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, userId: formData.rollNo })}
+                                style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                              >
+                                Use Student ID ({formData.rollNo})
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
 
+                    {/* Portal Password */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                        Portal Password *
-                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                          Portal Password *
+                        </label>
+                        {formData.credentialMode === 'auto' ? (
+                          <span style={{ fontSize: '0.67rem', color: '#64748b', background: '#f1f5f9', padding: '1px 7px', borderRadius: '4px', fontWeight: 600 }}>
+                            Default
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.67rem', color: '#7c3aed', background: '#ede9fe', padding: '1px 7px', borderRadius: '4px', fontWeight: 700 }}>
+                            Manual
+                          </span>
+                        )}
+                      </div>
+
                       <div style={{ position: 'relative' }}>
                         <input 
                           type={showModalPassword ? 'text' : 'password'}
                           required
                           placeholder="e.g. student123"
-                          value={formData.portalPassword || 'student123'}
+                          value={formData.portalPassword || ''}
                           onChange={e => setFormData({ ...formData, portalPassword: e.target.value })}
                           style={{
                             width: '100%', padding: '9px 36px 9px 12px', borderRadius: '8px',
-                            border: '1px solid #cbd5e1', fontSize: '0.88rem',
-                            background: 'white', boxSizing: 'border-box', outline: 'none'
+                            border: formData.credentialMode === 'manual' ? '1.5px solid #3b82f6' : '1px solid #cbd5e1',
+                            fontSize: '0.88rem', background: 'white', boxSizing: 'border-box', outline: 'none',
+                            boxShadow: formData.credentialMode === 'manual' ? '0 0 0 3px rgba(59, 130, 246, 0.12)' : 'none'
                           }}
                         />
                         <button
@@ -1800,14 +1890,25 @@ const Students = () => {
                           {showModalPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                         </button>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px' }}>
-                        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Default: student123</span>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap', gap: '4px' }}>
+                        {formData.portalPassword !== 'student123' ? (
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, portalPassword: 'student123' })}
+                            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                          >
+                            Reset to student123
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Default: student123</span>
+                        )}
                         <button
                           type="button"
                           onClick={() => setFormData({ ...formData, portalPassword: `stu@${Math.floor(1000 + Math.random() * 9000)}` })}
                           style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                         >
-                          Generate New
+                          ⚡ Generate New
                         </button>
                       </div>
                     </div>

@@ -48,7 +48,7 @@ const checkBulkDeleteAuthority = (req, res) => {
 // Helper to synchronize Student with User account for portal login
 const syncStudentUser = async (studentDoc, explicitPassword = null) => {
   if (!studentDoc || !studentDoc.rollNo || !studentDoc.entityId) return null;
-  const username = (studentDoc.rollNo || '').trim();
+  const username = (studentDoc.userId || studentDoc.rollNo || '').trim();
   const targetPassword = (explicitPassword || studentDoc.portalPassword || 'student123').trim();
   const email = (studentDoc.email || `${username.toLowerCase()}@pragati.edu`).trim().toLowerCase();
 
@@ -58,7 +58,9 @@ const syncStudentUser = async (studentDoc, explicitPassword = null) => {
       $or: [
         { referenceId: studentDoc._id },
         { uniqueId: username },
-        { uniqueId: new RegExp(`^${username}$`, 'i') }
+        { uniqueId: new RegExp(`^${username}$`, 'i') },
+        { uniqueId: studentDoc.rollNo },
+        { uniqueId: new RegExp(`^${studentDoc.rollNo}$`, 'i') }
       ]
     });
 
@@ -314,10 +316,13 @@ router.post('/', async (req, res) => {
       finalRollNo = `STU-${1000 + count + 1}`;
     }
 
+    const finalUserId = (req.body.userId || req.body.portalUsername || finalRollNo).trim();
+
     const newStudent = new Student({
       ...req.body,
       name: name.trim(),
       rollNo: finalRollNo,
+      userId: finalUserId,
       grade: grade.trim(),
       section: (section || 'A').trim().toUpperCase(),
       portalPassword: (req.body.portalPassword || 'student123').trim(),
@@ -353,9 +358,20 @@ router.put('/:id', async (req, res) => {
       filter.$or = [{ schoolSlug: req.schoolSlug }, { schoolSlug: null }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
     }
 
+    const updateData = { ...req.body };
+    if (updateData.portalUsername !== undefined && updateData.userId === undefined) {
+      updateData.userId = updateData.portalUsername ? updateData.portalUsername.trim() : '';
+    }
+    if (updateData.userId !== undefined) {
+      updateData.userId = (updateData.userId || updateData.rollNo || '').trim();
+    }
+    if (updateData.portalPassword) {
+      updateData.portalPassword = updateData.portalPassword.trim();
+    }
+
     const student = await Student.findOneAndUpdate(
       filter,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     );
 

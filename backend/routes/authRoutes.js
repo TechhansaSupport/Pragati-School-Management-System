@@ -271,9 +271,13 @@ router.post('/login', async (req, res) => {
           $or: [
             { entityId: resolvedEntityId, rollNo: username },
             { entityId: resolvedEntityId, rollNo: new RegExp(`^${username}$`, 'i') },
+            { entityId: resolvedEntityId, userId: username },
+            { entityId: resolvedEntityId, userId: new RegExp(`^${username}$`, 'i') },
             { entityId: resolvedEntityId, email: new RegExp(`^${username}$`, 'i') },
             { schoolSlug: resolvedSlug, rollNo: username },
             { schoolSlug: resolvedSlug, rollNo: new RegExp(`^${username}$`, 'i') },
+            { schoolSlug: resolvedSlug, userId: username },
+            { schoolSlug: resolvedSlug, userId: new RegExp(`^${username}$`, 'i') },
             { schoolSlug: resolvedSlug, email: new RegExp(`^${username}$`, 'i') }
           ]
         });
