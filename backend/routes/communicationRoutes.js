@@ -222,12 +222,37 @@ router.delete('/announcements/:id', checkLeaderAuthority, async (req, res) => {
 // GET /api/communication/contacts — Real DB people (staff & students) for messaging
 router.get('/contacts', async (req, res) => {
   try {
+    const requesterRole = (
+      req.user?.role || 
+      req.headers['x-user-role'] || 
+      req.query?.role || 
+      ''
+    ).toLowerCase().trim();
+    const isAssistant = ['lab_assistant', 'assistant', 'support_staff', 'support', 'frontdesk'].includes(requesterRole) || requesterRole.includes('assistant');
+
     const staff = await Staff.find({ entityId: req.entityId, status: 'Active' })
       .select('name role department email phone')
       .limit(10);
-    const students = await Student.find({ entityId: req.entityId, status: 'Active' })
-      .select('name grade section rollNumber parentContact')
-      .limit(10);
+
+    let studentContacts = [];
+    // Assistants are strictly prohibited from messaging students directly
+    if (!isAssistant) {
+      const students = await Student.find({ entityId: req.entityId, status: 'Active' })
+        .select('name grade section rollNumber parentContact')
+        .limit(10);
+      studentContacts = students.map(st => ({
+        id: st._id.toString(),
+        name: st.name,
+        role: `Student (${st.grade} - ${st.section})`,
+        avatar: st.name.charAt(0).toUpperCase(),
+        department: 'Academic',
+        email: `${st.rollNumber}@school.edu`,
+        phone: st.parentContact,
+        preview: `Enrolled in ${st.grade} - Section ${st.section}`,
+        time: 'Enrolled',
+        unread: 0,
+      }));
+    }
 
     const contacts = [
       ...staff.map(s => ({
@@ -242,18 +267,7 @@ router.get('/contacts', async (req, res) => {
         time: 'Active today',
         unread: 0,
       })),
-      ...students.map(st => ({
-        id: st._id.toString(),
-        name: st.name,
-        role: `Student (${st.grade} - ${st.section})`,
-        avatar: st.name.charAt(0).toUpperCase(),
-        department: 'Academic',
-        email: `${st.rollNumber}@school.edu`,
-        phone: st.parentContact,
-        preview: `Enrolled in ${st.grade} - Section ${st.section}`,
-        time: 'Enrolled',
-        unread: 0,
-      }))
+      ...studentContacts
     ];
 
     res.json(contacts);
@@ -513,6 +527,17 @@ router.get('/class-materials', async (req, res) => {
 // POST /api/communication/class-materials — Create & publish note or assignment class-wise
 router.post('/class-materials', async (req, res) => {
   try {
+    const requesterRole = (
+      req.user?.role || 
+      req.headers['x-user-role'] || 
+      req.body?.userRole || 
+      ''
+    ).toLowerCase().trim();
+    const isAssistant = ['lab_assistant', 'assistant', 'support_staff', 'support', 'frontdesk'].includes(requesterRole) || requesterRole.includes('assistant');
+    if (isAssistant) {
+      return res.status(403).json({ success: false, message: 'Access Denied: Assistants are not authorized to post class materials or assignments.' });
+    }
+
     const { 
       title, 
       type = 'Note', 

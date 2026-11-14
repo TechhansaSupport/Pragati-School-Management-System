@@ -521,7 +521,8 @@ const Timetable = () => {
         body: JSON.stringify({
           className,
           section,
-          schoolSlug: effectiveSchoolSlug
+          schoolSlug: effectiveSchoolSlug,
+          offDays
         })
       });
 
@@ -529,6 +530,9 @@ const Timetable = () => {
         const data = await res.json();
         if (data.timetable?.schedule) {
           setTimetableSchedule(data.timetable.schedule);
+        }
+        if (Array.isArray(data.timetable?.offDays)) {
+          setOffDays(data.timetable.offDays);
         }
         setTimetableNotification(`✅ Collision-free timetable auto-generated and saved to DB for ${selectedTimetableClass}!`);
       } else {
@@ -1065,198 +1069,35 @@ const Timetable = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', fontFamily: "'Outfit', sans-serif" }}>
       
-      {/* TIMETABLE HERO HEADER */}
-      {isStudent ? (
-        <div className="no-print" style={{
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e3a8a 100%)',
-          borderRadius: '20px',
-          padding: '28px 32px',
-          color: 'white',
-          boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '20px'
-        }}>
+      {/* CONTROL & CONSTRAINT ACTION BAR */}
+      {!isStudent && (
+        <div className="chart-card no-print" style={{ padding: '20px 24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <span style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(10px)',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <CalendarDays size={14} color="#60a5fa" /> Student Academic Schedule
-              </span>
-              <span style={{
-                background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.35) 0%, rgba(99, 102, 241, 0.35) 100%)',
-                border: '1px solid rgba(165, 180, 252, 0.4)',
-                color: '#e0e7ff',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.76rem',
-                fontWeight: 800,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <GraduationCap size={14} color="#a5b4fc" /> Enrolled Class Timetable
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
+                CONFLICT ENGINE
               </span>
             </div>
-            <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-              My Class Timetable
-            </h1>
-            <div style={{ marginTop: '8px', fontSize: '0.88rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <span>Assigned Class: <strong style={{ color: 'white' }}>{studentInfo ? `${studentInfo.grade} - Section ${studentInfo.section}` : selectedTimetableClass}</strong></span>
-              <span>•</span>
-              <span>Student: <strong style={{ color: 'white' }}>{studentInfo?.studentName || userInfo.name} ({studentInfo?.rollNumber || userInfo.username})</strong></span>
-            </div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a' }}>
+              Schedule Matrix & Allocation Controls
+            </h2>
           </div>
 
-          <button
-            onClick={handlePrintTimetable}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 20px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              background: 'rgba(255, 255, 255, 0.15)',
-              color: 'white',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              cursor: 'pointer',
-              backdropFilter: 'blur(10px)',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }}
-          >
-            <FileText size={16} />
-            <span>Print Timetable</span>
-          </button>
-        </div>
-      ) : (
-        <div className="no-print" style={{
-          background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #1e3a8a 100%)',
-          borderRadius: '20px',
-          padding: '28px 32px',
-          color: 'white',
-          boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '20px'
-        }}>
-          <div style={{ maxWidth: '720px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', flexWrap: 'wrap' }}>
-              <span style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                backdropFilter: 'blur(10px)',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <CalendarDays size={14} color="#60a5fa" /> Smart Schedule Engine
-              </span>
-
-              {/* Role-Based Authority Pill */}
-              {isSuperAdmin ? (
-                <span style={{
-                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.35) 0%, rgba(99, 102, 241, 0.35) 100%)',
-                  border: '1px solid rgba(165, 180, 252, 0.4)',
-                  color: '#e0e7ff',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.76rem',
-                  fontWeight: 800,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <ShieldCheck size={14} color="#a5b4fc" /> Super Admin Control: Global Timetable Setup & Matrix Architecture
-                </span>
-              ) : isAdmin ? (
-                <span style={{
-                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(5, 150, 105, 0.3) 100%)',
-                  border: '1px solid rgba(110, 231, 183, 0.4)',
-                  color: '#d1fae5',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.76rem',
-                  fontWeight: 800,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <Building2 size={14} color="#6ee7b7" /> Branch Admin Authority: Campus Timetable Setup & Period Allocation
-                </span>
-              ) : isPrincipal ? (
-                <span style={{
-                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.3) 100%)',
-                  border: '1px solid rgba(252, 211, 77, 0.4)',
-                  color: '#fef3c7',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.76rem',
-                  fontWeight: 800,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}>
-                  <Award size={14} color="#fcd34d" /> Principal Leadership: Academic Timetable & Class Schedules
-                </span>
-              ) : (
-                <span style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  color: '#cbd5e1',
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '0.76rem',
-                  fontWeight: 600
-                }}>
-                  View-Only Access (Managed by Super Admin & Campus Admin)
-                </span>
-              )}
-            </div>
-
-            <h1 style={{ margin: 0, fontSize: '1.9rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-              Master Timetable & Period Architecture
-            </h1>
-          </div>
-
-          {/* Right Header Area: Campus Selector (SuperAdmin) & Nav Button */}
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-            
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Campus Selector for Super Admin */}
             {isSuperAdmin && schoolsList.length > 0 && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                background: 'rgba(255, 255, 255, 0.14)',
-                padding: '6px 14px',
-                borderRadius: '12px',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                backdropFilter: 'blur(10px)'
+                background: '#f8fafc',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                border: '1.5px solid #cbd5e1'
               }}>
-                <Building2 size={16} color="#93c5fd" />
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Campus Scope:
+                <Building2 size={16} color="#4F46E5" />
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Campus:
                 </span>
                 <select
                   value={selectedSchoolSlug}
@@ -1268,14 +1109,13 @@ const Timetable = () => {
                   style={{
                     background: 'white',
                     color: '#1e3a8a',
-                    border: '1.5px solid #c7d2fe',
-                    borderRadius: '8px',
-                    padding: '6px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
                     fontSize: '0.84rem',
-                    fontWeight: 800,
+                    fontWeight: 700,
                     cursor: 'pointer',
-                    outline: 'none',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
+                    outline: 'none'
                   }}
                 >
                   {schoolsList.map(s => (
@@ -1287,26 +1127,6 @@ const Timetable = () => {
               </div>
             )}
 
-          </div>
-        </div>
-      )}
-
-      {/* CONTROL & CONSTRAINT ACTION BAR */}
-      {!isStudent && (
-        <div className="chart-card no-print" style={{ padding: '20px 24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
-                CONFLICT ENGINE
-              </span>
-              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Live Constraint Validation</span>
-            </div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a' }}>
-              Schedule Matrix & Allocation Controls
-            </h2>
-          </div>
-
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <select
               value={selectedTimetableClass}
               onChange={(e) => setSelectedTimetableClass(e.target.value)}
@@ -1752,6 +1572,35 @@ const Timetable = () => {
               );
             })}
           </div>
+
+          {/* Student Quick Action: Print Timetable */}
+          {isStudent && (
+            <button
+              type="button"
+              onClick={handlePrintTimetable}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                background: '#f8fafc',
+                color: '#334155',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#4F46E5'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#4F46E5'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#334155'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+              title="Print official class timetable"
+            >
+              <FileText size={15} />
+              <span>Print Timetable</span>
+            </button>
+          )}
         </div>
 
         {/* OFFICIAL ACADEMIC TIMETABLE PRINT HEADER */}

@@ -93,118 +93,142 @@ const PrincipalDashboard = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', width: '100%' }}>
       
-      {/* SECTION 10.6: EXECUTIVE SCHOOL HEALTH HERO BANNER */}
-      <div style={{ 
-        background: 'linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #1e3a8a 100%)', 
-        borderRadius: '18px', 
-        padding: '26px 32px', 
-        color: 'white',
-        boxShadow: '0 10px 30px rgba(30, 27, 75, 0.25)',
+      {/* ─── PRINCIPAL EXECUTIVE HEADER BAR ─── */}
+      <div className="card" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '16px 22px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '20px'
+        gap: '14px'
       }}>
-        <div style={{ maxWidth: '640px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-            <span style={{ 
-              background: 'rgba(255, 255, 255, 0.15)', 
-              backdropFilter: 'blur(10px)',
-              padding: '4px 12px', 
-              borderRadius: '20px', 
-              fontSize: '0.78rem', 
-              fontWeight: 800, 
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px' 
-            }}>
-              <HeartPulse size={14} color="#34D399" /> School Health Index
-            </span>
-            <span style={{ fontSize: '0.82rem', opacity: 0.85 }}>Campus: {tenantSlug || 'Main Campus'}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%)',
+            color: '#4F46E5',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <HeartPulse size={22} />
           </div>
-          <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.25 }}>
-            {userInfo.name ? `${userInfo.name}'s Executive Overview` : 'Principal Executive Command'}
-          </h1>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '10px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.04em'
+              }}>
+                School Health Index
+              </span>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
+                • Campus: <strong>{tenantSlug || 'Main Campus'}</strong>
+              </span>
+            </div>
+            <h1 style={{ margin: '4px 0 0', fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+              {userInfo.name ? `${userInfo.name}'s Executive Overview` : 'Principal Executive Command'}
+            </h1>
+          </div>
         </div>
 
-        {/* Health Score Pill */}
-        <div style={{ 
-          background: 'rgba(255, 255, 255, 0.1)', 
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          padding: '16px 28px', 
-          borderRadius: '16px', 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '20px' 
+        {/* Compact Composite Health Score Pill */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '8px 16px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)'
         }}>
           <div>
-            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', opacity: 0.85, fontWeight: 700, letterSpacing: '0.05em' }}>Composite Health</div>
-            <div style={{ fontSize: '2.4rem', fontWeight: 900, lineHeight: 1, marginTop: '4px' }}>
-              {healthDashboard?.compositeScore || 93}<span style={{ fontSize: '1.2rem', opacity: 0.7 }}>/100</span>
+            <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, letterSpacing: '0.04em' }}>
+              Composite Health
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#1e293b', lineHeight: 1.1 }}>
+              {healthDashboard?.compositeScore || 93}<span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 600 }}>/100</span>
             </div>
           </div>
-          <div style={{ borderLeft: '1px solid rgba(255, 255, 255, 0.2)', paddingLeft: '18px' }}>
-            <div style={{ background: '#10B981', color: 'white', fontWeight: 900, fontSize: '0.85rem', padding: '4px 12px', borderRadius: '12px', textAlign: 'center' }}>
+          <div style={{ borderLeft: '1px solid #cbd5e1', paddingLeft: '12px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              padding: '2px 8px',
+              borderRadius: '8px',
+              textAlign: 'center'
+            }}>
               GRADE {healthDashboard?.healthGrade || 'A+'}
-            </div>
-            <div style={{ fontSize: '0.78rem', marginTop: '6px', opacity: 0.9, fontWeight: 600 }}>
+            </span>
+            <span style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 700 }}>
               {healthDashboard?.status || 'Optimal Operations'}
-            </div>
+            </span>
           </div>
         </div>
       </div>
 
       {/* 5-PILLAR SCHOOL HEALTH SCORECARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
         {(healthDashboard?.pillars || []).map((pillar, idx) => (
           <div 
             key={idx} 
-            className="chart-card" 
+            className="card hover-lift" 
             style={{ 
               padding: '18px 20px', 
-              background: 'white', 
-              borderRadius: '14px', 
-              border: '1px solid #e2e8f0',
+              background: 'var(--color-surface, white)', 
+              borderRadius: '16px', 
+              border: '1px solid var(--color-border, #e2e8f0)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+              boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+              gap: '12px',
+              transition: 'all 0.2s ease'
             }}
           >
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   {pillar.name}
                 </span>
                 <span style={{ 
-                  fontSize: '0.72rem', 
+                  fontSize: '0.7rem', 
                   fontWeight: 800, 
-                  padding: '2px 8px', 
-                  borderRadius: '10px', 
+                  padding: '2px 7px', 
+                  borderRadius: '8px', 
                   background: 'rgba(16, 185, 129, 0.12)', 
                   color: '#059669' 
                 }}>
                   {pillar.status}
                 </span>
               </div>
-              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#1e3a8a', marginBottom: '6px' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', lineHeight: 1 }}>
                 {pillar.score}%
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#475569', lineHeight: 1.4, marginBottom: '10px' }}>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', lineHeight: 1.4, marginTop: '6px' }}>
                 {pillar.detail}
               </div>
             </div>
 
             {/* Progress Bar */}
             <div>
-              <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+              <div style={{ height: '5px', background: 'var(--color-border, #f1f5f9)', borderRadius: '4px', overflow: 'hidden' }}>
                 <div style={{ width: `${pillar.score}%`, height: '100%', background: pillar.color, borderRadius: '4px' }}></div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#94a3b8', marginTop: '4px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#94a3b8', marginTop: '6px' }}>
                 <span>Target: {pillar.benchmark}</span>
                 <span style={{ color: '#16a34a', fontWeight: 700 }}>Passed</span>
               </div>
@@ -214,8 +238,17 @@ const PrincipalDashboard = () => {
       </div>
 
       {/* NAVIGATION TABS FOR PRINCIPAL INTELLIGENCE MODULES */}
-      <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0 10px 0' }}>
-        <div className="system-tabs-container">
+      <div style={{ display: 'flex', alignItems: 'center', margin: '2px 0 6px 0' }}>
+        <div style={{
+          display: 'inline-flex',
+          background: 'var(--color-surface, white)',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          padding: '4px',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+          gap: '4px',
+          flexWrap: 'wrap'
+        }}>
           {[
             { id: 'health', label: 'Academic & Attendance Health', icon: Activity, count: `${healthDashboard?.compositeScore || 93}% Health` },
             { id: 'workload', label: 'Faculty Workload Analytics', icon: Briefcase, count: `${teacherWorkloads?.length || 0} Faculty` },
@@ -228,11 +261,32 @@ const PrincipalDashboard = () => {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`system-tab-btn ${isActive ? 'active' : ''}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '7px 14px',
+                  borderRadius: '9px',
+                  border: 'none',
+                  background: isActive ? '#4F46E5' : 'transparent',
+                  color: isActive ? '#ffffff' : 'var(--color-text-muted, #64748b)',
+                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  boxShadow: isActive ? '0 2px 6px rgba(79, 70, 229, 0.25)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
               >
-                <Icon size={16} />
+                <Icon size={15} />
                 <span>{tab.label}</span>
-                <span className="system-tab-badge">
+                <span style={{
+                  fontSize: '0.68rem',
+                  fontWeight: 800,
+                  padding: '2px 7px',
+                  borderRadius: '10px',
+                  background: isActive ? 'rgba(255, 255, 255, 0.22)' : 'var(--color-bg, #f1f5f9)',
+                  color: isActive ? '#ffffff' : '#475569'
+                }}>
                   {tab.count}
                 </span>
               </button>
@@ -291,8 +345,8 @@ const PrincipalDashboard = () => {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#4F46E5' }}>
                   <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4F46E5' }}></span> Present
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#0F766E' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#0F766E' }}></span> Absent
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#F43F5E' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F43F5E' }}></span> Absent
                 </span>
               </div>
             </div>
@@ -305,7 +359,7 @@ const PrincipalDashboard = () => {
                   <YAxis dataKey="grade" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} width={80} />
                   <Tooltip cursor={{fill: 'transparent'}} />
                   <Bar dataKey="present" stackId="a" fill="#4F46E5" radius={[0, 0, 0, 0]} barSize={16} />
-                  <Bar dataKey="absent" stackId="a" fill="#0F766E" radius={[0, 4, 4, 0]} barSize={16} />
+                  <Bar dataKey="absent" stackId="a" fill="#F43F5E" radius={[0, 4, 4, 0]} barSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -286,102 +286,243 @@ const TransportDashboard = () => {
         </div>
       )}
 
-      {/* Top Banner - Transport Control Center */}
-      <div style={{
-        background: 'linear-gradient(135deg, rgba(245,158,11,0.95) 0%, rgba(220, 38, 38,0.95) 100%)',
-        borderRadius: '20px',
-        padding: '24px 32px',
-        color: 'white',
+      {/* Top Banner - Transport Control Center - Clean White Surface */}
+      <div className="no-print" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.4)'
+        gap: '16px'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Fleet & Transport Command 🚌</h2>
-          <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '0.9rem', fontWeight: 500 }}>
-            Unified management for school buses, vans, verified drivers, and live student commute lines.
-          </p>
+        <div style={{ maxWidth: '680px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#fef3c7',
+              color: '#b45309',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <Bus size={13} color="#b45309" /> Fleet Logistics & Transport
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+              {vehicles.filter(v => v.status === 'Active').length || 4} Vehicles Active
+            </span>
+          </div>
+
+          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            Fleet & Transport Command 🚌
+          </h1>
+
+          {/* Quick Action Controls */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                setFormError('');
+                setVehicleForm(initialVehicleForm);
+                setIsAddVehicleOpen(true);
+              }}
+              className="hover-lift"
+              style={{
+                background: '#4F46E5',
+                border: 'none',
+                color: 'white',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                transition: 'all 0.15s'
+              }}
+            >
+              <Plus size={15} /> Add Vehicle
+            </button>
+
+            <button
+              onClick={() => {
+                setFormError('');
+                setDriverForm(initialDriverForm);
+                setIsAddDriverOpen(true);
+              }}
+              className="hover-lift"
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              <UserPlus size={15} color="#0f766e" /> Add Driver
+            </button>
+
+            <button
+              onClick={() => navigate(tenantSlug ? `/${tenantSlug}/routes` : '/routes')}
+              className="hover-lift"
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '8px 16px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s'
+              }}
+            >
+              <Navigation size={15} color="#2563eb" /> Manage Routes
+            </button>
+          </div>
         </div>
-        
-        {/* Action Controls */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button 
-            onClick={() => {
-              setFormError('');
-              setVehicleForm(initialVehicleForm);
-              setIsAddVehicleOpen(true);
-            }}
-            className="hover-lift" 
-            style={{ 
-              display: 'inline-flex', alignItems: 'center', gap: '8px', 
-              padding: '10px 18px', background: 'white', border: 'none', 
-              borderRadius: '12px', color: '#b45309', fontWeight: 700, 
-              fontSize: '0.88rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-            }}
-          >
-            <Plus size={18} /> Add Vehicle
-          </button>
 
-          <button 
-            onClick={() => {
-              setFormError('');
-              setDriverForm(initialDriverForm);
-              setIsAddDriverOpen(true);
-            }}
-            className="hover-lift" 
-            style={{ 
-              display: 'inline-flex', alignItems: 'center', gap: '8px', 
-              padding: '10px 18px', background: '#1e293b', border: 'none', 
-              borderRadius: '12px', color: 'white', fontWeight: 700, 
-              fontSize: '0.88rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-            }}
-          >
-            <UserPlus size={18} /> Add Driver
-          </button>
-
-          <button 
-            onClick={() => navigate(tenantSlug ? `/${tenantSlug}/routes` : '/routes')}
-            className="hover-lift" 
-            style={{ 
-              display: 'inline-flex', alignItems: 'center', gap: '8px', 
-              padding: '10px 18px', background: 'rgba(255, 255, 255, 0.2)', 
-              backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.4)', 
-              borderRadius: '12px', color: 'white', fontWeight: 700, 
-              fontSize: '0.88rem', cursor: 'pointer' 
-            }}
-          >
-            <Navigation size={18} /> Manage Routes
-          </button>
+        {/* Right side live status indicator */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          minWidth: '190px'
+        }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Live Fleet Operations
+          </div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div style={{
+            fontSize: '0.72rem',
+            color: '#b45309',
+            fontWeight: 800,
+            background: '#fef3c7',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            marginTop: '4px'
+          }}>
+            {userInfo.name || 'Transport Manager'} • On Duty
+          </div>
         </div>
       </div>
 
       {/* KPI Row (5 Key Transport Metrics) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         {[
-          { label: 'Total Fleet', value: `${vehicles.length || transportStats.totalFleet || 5} Vehicles`, icon: Bus, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
-          { label: 'Active Drivers', value: `${drivers.length || transportStats.totalDrivers || 5} Verified`, icon: Shield, color: '#0F766E', bg: 'rgba(15,118,110,0.1)' },
-          { label: 'Active Routes', value: `${routes.length || transportStats.activeRoutes || 5} Lines`, icon: Navigation, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)' },
-          { label: 'Students Commuting', value: `${transportStats.mappedStudents || 188} Daily`, icon: Users, color: '#2563EB', bg: 'rgba(37,99,235,0.1)' },
-          { label: 'In Maintenance', value: `${vehicles.filter(v => v.status === 'Maintenance').length || transportStats.inMaintenance || 1} Vehicle`, icon: Wrench, color: '#DC2626', bg: 'rgba(220, 38, 38,0.1)' }
-        ].map((kpi, i) => (
-          <div key={i} className="card hover-lift" style={{ 
-            display: 'flex', flexDirection: 'column', gap: '10px', 
-            padding: '18px 20px', borderRadius: '16px', background: 'white', 
-            border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' 
-          }}>
+          { 
+            label: 'Total Fleet', 
+            value: `${vehicles.length || transportStats.totalFleet || 5} Vehicles`, 
+            icon: Bus, 
+            color: '#4F46E5', 
+            bg: 'rgba(79,70,229,0.1)',
+            badge: 'Registered',
+            badgeBg: 'rgba(79,70,229,0.08)',
+            badgeColor: '#4F46E5',
+            tab: 'vehicles'
+          },
+          { 
+            label: 'Active Drivers', 
+            value: `${drivers.length || transportStats.totalDrivers || 5} Verified`, 
+            icon: Shield, 
+            color: '#0F766E', 
+            bg: 'rgba(15,118,110,0.1)',
+            badge: '100% On-Duty',
+            badgeBg: 'rgba(15,118,110,0.08)',
+            badgeColor: '#0F766E',
+            tab: 'drivers'
+          },
+          { 
+            label: 'Active Routes', 
+            value: `${routes.length || transportStats.activeRoutes || 5} Lines`, 
+            icon: Navigation, 
+            color: '#16A34A', 
+            bg: 'rgba(22, 163, 74,0.1)',
+            badge: 'Active Lines',
+            badgeBg: 'rgba(22, 163, 74,0.08)',
+            badgeColor: '#16A34A',
+            tab: 'routes'
+          },
+          { 
+            label: 'Students Commuting', 
+            value: `${transportStats.mappedStudents || 188} Daily`, 
+            icon: Users, 
+            color: '#2563EB', 
+            bg: 'rgba(37,99,235,0.1)',
+            badge: 'Safe Commute',
+            badgeBg: 'rgba(37,99,235,0.08)',
+            badgeColor: '#2563EB'
+          },
+          { 
+            label: 'In Maintenance', 
+            value: `${vehicles.filter(v => v.status === 'Maintenance').length || transportStats.inMaintenance || 1} Vehicle`, 
+            icon: Wrench, 
+            color: '#DC2626', 
+            bg: 'rgba(220, 38, 38,0.1)',
+            badge: 'In Garage',
+            badgeBg: 'rgba(220, 38, 38,0.08)',
+            badgeColor: '#DC2626',
+            tab: 'vehicles'
+          }
+        ].map((kpi, idx) => (
+          <div 
+            key={idx} 
+            className="card hover-lift" 
+            onClick={() => kpi.tab && setActiveTab(kpi.tab)}
+            style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '10px', 
+              padding: '18px 20px', 
+              borderRadius: '16px', 
+              background: 'var(--color-surface, white)', 
+              border: '1px solid var(--color-border, #e2e8f0)', 
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              cursor: kpi.tab ? 'pointer' : 'default',
+              transition: 'all 0.3s'
+            }}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {kpi.label}
-              </span>
-              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <kpi.icon size={18} color={kpi.color} />
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <kpi.icon size={20} color={kpi.color} />
               </div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '12px', background: kpi.badgeBg, color: kpi.badgeColor }}>
+                {kpi.badge}
+              </span>
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b' }}>
-              {kpi.value}
+            <div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-primary, #1e293b)' }}>
+                {kpi.value}
+              </div>
+              <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: '2px' }}>
+                {kpi.label}
+              </div>
             </div>
           </div>
         ))}
@@ -394,8 +535,8 @@ const TransportDashboard = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           <div className="card" style={{ 
-            background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', 
-            padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', 
+            padding: '22px 24px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
             display: 'flex', flexDirection: 'column'
           }}>
             
@@ -403,7 +544,7 @@ const TransportDashboard = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
               
               {/* Tab Switcher */}
-              <div style={{ display: 'flex', gap: '6px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '6px', background: '#f8fafc', padding: '5px', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('vehicles')}
@@ -411,15 +552,15 @@ const TransportDashboard = () => {
                     display: 'inline-flex', alignItems: 'center', gap: '8px',
                     padding: '8px 16px', borderRadius: '9px', border: 'none',
                     fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer',
-                    background: activeTab === 'vehicles' ? 'white' : 'transparent',
-                    color: activeTab === 'vehicles' ? '#b45309' : '#64748b',
-                    boxShadow: activeTab === 'vehicles' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                    background: activeTab === 'vehicles' ? '#4F46E5' : 'transparent',
+                    color: activeTab === 'vehicles' ? 'white' : '#64748b',
+                    boxShadow: activeTab === 'vehicles' ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
                     transition: 'all 0.15s'
                   }}
                 >
-                  <Bus size={15} color={activeTab === 'vehicles' ? '#d97706' : '#94a3b8'} />
+                  <Bus size={15} color={activeTab === 'vehicles' ? 'white' : '#94a3b8'} />
                   Vehicles & Fleet
-                  <span style={{ fontSize: '0.72rem', background: activeTab === 'vehicles' ? '#fef3c7' : '#e2e8f0', color: activeTab === 'vehicles' ? '#b45309' : '#475569', padding: '1px 7px', borderRadius: '8px', fontWeight: 800 }}>
+                  <span style={{ fontSize: '0.72rem', background: activeTab === 'vehicles' ? 'rgba(255,255,255,0.25)' : '#e2e8f0', color: activeTab === 'vehicles' ? 'white' : '#475569', padding: '1px 7px', borderRadius: '8px', fontWeight: 800 }}>
                     {vehicles.length}
                   </span>
                 </button>
@@ -431,15 +572,15 @@ const TransportDashboard = () => {
                     display: 'inline-flex', alignItems: 'center', gap: '8px',
                     padding: '8px 16px', borderRadius: '9px', border: 'none',
                     fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer',
-                    background: activeTab === 'drivers' ? 'white' : 'transparent',
-                    color: activeTab === 'drivers' ? '#0f766e' : '#64748b',
-                    boxShadow: activeTab === 'drivers' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                    background: activeTab === 'drivers' ? '#4F46E5' : 'transparent',
+                    color: activeTab === 'drivers' ? 'white' : '#64748b',
+                    boxShadow: activeTab === 'drivers' ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
                     transition: 'all 0.15s'
                   }}
                 >
-                  <Shield size={15} color={activeTab === 'drivers' ? '#0f766e' : '#94a3b8'} />
+                  <Shield size={15} color={activeTab === 'drivers' ? 'white' : '#94a3b8'} />
                   Drivers & Operators
-                  <span style={{ fontSize: '0.72rem', background: activeTab === 'drivers' ? '#ccfbf1' : '#e2e8f0', color: activeTab === 'drivers' ? '#0f766e' : '#475569', padding: '1px 7px', borderRadius: '8px', fontWeight: 800 }}>
+                  <span style={{ fontSize: '0.72rem', background: activeTab === 'drivers' ? 'rgba(255,255,255,0.25)' : '#e2e8f0', color: activeTab === 'drivers' ? 'white' : '#475569', padding: '1px 7px', borderRadius: '8px', fontWeight: 800 }}>
                     {drivers.length}
                   </span>
                 </button>
@@ -451,15 +592,15 @@ const TransportDashboard = () => {
                     display: 'inline-flex', alignItems: 'center', gap: '8px',
                     padding: '8px 16px', borderRadius: '9px', border: 'none',
                     fontSize: '0.84rem', fontWeight: 700, cursor: 'pointer',
-                    background: activeTab === 'routes' ? 'white' : 'transparent',
-                    color: activeTab === 'routes' ? '#4F46E5' : '#64748b',
-                    boxShadow: activeTab === 'routes' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                    background: activeTab === 'routes' ? '#4F46E5' : 'transparent',
+                    color: activeTab === 'routes' ? 'white' : '#64748b',
+                    boxShadow: activeTab === 'routes' ? '0 2px 8px rgba(79, 70, 229, 0.25)' : 'none',
                     transition: 'all 0.15s'
                   }}
                 >
-                  <Navigation size={15} color={activeTab === 'routes' ? '#4F46E5' : '#94a3b8'} />
+                  <Navigation size={15} color={activeTab === 'routes' ? 'white' : '#94a3b8'} />
                   Live Routes
-                  <span style={{ fontSize: '0.72rem', background: activeTab === 'routes' ? '#ede9fe' : '#e2e8f0', color: activeTab === 'routes' ? '#4F46E5' : '#475569', padding: '1px 7px', borderRadius: '8px', fontWeight: 800 }}>
+                  <span style={{ fontSize: '0.72rem', background: activeTab === 'routes' ? 'rgba(255,255,255,0.25)' : '#e2e8f0', color: activeTab === 'routes' ? 'white' : '#475569', padding: '1px 7px', borderRadius: '8px', fontWeight: 800 }}>
                     {routes.length}
                   </span>
                 </button>
@@ -499,10 +640,11 @@ const TransportDashboard = () => {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
                       padding: '8px 14px', borderRadius: '10px', border: 'none',
-                      background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                      background: '#4F46E5',
                       color: 'white', fontWeight: 700, fontSize: '0.82rem',
-                      cursor: 'pointer', boxShadow: '0 2px 8px rgba(245, 158, 11, 0.3)'
+                      cursor: 'pointer', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)'
                     }}
+                    className="hover-lift"
                   >
                     <Plus size={15} /> Add Vehicle
                   </button>
@@ -518,10 +660,11 @@ const TransportDashboard = () => {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
                       padding: '8px 14px', borderRadius: '10px', border: 'none',
-                      background: 'linear-gradient(135deg, #0F766E 0%, #0d9488 100%)',
+                      background: '#0F766E',
                       color: 'white', fontWeight: 700, fontSize: '0.82rem',
-                      cursor: 'pointer', boxShadow: '0 2px 8px rgba(15, 118, 110, 0.3)'
+                      cursor: 'pointer', boxShadow: '0 2px 8px rgba(15, 118, 110, 0.25)'
                     }}
+                    className="hover-lift"
                   >
                     <UserPlus size={15} /> Add Driver
                   </button>
@@ -533,10 +676,11 @@ const TransportDashboard = () => {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
                       padding: '8px 14px', borderRadius: '10px', border: 'none',
-                      background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
+                      background: '#2563EB',
                       color: 'white', fontWeight: 700, fontSize: '0.82rem',
-                      cursor: 'pointer', boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)'
+                      cursor: 'pointer', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
                     }}
+                    className="hover-lift"
                   >
                     <Plus size={15} /> Manage All Routes
                   </button>
@@ -799,72 +943,99 @@ const TransportDashboard = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* Fleet Status Curve */}
-          <div className="card" style={{ background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '22px' }}>
+          <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '1rem' }}>Fleet Deployment Curve</div>
+              <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.96rem' }}>Fleet Deployment Curve</div>
               <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Peak Hours</span>
             </div>
             <div style={{ height: '190px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={fleetStatusData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="fleetGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.0} />
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis dataKey="time" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
                   <Tooltip />
-                  <Area type="monotone" dataKey="active" stroke="#F59E0B" fill="rgba(245,158,11,0.2)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="active" stroke="#4F46E5" fill="url(#fleetGradient)" strokeWidth={2.5} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Maintenance & Compliance Alerts */}
-          <div className="card" style={{ background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '22px' }}>
+          <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <Wrench size={18} color="#DC2626" />
-              <div style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '1rem' }}>Fleet Service & Compliance</div>
+              <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.96rem' }}>Fleet Service & Compliance</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {vehicles.filter(v => v.status === 'Maintenance').length > 0 ? (
                 vehicles.filter(v => v.status === 'Maintenance').map((m, i) => (
-                  <div key={i} style={{ padding: '12px 14px', background: '#fff1f2', borderRadius: '10px', borderLeft: '4px solid #ef4444' }}>
+                  <div key={i} style={{ padding: '12px 14px', background: '#fef2f2', borderRadius: '10px', border: '1px solid #fee2e2', borderLeft: '4px solid #ef4444' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <span style={{ fontWeight: 800, color: '#991b1b', fontSize: '0.88rem' }}>{m.vehicleNumber}</span>
-                      <span style={{ fontSize: '0.72rem', color: '#b91c1c', fontWeight: 700 }}>In Garage</span>
+                      <span style={{ fontSize: '0.72rem', color: '#b91c1c', fontWeight: 700, background: '#fee2e2', padding: '1px 7px', borderRadius: '6px' }}>In Garage</span>
                     </div>
                     <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{m.model} • Scheduled for Routine Maintenance</div>
                   </div>
                 ))
               ) : (
-                <div style={{ padding: '12px 14px', background: '#f0fdf4', borderRadius: '10px', borderLeft: '4px solid #16a34a' }}>
+                <div style={{ padding: '12px 14px', background: '#f0fdf4', borderRadius: '10px', border: '1px solid #dcfce7', borderLeft: '4px solid #16a34a' }}>
                   <div style={{ fontWeight: 700, color: '#166534', fontSize: '0.85rem' }}>All Vehicles Road-Ready</div>
                   <div style={{ fontSize: '0.78rem', color: '#64748b' }}>No active mechanical breakdowns reported.</div>
                 </div>
               )}
 
               {/* Reminders */}
-              <div style={{ padding: '12px 14px', background: '#f8fafc', borderRadius: '10px', borderLeft: '4px solid #F59E0B' }}>
+              <div style={{ padding: '12px 14px', background: '#fffbeb', borderRadius: '10px', border: '1px solid #fef3c7', borderLeft: '4px solid #F59E0B' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontWeight: 800, color: '#1e3a8a', fontSize: '0.86rem' }}>Fleet Fitness Verification</span>
-                  <span style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700 }}>Annual</span>
+                  <span style={{ fontWeight: 800, color: '#92400e', fontSize: '0.86rem' }}>Fleet Fitness Verification</span>
+                  <span style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700, background: '#fef3c7', padding: '1px 7px', borderRadius: '6px' }}>Annual</span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>RTO compliance verified for academic year 2026-27.</div>
+                <div style={{ fontSize: '0.78rem', color: '#78350f' }}>RTO compliance verified for academic year 2026-27.</div>
               </div>
             </div>
           </div>
 
           {/* Quick Dispatch Card */}
-          <div className="card" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', borderRadius: '20px', padding: '22px', color: 'white' }}>
-            <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#94a3b8', fontWeight: 700 }}>
-              Transport Helpdesk & Dispatch
+          <div className="card" style={{
+            background: 'white',
+            borderRadius: '16px',
+            border: '1px solid #e2e8f0',
+            padding: '20px 22px',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Phone size={16} color="#2563eb" />
+              </div>
+              <div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', color: '#64748b' }}>
+                  Transport Helpdesk & Dispatch
+                </div>
+                <div style={{ fontSize: '0.96rem', fontWeight: 800, color: '#1e293b' }}>
+                  Emergency SOS Hotline
+                </div>
+              </div>
             </div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, marginTop: '6px' }}>
-              Emergency SOS Hotline
-            </div>
-            <div style={{ fontSize: '0.84rem', color: '#cbd5e1', marginTop: '4px' }}>
-              Control room contact for drivers, parents, and traffic supervisors.
-            </div>
-            <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.92rem', fontWeight: 700, color: '#38bdf8' }}>
-              <Phone size={15} /> +91 (022) 2855-9000
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 14px',
+              background: '#f8fafc',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>Hotline Dispatch:</span>
+              <a href="tel:+9102228559000" style={{ fontSize: '0.92rem', fontWeight: 800, color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Phone size={14} /> +91 (022) 2855-9000
+              </a>
             </div>
           </div>
 

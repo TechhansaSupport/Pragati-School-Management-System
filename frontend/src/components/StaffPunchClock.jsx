@@ -575,10 +575,8 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
             <div style={{ fontSize: '0.74rem', color: '#475569', marginTop: '2px' }}>
               {geoState.loading ? (
                 'Acquiring live location coordinates...'
-              ) : !geofenceConfig.geofenceEnabled ? (
-                'Geofence requirement is currently disabled in school settings.'
-              ) : !geofenceConfig.isConfigured ? (
-                'Campus GPS coordinates have not yet been calibrated by Administrator.'
+              ) : !geofenceConfig.geofenceEnabled || !geofenceConfig.isConfigured ? (
+                'Attendance unlocked on campus network.'
               ) : geoState.isWithinCampus ? (
                 `Campus center verified (allowed radius: ${geofenceConfig.campusRadiusMeters}m). Attendance unlocked.`
               ) : (

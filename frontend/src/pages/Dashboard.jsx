@@ -11,7 +11,7 @@ import {
   Activity, UserCheck, Shield, Clock, Plus, Filter, Download, MessageSquare, 
   QrCode, Settings, Key, ShieldCheck, Save, Server, Database, ShieldAlert, Check,
   Building2, ExternalLink, Award, Sparkles, Layers, ArrowRight, Trash2, MapPin,
-  CheckCircle2, Printer, RefreshCw, X, Play, UserCog, CalendarDays
+  CheckCircle2, Printer, RefreshCw, X, Play, UserCog, CalendarDays, TrendingUp, Wallet
 } from 'lucide-react';
 import CreateSchoolModal from '../components/CreateSchoolModal';
 import AppointPrincipalModal from '../components/AppointPrincipalModal';
@@ -1235,221 +1235,359 @@ const Dashboard = () => {
     );
   };
 
-  const renderOverview = () => (
-    <div className="dashboard-grid">
-      <div className="left-column">
-        {/* KPI Row with Quick Nav */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-          <div 
-            className="card" 
-            style={{ padding: '20px', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
-            onClick={() => handleModuleChange('Students & IDs')}
-            title="Click to view Students Directory"
-          >
-            <div className="flex-between" style={{ marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4F46E5' }}><Users size={20}/></div>
-              <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Total Students</span>
-            </div>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#1e3a8a' }}>{dashboardOverview.totalStudents.toLocaleString()}</h2>
-            <div style={{ fontSize: '0.8rem', color: '#10B981', marginTop: '8px', fontWeight: 600 }}>
-              Seat utilization: {dashboardOverview.seatUtilization}% ({dashboardOverview.totalStudents}/{dashboardOverview.totalCapacity})
-            </div>
-          </div>
+  const renderOverview = () => {
+    const kpiMetrics = [
+      {
+        label: 'Total Students',
+        value: dashboardOverview.totalStudents.toLocaleString(),
+        sub: `Seat utilization: ${dashboardOverview.seatUtilization}% (${dashboardOverview.totalStudents}/${dashboardOverview.totalCapacity})`,
+        icon: Users,
+        color: '#4F46E5',
+        bg: 'rgba(79, 70, 229, 0.08)',
+        subColor: '#10B981',
+        onClick: () => handleModuleChange('Students & IDs'),
+        title: 'Click to view Students Directory'
+      },
+      {
+        label: 'Teachers & Faculty',
+        value: dashboardOverview.totalTeachers || teachers.length || staffStats.teachingStaff || 0,
+        sub: `${staffStats.totalStaff || dashboardOverview.totalStaff} Total Staff members`,
+        icon: UserCheck,
+        color: '#10B981',
+        bg: 'rgba(16, 185, 129, 0.08)',
+        subColor: '#10B981',
+        onClick: () => handleModuleChange('Teachers'),
+        title: 'Click to view Faculty & Staff Directory'
+      },
+      {
+        label: 'Avg Attendance',
+        value: `${dashboardOverview.avgAttendance}%`,
+        sub: `Across ${classesList.length || dashboardOverview.activeClassesCount || 6} active classes`,
+        icon: Clock,
+        color: '#F59E0B',
+        bg: 'rgba(245, 158, 11, 0.08)',
+        subColor: 'var(--color-text-muted, #64748b)',
+        onClick: () => handleModuleChange('Academics & Exams'),
+        title: 'Click to view Academic Classes'
+      },
+      {
+        label: 'Pending Approvals',
+        value: dashboardOverview.pendingFeesCount,
+        sub: 'Pending fees & verifications',
+        icon: AlertTriangle,
+        color: '#EF4444',
+        bg: 'rgba(239, 68, 68, 0.08)',
+        subColor: '#EF4444',
+        onClick: () => handleModuleChange('Finance & Fees'),
+        title: 'Click to view Fee Ledger'
+      },
+      {
+        label: 'Fee Collections',
+        value: `₹${(dashboardOverview.totalCollected || 0).toLocaleString()}`,
+        sub: 'Live ledger totals',
+        icon: CreditCard,
+        color: '#0F766E',
+        bg: 'rgba(15, 118, 110, 0.08)',
+        subColor: '#059669',
+        onClick: () => handleModuleChange('Finance & Fees'),
+        title: 'Click to view Fee Collections'
+      },
+      {
+        label: 'Fleet & Transport',
+        value: `${facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount || 5} Routes`,
+        sub: '100% active route tracking',
+        icon: Bus,
+        color: '#7C3AED',
+        bg: 'rgba(124, 58, 237, 0.08)',
+        subColor: '#10B981',
+        onClick: () => handleModuleChange('Facilities'),
+        title: 'Click to view Transport Routes'
+      }
+    ];
 
-          <div 
-            className="card" 
-            style={{ padding: '20px', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s' }}
-            onClick={() => handleModuleChange('Teachers')}
-            title="Click to view Faculty & Staff Directory"
-          >
-            <div className="flex-between" style={{ marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10B981' }}><UserCheck size={20}/></div>
-              <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Teachers</span>
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+        {/* ─── 1. FULL-WIDTH EXECUTIVE KPI STRIP (6 PROPORTIONAL CARDS) ─── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: '16px',
+          width: '100%'
+        }}>
+          {kpiMetrics.map((kpi, idx) => (
+            <div
+              key={idx}
+              className="card hover-lift"
+              onClick={kpi.onClick}
+              title={kpi.title}
+              style={{
+                background: 'var(--color-surface, white)',
+                borderRadius: '16px',
+                padding: '18px 20px',
+                border: '1px solid var(--color-border, #e2e8f0)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                cursor: 'pointer',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: '12px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {kpi.label}
+                </span>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '10px',
+                  background: kpi.bg,
+                  color: kpi.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <kpi.icon size={18} />
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', lineHeight: 1 }}>
+                  {kpi.value}
+                </div>
+                <div style={{ fontSize: '0.74rem', color: kpi.subColor, fontWeight: 600, marginTop: '6px' }}>
+                  {kpi.sub}
+                </div>
+              </div>
             </div>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#1e3a8a' }}>{dashboardOverview.totalTeachers || teachers.length || staffStats.teachingStaff || 0}</h2>
-            <div style={{ fontSize: '0.8rem', color: '#10B981', marginTop: '8px', fontWeight: 600 }}>{staffStats.totalStaff || dashboardOverview.totalStaff} Total Staff members</div>
-          </div>
-
-          <div 
-            className="card" 
-            style={{ padding: '20px', cursor: 'pointer' }}
-            onClick={() => handleModuleChange('Academics & Exams')}
-            title="Click to view Academic Classes"
-          >
-            <div className="flex-between" style={{ marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#F59E0B' }}><Clock size={20}/></div>
-              <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Avg Attendance</span>
-            </div>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#1e3a8a' }}>{dashboardOverview.avgAttendance}%</h2>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '8px', fontWeight: 600 }}>Across {classesList.length || dashboardOverview.activeClassesCount || 6} active classes</div>
-          </div>
-
-          <div 
-            className="card" 
-            style={{ padding: '20px', cursor: 'pointer' }}
-            onClick={() => handleModuleChange('Finance & Fees')}
-            title="Click to view Fee Ledger"
-          >
-            <div className="flex-between" style={{ marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }}><AlertTriangle size={20}/></div>
-              <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Pending Approvals</span>
-            </div>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#1e3a8a' }}>{dashboardOverview.pendingFeesCount}</h2>
-            <div style={{ fontSize: '0.8rem', color: '#EF4444', marginTop: '8px', fontWeight: 600 }}>Pending fees & verifications</div>
-          </div>
-
-          <div 
-            className="card" 
-            style={{ padding: '20px', cursor: 'pointer' }}
-            onClick={() => handleModuleChange('Finance & Fees')}
-            title="Click to view Fee Collections"
-          >
-            <div className="flex-between" style={{ marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#ccfbf1', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0F766E' }}><CreditCard size={20}/></div>
-              <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Fee Collections</span>
-            </div>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#1e3a8a' }}>₹{(dashboardOverview.totalCollected || 0).toLocaleString()}</h2>
-            <div style={{ fontSize: '0.8rem', color: '#10B981', marginTop: '8px', fontWeight: 600 }}>Live ledger totals</div>
-          </div>
-
-          <div 
-            className="card" 
-            style={{ padding: '20px', cursor: 'pointer' }}
-            onClick={() => handleModuleChange('Facilities')}
-            title="Click to view Transport Routes"
-          >
-            <div className="flex-between" style={{ marginBottom: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7C3AED' }}><Bus size={20}/></div>
-              <span className="text-muted" style={{ fontSize: '0.85rem', fontWeight: 600 }}>Fleet & Transport</span>
-            </div>
-            <h2 style={{ margin: 0, fontSize: '1.8rem', color: '#1e3a8a' }}>{facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount || 5} Routes</h2>
-            <div style={{ fontSize: '0.8rem', color: '#10B981', marginTop: '8px', fontWeight: 600 }}>100% active route tracking</div>
-          </div>
+          ))}
         </div>
 
-        {/* Financials Chart with Period Filter */}
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-            <div className="card-title">Fee Collections vs Expenses</div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {['This Term', 'Last 6 Months', 'Full Academic Year'].map(period => (
-                <button
-                  key={period}
-                  onClick={() => setRevenuePeriod(period)}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    background: revenuePeriod === period ? '#4F46E5' : 'white',
-                    color: revenuePeriod === period ? 'white' : '#475569'
-                  }}
-                >
-                  {period}
-                </button>
-              ))}
+        {/* ─── 2. MAIN ANALYTICS & CAMPUS OPERATIONS (2-COLUMN BALANCED GRID) ─── */}
+        <div className="dashboard-grid">
+          {/* Left Column: Financials Chart */}
+          <div className="left-column">
+            <div className="card" style={{
+              background: 'var(--color-surface, white)',
+              borderRadius: '16px',
+              padding: '22px 24px',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              minHeight: '430px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={18} color="#4F46E5" />
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                    Fee Collections vs Expenses
+                  </h3>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    display: 'inline-flex',
+                    background: 'var(--color-bg, #f8fafc)',
+                    border: '1px solid var(--color-border, #cbd5e1)',
+                    padding: '2px',
+                    borderRadius: '8px'
+                  }}>
+                    {['This Term', 'Last 6 Months', 'Full Academic Year'].map(period => (
+                      <button
+                        key={period}
+                        type="button"
+                        onClick={() => setRevenuePeriod(period)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: revenuePeriod === period ? '#4F46E5' : 'transparent',
+                          color: revenuePeriod === period ? '#ffffff' : 'var(--color-text-muted, #647489)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {period}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart Legend */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '10px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.74rem', fontWeight: 700, color: '#4F46E5' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#4F46E5' }} /> Collections
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.74rem', fontWeight: 700, color: '#0F766E' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#0F766E' }} /> Operating Costs
+                </span>
+              </div>
+
+              <div style={{ flex: 1, minHeight: '260px', width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dashboardOverview.revenueData || defaultRevenueData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorRevDash" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.01}/>
+                      </linearGradient>
+                      <linearGradient id="colorCostDash" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0F766E" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#0F766E" stopOpacity={0.01}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(226, 232, 240, 0.6)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={8} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} tickFormatter={(val) => `₹${val/1000}K`} />
+                    <Tooltip 
+                      formatter={(val, name) => [`₹${Number(val).toLocaleString()}`, name === 'rev' ? 'Collections' : 'Expenses']}
+                      contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontSize: '0.8rem' }}
+                    />
+                    <Area type="monotone" dataKey="rev" name="Collections" stroke="#4F46E5" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevDash)" />
+                    <Area type="monotone" dataKey="cost" name="Expenses" stroke="#0F766E" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#colorCostDash)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Bottom Financial Metric Badges */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--color-border, #f1f5f9)', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Total Inflow: <strong style={{ color: '#059669' }}>₹{(dashboardOverview.totalCollected || 15000).toLocaleString()}</strong>
+                </span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Operating Margin: <strong style={{ color: '#4F46E5' }}>100% Positive</strong>
+                </span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Active Batches: <strong style={{ color: '#1e293b' }}>{classesList.length || 1} Enrolled</strong>
+                </span>
+              </div>
             </div>
           </div>
-          <div style={{ height: '280px', marginTop: '16px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dashboardOverview.revenueData || defaultRevenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `₹${val/1000}K`} />
-                <Tooltip />
-                <Line type="monotone" dataKey="rev" stroke="#4F46E5" strokeWidth={3} dot={{r:4}} />
-                <Line type="monotone" dataKey="cost" stroke="#0F766E" strokeWidth={3} dot={{r:4}} />
-              </LineChart>
-            </ResponsiveContainer>
+
+          {/* Right Column: Events & Activity Logs */}
+          <div className="right-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Upcoming Events Card */}
+            <div className="card" style={{
+              background: 'var(--color-surface, white)',
+              borderRadius: '16px',
+              padding: '20px',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar size={18} color="#4F46E5" />
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                    Upcoming Campus Events
+                  </h3>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button 
+                    type="button"
+                    onClick={() => setIsAddEventOpen(true)}
+                    style={{ background: 'rgba(79, 70, 229, 0.08)', border: 'none', color: '#4F46E5', borderRadius: '6px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    + Add Event
+                  </button>
+                  <button 
+                    type="button"
+                    onClick={() => setIsViewAllEventsOpen(true)}
+                    style={{ background: 'none', border: 'none', color: '#64748b', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer' }}
+                  >
+                    View All
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {eventsList.slice(0, 3).map((ev, i) => (
+                  <div key={ev.id || i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 12px', background: 'var(--color-bg, #f8fafc)', borderRadius: '10px', border: '1px solid var(--color-border, #f1f5f9)', transition: 'background 0.15s' }}>
+                    <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '5px 8px', textAlign: 'center', minWidth: '46px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                      <div style={{ color: '#EF4444', fontSize: '0.66rem', fontWeight: 800 }}>{ev.m}</div>
+                      <div style={{ color: '#1e3a8a', fontSize: '1.1rem', fontWeight: 800, lineHeight: 1 }}>{ev.d}</div>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.88rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ev.t}</div>
+                      <div style={{ color: '#64748b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                        <MapPin size={11} color="#94a3b8" /> {ev.l}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Activity Card */}
+            <div className="card" style={{
+              background: 'var(--color-surface, white)',
+              borderRadius: '16px',
+              padding: '20px',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              flex: 1
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={18} color="#059669" />
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                    Recent Activity Logs
+                  </h3>
+                </div>
+                <div style={{
+                  display: 'inline-flex',
+                  background: 'var(--color-bg, #f8fafc)',
+                  border: '1px solid var(--color-border, #e2e8f0)',
+                  padding: '2px',
+                  borderRadius: '6px'
+                }}>
+                  {['ALL', 'FINANCIAL', 'ACADEMIC'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActivityCategoryFilter(cat)}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        background: activityCategoryFilter === cat ? '#1e3a8a' : 'transparent',
+                        color: activityCategoryFilter === cat ? '#ffffff' : 'var(--color-text-muted, #64748b)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  { cat: 'ACADEMIC', i: UserCheck, c: '#10B981', text: 'Teacher leave schedule approved by Principal', time: '10 min ago' },
+                  { cat: 'FINANCIAL', i: CreditCard, c: '#4F46E5', text: 'Tuition fee payment of ₹15,000 received via UPI', time: '1 hour ago' },
+                  { cat: 'ACADEMIC', i: BookOpen, c: '#F59E0B', text: 'Class 10 Assessment grades synced with live DB', time: '3 hours ago' },
+                  { cat: 'SYSTEM', i: Shield, c: '#EF4444', text: 'Multi-campus tenant boundary verified', time: 'Yesterday' }
+                ].filter(a => activityCategoryFilter === 'ALL' || a.cat === activityCategoryFilter).map((act, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: act.c + '18', color: act.c, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <act.i size={15} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 600, lineHeight: 1.3 }}>{act.text}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>{act.time}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      
-      <div className="right-column">
-        {/* Upcoming Events with Add Event Modal */}
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="card-title">Upcoming Campus Events</div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => setIsAddEventOpen(true)}
-                style={{ background: '#e0e7ff', border: 'none', color: '#4F46E5', borderRadius: '6px', padding: '4px 8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
-              >
-                + Add
-              </button>
-              <button 
-                onClick={() => setIsViewAllEventsOpen(true)}
-                style={{ background: 'none', border: 'none', color: '#4F46E5', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
-              >
-                View All
-              </button>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
-            {eventsList.slice(0, 3).map((ev, i) => (
-              <div key={ev.id || i} style={{ display: 'flex', gap: '16px', alignItems: 'center', padding: '12px', background: '#f8fafc', borderRadius: '12px' }}>
-                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px', textAlign: 'center', minWidth: '50px' }}>
-                  <div style={{ color: '#EF4444', fontSize: '0.7rem', fontWeight: 800 }}>{ev.m}</div>
-                  <div style={{ color: '#1e3a8a', fontSize: '1.2rem', fontWeight: 800 }}>{ev.d}</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '0.95rem' }}>{ev.t}</div>
-                  <div style={{ color: '#64748b', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}><Calendar size={12}/> {ev.l}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Activity with Live Filter */}
-        <div className="card" style={{ flex: 1 }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div className="card-title">Recent Activity Logs</div>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {['ALL', 'FINANCIAL', 'ACADEMIC'].map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActivityCategoryFilter(cat)}
-                  style={{
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    background: activityCategoryFilter === cat ? '#1e3a8a' : 'white',
-                    color: activityCategoryFilter === cat ? 'white' : '#64748b',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-            {[
-              { cat: 'ACADEMIC', i: UserCheck, c: '#10B981', text: 'Teacher leave schedule approved by Principal', time: '10 min ago' },
-              { cat: 'FINANCIAL', i: CreditCard, c: '#4F46E5', text: 'Tuition fee payment of ₹15,000 received via UPI', time: '1 hour ago' },
-              { cat: 'ACADEMIC', i: BookOpen, c: '#F59E0B', text: 'Class 10 Assessment grades synced with live DB', time: '3 hours ago' },
-              { cat: 'SYSTEM', i: Shield, c: '#EF4444', text: 'Multi-campus tenant boundary verified', time: 'Yesterday' }
-            ].filter(a => activityCategoryFilter === 'ALL' || a.cat === activityCategoryFilter).map((act, i) => (
-              <div key={i} style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: act.c + '1A', color: act.c, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <act.i size={16} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.88rem', color: '#334155', fontWeight: 500 }}>{act.text}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{act.time}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderStudentManagement = () => {
     const filteredStudents = studentsList.filter(st => {

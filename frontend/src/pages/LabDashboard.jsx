@@ -488,127 +488,138 @@ const LabDashboard = () => {
         </div>
       )}
 
-      {/* TOP SCIENTIFIC HERO BANNER */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #065f46 100%)',
-        borderRadius: '24px',
-        padding: '26px 34px',
-        color: 'white',
+      {/* TOP SCIENTIFIC COMMAND HEADER - Clean White Surface */}
+      <div className="no-print" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '24px',
-        boxShadow: '0 12px 30px -6px rgba(49, 46, 129, 0.4)',
-        position: 'relative',
-        overflow: 'hidden'
+        gap: '16px'
       }}>
-        <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '220px', height: '220px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)', pointerEvents: 'none' }}></div>
-        <div style={{ position: 'absolute', right: '140px', bottom: '-50px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', pointerEvents: 'none' }}></div>
-
-        <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', padding: '5px 14px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 800, letterSpacing: '0.5px', marginBottom: '10px' }}>
-            <Microscope size={14} color="#34d399" />
-            <span>SCIENCE LABORATORIES & APPARATUS COMMAND</span>
+        <div style={{ maxWidth: '750px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <Microscope size={13} color="#4338ca" /> Science Laboratories & Apparatus
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+              All 4 Science Labs Active
+            </span>
           </div>
 
-          <h1 style={{ fontSize: '1.95rem', fontWeight: 900, margin: '0 0 16px 0', letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
             Good Afternoon, {stats.assistantName}! 🔬
           </h1>
 
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            
-            {/* PRIMARY SCHEDULE PRACTICAL ACTION BUTTON */}
+          {/* Quick Action Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => handleOpenScheduleModal()}
               style={{
-                display: 'inline-flex',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                fontWeight: 800,
-                fontSize: '0.88rem',
+                gap: '6px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(16, 185, 129, 0.4)',
                 transition: 'all 0.2s'
               }}
-              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              className="hover-lift"
             >
-              <CalendarPlus size={16} /> Schedule Practical Class
+              <CalendarPlus size={14} color="#059669" /> Schedule Practical Class
             </button>
-
             <button
               onClick={() => handleOpenAddModal('equipment')}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                background: '#4F46E5',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
                 fontWeight: 700,
-                fontSize: '0.88rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
                 transition: 'all 0.2s'
               }}
-              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              className="hover-lift"
             >
-              <Plus size={16} /> Add Equipment
+              <Plus size={14} color="#4F46E5" /> Add Equipment
             </button>
-
             <button
               onClick={() => handleOpenAddModal('chemical')}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 20px',
-                background: '#0d9488',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
                 fontWeight: 700,
-                fontSize: '0.88rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)',
                 transition: 'all 0.2s'
               }}
-              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+              className="hover-lift"
             >
-              <TestTube size={16} /> Log Chemical
+              <TestTube size={14} color="#0d9488" /> Log Chemical
             </button>
           </div>
         </div>
 
+        {/* Right side session card */}
         <div style={{
-          textAlign: 'right',
-          background: 'rgba(255, 255, 255, 0.08)',
-          backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.14)',
-          borderRadius: '18px',
-          padding: '14px 22px',
-          boxShadow: '0 6px 20px rgba(0, 0, 0, 0.15)',
-          minWidth: '200px'
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          minWidth: '190px'
         }}>
-          <div style={{ fontSize: '0.74rem', fontWeight: 800, opacity: 0.85, textTransform: 'uppercase', letterSpacing: '0.6px', color: '#a7f3d0' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Live Science Campus
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, marginTop: '2px', letterSpacing: '-0.3px' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
-          <div style={{ fontSize: '0.82rem', opacity: 0.95, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end', fontWeight: 600 }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#34d399', boxShadow: '0 0 8px #34d399', display: 'inline-block' }}></span>
-            <span>All 4 Science Labs Active</span>
+          <div style={{
+            fontSize: '0.72rem',
+            color: '#1e3a8a',
+            fontWeight: 800,
+            background: '#e0e7ff',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            marginTop: '4px'
+          }}>
+            EMP-107 • Lab Assistant
           </div>
         </div>
       </div>
@@ -617,88 +628,79 @@ const LabDashboard = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         {[
           { 
-            label: 'Scheduled Classes Today', 
-            value: `${stats.todayPracticals} Scheduled Classes`, 
-            sub: 'Practicals scheduled by assistant', 
+            label: 'Scheduled Practicals', 
+            value: stats.todayPracticals, 
             icon: Calendar, 
             color: '#4F46E5', 
             bg: 'rgba(79, 70, 229, 0.1)',
             badge: 'Active Today',
-            badgeBg: 'rgba(79, 70, 229, 0.1)',
+            badgeBg: 'rgba(79, 70, 229, 0.08)',
             badgeColor: '#4F46E5',
             tab: 'schedule'
           },
           { 
             label: 'Total Students in Labs', 
-            value: `${stats.todayStudentsCount} Students`, 
-            sub: 'Aggregate strength across active batches', 
+            value: stats.todayStudentsCount, 
             icon: Users, 
             color: '#059669', 
             bg: 'rgba(5, 150, 105, 0.1)',
             badge: 'Aggregate Count Only',
-            badgeBg: 'rgba(5, 150, 105, 0.1)',
+            badgeBg: 'rgba(5, 150, 105, 0.08)',
             badgeColor: '#059669',
             tab: 'schedule'
           },
           { 
-            label: 'Lab Equipments & Apparatus', 
-            value: `${inventory.filter(i => i.category !== 'Chemical').length || stats.totalEquipments} Apparatus Units`, 
-            sub: `${inventory.filter(i => i.category !== 'Chemical' && i.status === 'Operational').length || 13} Operational • 1 Calibration due`, 
+            label: 'Apparatus Units', 
+            value: inventory.filter(i => i.category !== 'Chemical').length || stats.totalEquipments, 
             icon: Microscope, 
             color: '#0284c7', 
             bg: 'rgba(2, 132, 199, 0.1)',
             badge: 'Registry Live',
-            badgeBg: 'rgba(2, 132, 199, 0.1)',
+            badgeBg: 'rgba(2, 132, 199, 0.08)',
             badgeColor: '#0284c7',
             tab: 'equipments'
           },
           { 
-            label: 'Chemicals & Reagents', 
-            value: `${inventory.filter(i => i.category === 'Chemical').length || stats.totalChemicals} Reagents Cataloged`, 
-            sub: `${inventory.filter(i => i.category === 'Chemical' && i.status === 'Low Stock').length || 2} Low Stock / Reorder placed`, 
+            label: 'Reagents Cataloged', 
+            value: inventory.filter(i => i.category === 'Chemical').length || stats.totalChemicals, 
             icon: FlaskConical, 
             color: '#d97706', 
             bg: 'rgba(217, 119, 6, 0.1)',
             badge: 'Stock Monitored',
-            badgeBg: 'rgba(217, 119, 6, 0.1)',
+            badgeBg: 'rgba(217, 119, 6, 0.08)',
             badgeColor: '#d97706',
             tab: 'chemicals'
           }
         ].map((kpi, idx) => (
           <div 
             key={idx} 
-            className="card"
+            className="card hover-lift"
             onClick={() => switchTab(kpi.tab)}
             style={{
-              background: 'white',
+              background: 'var(--color-surface, white)',
               borderRadius: '16px',
-              padding: '18px 22px',
-              border: '1px solid #e2e8f0',
+              padding: '18px 20px',
+              border: '1px solid var(--color-border, #e2e8f0)',
               boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
+              gap: '10px',
               cursor: 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.3s'
             }}
-            onMouseOver={e => e.currentTarget.style.borderColor = kpi.color}
-            onMouseOut={e => e.currentTarget.style.borderColor = '#e2e8f0'}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <kpi.icon size={22} color={kpi.color} />
               </div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '3px 8px', borderRadius: '12px', background: kpi.badgeBg, color: kpi.badgeColor }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '12px', background: kpi.badgeBg, color: kpi.badgeColor }}>
                 {kpi.badge}
               </span>
             </div>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>{kpi.value}</div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: '4px' }}>
+              <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-primary, #1e293b)' }}>{kpi.value}</div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: '2px' }}>
                 {kpi.label}
-              </div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '3px' }}>
-                {kpi.sub}
               </div>
             </div>
           </div>
@@ -768,11 +770,22 @@ const LabDashboard = () => {
           {/* TAB 1: SCHEDULED CLASSES & LAB SESSIONS */}
           {(activeTab === 'schedule' || activeTab === 'overview') && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{
+                background: 'var(--color-surface, white)',
+                borderRadius: '16px',
+                padding: '16px 20px',
+                border: '1px solid var(--color-border, #e2e8f0)',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
                 <div>
-                  <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: '#1e293b', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', margin: 0, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span>Scheduled Laboratory Classes</span>
-                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#4F46E5', background: '#eef2ff', border: '1px solid #c7d2fe', padding: '3px 10px', borderRadius: '12px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#4F46E5', background: '#eef2ff', border: '1px solid #c7d2fe', padding: '3px 10px', borderRadius: '12px' }}>
                       {practicals.length} Sessions • {stats.todayStudentsCount} Total Students
                     </span>
                   </h3>
@@ -793,19 +806,13 @@ const LabDashboard = () => {
                       fontWeight: 700,
                       fontSize: '0.84rem',
                       cursor: 'pointer',
-                      boxShadow: '0 3px 10px rgba(79, 70, 229, 0.3)',
+                      boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
                       transition: 'all 0.15s'
                     }}
-                    onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'}
-                    onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    className="hover-lift"
                   >
                     <CalendarPlus size={15} /> Schedule Practical Class
                   </button>
-
-                  <div style={{ fontSize: '0.76rem', color: '#059669', background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '5px 12px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}>
-                    <Info size={14} />
-                    <span>Student counts only • Privacy enforced</span>
-                  </div>
                 </div>
               </div>
 
@@ -848,7 +855,7 @@ const LabDashboard = () => {
                         borderRadius: '16px',
                         padding: '22px',
                         border: '1px solid #e2e8f0',
-                        borderLeft: `6px solid ${prac.color || '#4F46E5'}`,
+                        borderLeft: `5px solid ${prac.color || '#4F46E5'}`,
                         boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -859,43 +866,43 @@ const LabDashboard = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                         <div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 900, color: '#1e293b', background: '#f1f5f9', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e293b', background: '#f1f5f9', padding: '3px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                               🏫 {prac.classSection}
                             </span>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: prac.color || '#4F46E5', background: `${prac.color || '#4F46E5'}15`, padding: '3px 10px', borderRadius: '8px' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: prac.color || '#4F46E5', background: `${prac.color || '#4F46E5'}14`, padding: '3px 10px', borderRadius: '8px' }}>
                               {prac.subject}
                             </span>
                             
                             {/* PROMINENT STUDENT COUNT BADGE */}
                             <span style={{
-                              fontSize: '0.82rem',
+                              fontSize: '0.78rem',
                               fontWeight: 800,
                               color: '#065f46',
                               background: '#d1fae5',
-                              border: '1px solid #6ee7b7',
-                              padding: '3px 12px',
-                              borderRadius: '20px',
+                              border: '1px solid #a7f3d0',
+                              padding: '3px 10px',
+                              borderRadius: '8px',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px'
                             }}>
-                              <Users size={14} />
-                              <strong>{prac.studentCount || prac.batchSize} Students Scheduled</strong>
+                              <Users size={13} />
+                              <span>{prac.studentCount || prac.batchSize} Students Scheduled</span>
                             </span>
 
-                            <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>
-                              ({prac.workstationsCount || Math.ceil((prac.studentCount || prac.batchSize) / 2)} Workstations • 2 Students / Bench)
+                            <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                              • {prac.workstationsCount || Math.ceil((prac.studentCount || prac.batchSize) / 2)} Workstations
                             </span>
                           </div>
 
-                          <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1e293b', margin: '6px 0 0 0' }}>
+                          <h4 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '4px 0 0 0' }}>
                             {prac.title}
                           </h4>
 
-                          <div style={{ fontSize: '0.84rem', color: '#475569', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                            <span>📍 <strong>{prac.labRoom}</strong></span>
-                            <span>⏰ <strong>{prac.timeSlot}</strong></span>
-                            <span>👨‍🏫 Supervising Faculty: <strong>{prac.instructor}</strong></span>
+                          <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                            <span>📍 <strong style={{ color: '#334155' }}>{prac.labRoom}</strong></span>
+                            <span>⏰ <strong style={{ color: '#334155' }}>{prac.timeSlot}</strong></span>
+                            <span>👨‍🏫 Supervising: <strong style={{ color: '#334155' }}>{prac.instructor}</strong></span>
                           </div>
                         </div>
 
@@ -905,10 +912,10 @@ const LabDashboard = () => {
                             
                             {/* Status Badge */}
                             <span style={{
-                              fontSize: '0.78rem',
+                              fontSize: '0.76rem',
                               fontWeight: 800,
                               padding: '5px 12px',
-                              borderRadius: '10px',
+                              borderRadius: '8px',
                               background: prac.readinessStatus === 'Ready & Sanitized' ? '#ecfdf5' : prac.readinessStatus === 'In Progress' ? '#eef2ff' : '#fffbeb',
                               color: prac.readinessStatus === 'Ready & Sanitized' ? '#059669' : prac.readinessStatus === 'In Progress' ? '#4F46E5' : '#d97706',
                               border: `1px solid ${prac.readinessStatus === 'Ready & Sanitized' ? '#a7f3d0' : prac.readinessStatus === 'In Progress' ? '#c7d2fe' : '#fde68a'}`
@@ -923,18 +930,17 @@ const LabDashboard = () => {
                               style={{
                                 padding: '6px 12px',
                                 borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
+                                border: '1px solid #e2e8f0',
                                 background: '#f8fafc',
-                                fontSize: '0.78rem',
+                                fontSize: '0.76rem',
                                 fontWeight: 700,
                                 color: '#334155',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s'
                               }}
-                              onMouseOver={e => e.currentTarget.style.background = '#e2e8f0'}
-                              onMouseOut={e => e.currentTarget.style.background = '#f8fafc'}
+                              className="hover-lift"
                             >
-                              Update Status ↻
+                              Status ↻
                             </button>
 
                             {/* Edit Button (Assistant Authority) */}
@@ -944,9 +950,9 @@ const LabDashboard = () => {
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: '8px',
-                                border: '1px solid #cbd5e1',
+                                border: '1px solid #e2e8f0',
                                 background: '#f8fafc',
-                                fontSize: '0.78rem',
+                                fontSize: '0.76rem',
                                 fontWeight: 700,
                                 color: '#4F46E5',
                                 cursor: 'pointer',
@@ -954,8 +960,7 @@ const LabDashboard = () => {
                                 alignItems: 'center',
                                 gap: '4px'
                               }}
-                              onMouseOver={e => e.currentTarget.style.background = '#eef2ff'}
-                              onMouseOut={e => e.currentTarget.style.background = '#f8fafc'}
+                              className="hover-lift"
                             >
                               <Edit3 size={13} /> Edit
                             </button>
@@ -967,9 +972,9 @@ const LabDashboard = () => {
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: '8px',
-                                border: '1px solid #fecaca',
+                                border: '1px solid #fee2e2',
                                 background: '#fef2f2',
-                                fontSize: '0.78rem',
+                                fontSize: '0.76rem',
                                 fontWeight: 700,
                                 color: '#dc2626',
                                 cursor: 'pointer',
@@ -977,8 +982,7 @@ const LabDashboard = () => {
                                 alignItems: 'center',
                                 gap: '4px'
                               }}
-                              onMouseOver={e => e.currentTarget.style.background = '#fee2e2'}
-                              onMouseOut={e => e.currentTarget.style.background = '#fef2f2'}
+                              className="hover-lift"
                             >
                               <Trash2 size={13} />
                             </button>
@@ -987,19 +991,19 @@ const LabDashboard = () => {
 
                           {totalReq > 0 && (
                             <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                              Bench items prepared: <strong>{checkedCount}/{totalReq}</strong>
+                              Bench prep: <strong style={{ color: checkedCount === totalReq ? '#16a34a' : '#334155' }}>{checkedCount}/{totalReq}</strong> items prepared
                             </span>
                           )}
                         </div>
                       </div>
 
                       {/* Apparatus & Chemical Preparation Block */}
-                      <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         
                         {/* Required Equipments */}
                         {(prac.requiredEquipments?.length > 0 || prac.requiredApparatus?.length > 0) && (
                           <div>
-                            <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Microscope size={14} color="#4F46E5" />
                               <span>Required Lab Equipments & Apparatus ({prac.requiredEquipments?.length || prac.requiredApparatus?.length} items):</span>
                             </div>
@@ -1014,12 +1018,12 @@ const LabDashboard = () => {
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       gap: '6px',
-                                      padding: '5px 10px',
+                                      padding: '5px 11px',
                                       borderRadius: '8px',
                                       background: isChecked ? '#f0fdf4' : 'white',
-                                      border: `1px solid ${isChecked ? '#86efac' : '#cbd5e1'}`,
+                                      border: `1px solid ${isChecked ? '#86efac' : '#e2e8f0'}`,
                                       fontSize: '0.78rem',
-                                      color: isChecked ? '#15803d' : '#1e293b',
+                                      color: isChecked ? '#15803d' : '#334155',
                                       fontWeight: isChecked ? 700 : 600,
                                       cursor: 'pointer',
                                       transition: 'all 0.15s'
@@ -1037,7 +1041,7 @@ const LabDashboard = () => {
                         {/* Required Chemicals */}
                         {prac.requiredChemicals?.length > 0 && (
                           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                            <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <TestTube size={14} color="#059669" />
                               <span>Required Chemicals, Reagents & Solutions ({prac.requiredChemicals.length} items):</span>
                             </div>
@@ -1052,10 +1056,10 @@ const LabDashboard = () => {
                                       display: 'inline-flex',
                                       alignItems: 'center',
                                       gap: '6px',
-                                      padding: '5px 10px',
+                                      padding: '5px 11px',
                                       borderRadius: '8px',
-                                      background: isChecked ? '#ecfdf5' : '#fefce8',
-                                      border: `1px solid ${isChecked ? '#6ee7b7' : '#fef08a'}`,
+                                      background: isChecked ? '#ecfdf5' : 'white',
+                                      border: `1px solid ${isChecked ? '#6ee7b7' : '#e2e8f0'}`,
                                       fontSize: '0.78rem',
                                       color: isChecked ? '#065f46' : '#854d0e',
                                       fontWeight: isChecked ? 700 : 600,
@@ -1075,11 +1079,11 @@ const LabDashboard = () => {
                         {/* Safety & Handling Directives */}
                         {prac.safetyRequirements?.length > 0 && (
                           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#b91c1c', textTransform: 'uppercase' }}>
-                              ⚠️ Safety Protocols:
+                            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#b91c1c', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <AlertTriangle size={12} color="#dc2626" /> Safety Protocols:
                             </span>
                             {prac.safetyRequirements.map((s, idx) => (
-                              <span key={idx} style={{ background: '#fef2f2', border: '1px solid #fecaca', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', color: '#991b1b', fontWeight: 600 }}>
+                              <span key={idx} style={{ background: '#fef2f2', border: '1px solid #fee2e2', padding: '2px 8px', borderRadius: '6px', fontSize: '0.74rem', color: '#991b1b', fontWeight: 600 }}>
                                 {s}
                               </span>
                             ))}
@@ -1088,8 +1092,8 @@ const LabDashboard = () => {
 
                         {/* Bench Allocation Note */}
                         {prac.notes && (
-                          <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
-                            💡 Assistant Workstation Note: {prac.notes}
+                          <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>💡 Assistant Workstation Note: {prac.notes}</span>
                           </div>
                         )}
 
@@ -1120,9 +1124,6 @@ const LabDashboard = () => {
                     <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
                       Laboratory Apparatus & Equipment Registry
                     </h3>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                      Optical benches, compound microscopes, electronic meters, glassware sets, and robotics kits.
-                    </p>
                   </div>
                   <button
                     onClick={() => handleOpenAddModal('equipment')}
@@ -1297,9 +1298,6 @@ const LabDashboard = () => {
                       <FlaskConical size={20} color="#059669" />
                       <span>Chemicals & Reagents Inventory Catalogue</span>
                     </h3>
-                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>
-                      Acids, standard bases, salt reagents, indicators, histology stains, and hazard ratings.
-                    </p>
                   </div>
                   <button
                     onClick={() => handleOpenAddModal('chemical')}
@@ -1561,8 +1559,8 @@ const LabDashboard = () => {
           <StaffPunchClock onPunchSuccess={(data) => showToast(data.message)} />
 
           {/* Quick Class Lab Timeline */}
-          <div className="card" style={{ background: 'white', borderRadius: '16px', padding: '18px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div className="card" style={{ background: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Clock size={16} color="#4F46E5" />
                 <span>Today's Lab Period Timeline</span>
@@ -1575,26 +1573,33 @@ const LabDashboard = () => {
                   color: '#4F46E5',
                   background: '#eef2ff',
                   border: 'none',
-                  padding: '2px 8px',
+                  padding: '3px 9px',
                   borderRadius: '6px',
                   cursor: 'pointer'
                 }}
+                className="hover-lift"
               >
                 + Schedule
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {practicals.map((p, idx) => (
-                <div key={p._id || p.id || idx} style={{ padding: '8px 12px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div key={p._id || p.id || idx} style={{
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  background: '#f8fafc',
+                  border: '1px solid #f1f5f9'
+                }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e293b' }}>{p.classSection}</span>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '6px' }}>
+                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#1e293b' }}>{p.classSection}</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '1px 8px', borderRadius: '6px', border: '1px solid #d1fae5' }}>
                       👥 {p.studentCount || p.batchSize} Students
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px' }}>
-                    {p.timeSlot} • {p.labRoom}
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{p.timeSlot}</span>
+                    <span style={{ fontWeight: 600, color: '#475569' }}>{p.labRoom}</span>
                   </div>
                 </div>
               ))}
@@ -1602,12 +1607,12 @@ const LabDashboard = () => {
           </div>
 
           {/* Quick Lab Assistant Task Checklist */}
-          <div className="card" style={{ background: 'white', borderRadius: '16px', padding: '18px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div className="card" style={{ background: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
               <div style={{ fontSize: '0.92rem', fontWeight: 800, color: '#1e293b' }}>
                 Lab Daily Duty Log
               </div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#4F46E5', background: '#eef2ff', padding: '2px 8px', borderRadius: '8px' }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#4F46E5', background: '#eef2ff', padding: '2px 8px', borderRadius: '8px', border: '1px solid #e0e7ff' }}>
                 {labTasks.filter(t => t.done).length}/{labTasks.length} Done
               </span>
             </div>
@@ -1621,27 +1626,29 @@ const LabDashboard = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    padding: '9px 12px',
+                    borderRadius: '10px',
                     background: t.done ? '#f8fafc' : '#ffffff',
-                    border: '1px solid #e2e8f0',
+                    border: `1px solid ${t.done ? '#f1f5f9' : '#e2e8f0'}`,
                     cursor: 'pointer'
                   }}
+                  className="hover-lift"
                 >
                   <div style={{
-                    width: '16px', height: '16px', borderRadius: '4px',
+                    width: '18px', height: '18px', borderRadius: '5px',
                     border: `2px solid ${t.done ? '#10b981' : '#cbd5e1'}`,
                     background: t.done ? '#10b981' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0
                   }}>
-                    {t.done && <Check size={10} color="white" />}
+                    {t.done && <Check size={12} color="white" />}
                   </div>
                   <span style={{
                     fontSize: '0.8rem',
                     color: t.done ? '#94a3b8' : '#1e293b',
                     textDecoration: t.done ? 'line-through' : 'none',
                     fontWeight: t.done ? 500 : 600,
-                    lineHeight: 1.3
+                    lineHeight: 1.35
                   }}>
                     {t.text}
                   </span>
@@ -1649,7 +1656,7 @@ const LabDashboard = () => {
               ))}
             </div>
 
-            <form onSubmit={handleAddTask} style={{ marginTop: '12px', display: 'flex', gap: '6px' }}>
+            <form onSubmit={handleAddTask} style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
               <input 
                 type="text" 
                 placeholder="New lab duty task..."
@@ -1657,10 +1664,10 @@ const LabDashboard = () => {
                 onChange={e => setNewTaskInput(e.target.value)}
                 style={{
                   flex: 1,
-                  padding: '7px 10px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '0.78rem',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                  fontSize: '0.8rem',
                   outline: 'none',
                   background: '#f8fafc'
                 }}
@@ -1668,12 +1675,12 @@ const LabDashboard = () => {
               <button
                 type="submit"
                 style={{
-                  padding: '7px 12px',
-                  borderRadius: '8px',
+                  padding: '8px 14px',
+                  borderRadius: '10px',
                   background: '#4F46E5',
                   color: 'white',
                   border: 'none',
-                  fontSize: '0.78rem',
+                  fontSize: '0.82rem',
                   fontWeight: 700,
                   cursor: 'pointer'
                 }}
@@ -1684,17 +1691,17 @@ const LabDashboard = () => {
           </div>
 
           {/* Emergency & Science HOD Contacts */}
-          <div style={{ background: '#fffbeb', borderRadius: '16px', padding: '16px', border: '1px solid #fde68a' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontWeight: 800, fontSize: '0.85rem' }}>
+          <div style={{ background: '#fffbeb', borderRadius: '16px', padding: '18px 20px', border: '1px solid #fef3c7' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontWeight: 800, fontSize: '0.88rem' }}>
               <AlertTriangle size={16} />
               <span>Lab Emergency Protocol</span>
             </div>
-            <div style={{ fontSize: '0.78rem', color: '#92400e', marginTop: '6px', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '0.78rem', color: '#92400e', marginTop: '8px', lineHeight: 1.45 }}>
               In case of severe acid spill, glass injury, or gas leak:
               <ul style={{ margin: '6px 0 0 0', paddingLeft: '18px' }}>
-                <li>Trigger Master Gas Shutoff (Wall Key 2)</li>
-                <li>Activate Emergency Eyewash Station</li>
-                <li>Notify Science HOD & Medical Infirmary</li>
+                <li style={{ marginTop: '3px' }}>Trigger Master Gas Shutoff (Wall Key 2)</li>
+                <li style={{ marginTop: '3px' }}>Activate Emergency Eyewash Station</li>
+                <li style={{ marginTop: '3px' }}>Notify Science HOD & Medical Infirmary</li>
               </ul>
             </div>
           </div>

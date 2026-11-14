@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   CreditCard, Calendar, Clock, CheckCircle2, ShieldCheck, Printer, 
   Receipt, X, RefreshCw, Sparkles, Building2, CalendarDays, CheckCircle,
-  Search, ArrowLeft, Download, AlertCircle, FileText, ArrowUpDown
+  Search, Download, AlertCircle, FileText, ArrowUpDown
 } from 'lucide-react';
 
 const numberToWords = (num) => {
@@ -139,82 +139,6 @@ const StudentFees = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', boxSizing: 'border-box' }}>
       
-      {/* Top Banner - Hero Header */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #0284c7 100%)',
-        borderRadius: '20px',
-        padding: '26px 32px',
-        color: 'white',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
-        boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.35)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            type="button"
-            onClick={() => navigate(`/${tenantSlug}/student-dashboard`)}
-            style={{
-              background: 'rgba(255, 255, 255, 0.18)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              borderRadius: '12px',
-              padding: '10px',
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s'
-            }}
-            title="Back to Student Dashboard"
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <span style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                color: 'white',
-                padding: '3px 12px',
-                borderRadius: '14px',
-                fontSize: '0.74rem',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Student Portal • Fee Accounts
-              </span>
-              <span style={{
-                background: '#dcfce7',
-                color: '#15803d',
-                padding: '3px 10px',
-                borderRadius: '14px',
-                fontSize: '0.74rem',
-                fontWeight: 800
-              }}>
-                ✓ Cleared Up-to-Date
-              </span>
-            </div>
-            <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
-              My Fees & Receipts
-            </h1>
-            <p style={{ margin: '4px 0 0', opacity: 0.9, fontSize: '0.92rem' }}>
-              Official month-wise fee payment schedule, submitted receipts, and transaction history for Session 2026-2027.
-            </p>
-          </div>
-        </div>
-
-        <div style={{ textAlign: 'right', background: 'rgba(255, 255, 255, 0.12)', padding: '12px 18px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.2)' }}>
-          <div style={{ fontSize: '0.92rem', fontWeight: 700 }}>{student.name}</div>
-          <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{student.grade} - Section {student.section}</div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, marginTop: '2px', color: '#fef08a' }}>
-            ID: {student.rollNo}
-          </div>
-        </div>
-      </div>
-
       {/* Summary KPI Tiles */}
       <div style={{
         display: 'grid',

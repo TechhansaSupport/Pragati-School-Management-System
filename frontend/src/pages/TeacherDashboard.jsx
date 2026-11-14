@@ -601,45 +601,55 @@ const TeacherDashboard = () => {
         </div>
       )}
 
-      {/* Top Banner - Glassmorphism */}
-      <div style={{
+      {/* Top Header Card - Clean White Surface */}
+      <div className="no-print" style={{
         gridColumn: '1 / -1',
-        background: 'linear-gradient(135deg, rgba(79,70,229,0.92) 0%, rgba(96,165,250,0.92) 100%)',
-        borderRadius: '20px',
-        padding: '24px 32px',
-        color: 'white',
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
-        position: 'relative',
-        overflow: 'hidden'
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
-        {/* Subtle decorative circles */}
-        <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }}></div>
-        <div style={{ position: 'absolute', right: '180px', bottom: '-60px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }}></div>
+        <div style={{ maxWidth: '750px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <BookOpen size={13} color="#4338ca" /> Faculty Command
+            </span>
+          </div>
 
-        <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
             {getGreeting()}, {teacherSummary.teacherName}! 👋
-          </h2>
-          <p style={{ opacity: 0.92, fontSize: '0.95rem', margin: '0 0 16px 0', maxWidth: '650px', lineHeight: 1.5 }}>
-            You have {teacherSummary.classesCount || 0} lecture periods scheduled and {teacherSummary.pendingGrading || 0} student assignments awaiting review today in this campus.
-          </p>
+          </h1>
 
-          {/* Quick Action Pills inside Banner */}
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {/* Quick Action Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button 
               onClick={handleQuickAttendance}
               style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                padding: '6px 14px',
-                borderRadius: '20px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
                 fontSize: '0.82rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -648,19 +658,18 @@ const TeacherDashboard = () => {
               }}
               className="hover-lift"
             >
-              <ClipboardList size={14} /> Quick Attendance
+              <ClipboardList size={14} color="#4F46E5" /> Quick Attendance
             </button>
             <button 
               onClick={() => setIsNewAssignmentModalOpen(true)}
               style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                padding: '6px 14px',
-                borderRadius: '20px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
                 fontSize: '0.82rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -669,19 +678,18 @@ const TeacherDashboard = () => {
               }}
               className="hover-lift"
             >
-              <BookMarked size={14} /> Create Assignment
+              <BookMarked size={14} color="#0284C7" /> Create Assignment
             </button>
             <button 
               onClick={() => navigate(`/${tenantSlug || 'neel-public-school'}/communication?tab=classMaterials`)}
               style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                padding: '6px 14px',
-                borderRadius: '20px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
                 fontSize: '0.82rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -690,19 +698,18 @@ const TeacherDashboard = () => {
               }}
               className="hover-lift"
             >
-              <BookOpen size={14} /> Send Notes & Materials
+              <BookOpen size={14} color="#0F766E" /> Send Notes & Materials
             </button>
             <button 
               onClick={handleOpenTimetableModal}
               style={{
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                padding: '6px 14px',
-                borderRadius: '20px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
                 fontSize: '0.82rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -711,103 +718,127 @@ const TeacherDashboard = () => {
               }}
               className="hover-lift"
             >
-              <Calendar size={14} /> Weekly Timetable
+              <Calendar size={14} color="#ea580c" /> Weekly Timetable
             </button>
           </div>
         </div>
 
-        <div style={{ textAlign: 'right', minWidth: '180px' }}>
-          <div style={{ fontSize: '0.9rem', fontWeight: 600, opacity: 0.9, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Live Campus Session</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, marginTop: '2px' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+        {/* Right side session card */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          minWidth: '190px'
+        }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Live Campus Session
           </div>
-          <div style={{ fontSize: '0.82rem', opacity: 0.85, marginTop: '4px' }}>
-            Campus Term 2026-2027
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div style={{
+            fontSize: '0.72rem',
+            color: '#4F46E5',
+            fontWeight: 700,
+            background: '#e0e7ff',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            marginTop: '4px'
+          }}>
+            AY 2026-2027 • Term 2
           </div>
         </div>
       </div>
 
-      {/* LEFT COLUMN */}
-      <div className="left-column">
-        {/* KPI Row */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
-          {[
-            { label: 'Total Students', value: teacherSummary.totalStudents !== undefined ? teacherSummary.totalStudents : 0, icon: Users, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)', sub: (teacherSummary.totalStudents > 0 ? 'Across active batches' : 'No students enrolled') },
-            { label: 'Active Classes', value: teacherSummary.classesCount ?? 0, icon: BookOpen, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', sub: `${teacherSummary.classesCount || 0} batches configured` },
-            { label: 'Pending Grading', value: teacherSummary.pendingGrading ?? 0, icon: FileText, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)', sub: `${teacherSummary.pendingGrading || 0} assignments awaiting review` },
-            { label: 'Attendance Rate', value: teacherSummary.attendanceRate || '0%', icon: CheckCircle, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)', sub: (parseFloat(teacherSummary.attendanceRate) > 0 ? 'Above target (95%)' : 'No attendance recorded') }
-          ].map((kpi, i) => (
-            <div key={i} className="card hover-lift" style={{ 
-              display: 'flex', flexDirection: 'column', gap: '10px', 
-              padding: '18px 20px', borderRadius: '16px', background: 'var(--color-surface, white)', 
-              border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', 
-              transition: 'all 0.3s' 
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <kpi.icon size={22} color={kpi.color} />
-                </div>
-                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A34A', background: 'rgba(22, 163, 74, 0.08)', padding: '3px 8px', borderRadius: '12px' }}>
-                  Active
-                </span>
+      {/* FULL-WIDTH 4-KPI SCORECARDS STRIP */}
+      <div style={{
+        gridColumn: '1 / -1',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '16px'
+      }}>
+        {[
+          { label: 'Total Students', value: teacherSummary.totalStudents !== undefined ? teacherSummary.totalStudents : 0, icon: Users, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
+          { label: 'Active Classes', value: teacherSummary.classesCount ?? 0, icon: BookOpen, color: '#0284C7', bg: 'rgba(2,132,199,0.1)' },
+          { label: 'Pending Grading', value: teacherSummary.pendingGrading ?? 0, icon: FileText, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
+          { label: 'Attendance Rate', value: teacherSummary.attendanceRate || '0%', icon: CheckCircle, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)' }
+        ].map((kpi, i) => (
+          <div key={i} className="card hover-lift" style={{ 
+            display: 'flex', flexDirection: 'column', gap: '10px', 
+            padding: '18px 20px', borderRadius: '16px', background: 'var(--color-surface, white)', 
+            border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', 
+            transition: 'all 0.3s' 
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <kpi.icon size={22} color={kpi.color} />
               </div>
-              <div>
-                <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-primary)' }}>{kpi.value}</div>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: '2px' }}>
-                  {kpi.label}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                  {kpi.sub}
-                </div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A34A', background: 'rgba(22, 163, 74, 0.08)', padding: '3px 8px', borderRadius: '12px' }}>
+                Active
+              </span>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-primary, #1e293b)' }}>{kpi.value}</div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.4px', marginTop: '2px' }}>
+                {kpi.label}
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
-        {/* Schedule */}
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* LEFT COLUMN: Academic Matrix & Performance Analytics */}
+      <div className="left-column">
+        {/* Today's Teaching Schedule */}
+        <div className="card" style={{ padding: '20px 24px', background: 'var(--color-surface, white)', borderRadius: '16px', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div>
-              <div className="card-title" style={{ fontSize: '1.1rem', fontWeight: 700 }}>Today's Teaching Schedule (Live DB)</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                Real-time lectures, room allocations, and attendance controls
-              </div>
+              <div className="card-title" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>Today's Teaching Schedule (Live DB)</div>
             </div>
             <div 
               onClick={handleOpenTimetableModal}
-              style={{ fontSize: '0.85rem', color: '#4F46E5', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              style={{ fontSize: '0.84rem', color: '#4F46E5', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
               className="hover-lift"
             >
               View Timetable <ArrowUpRight size={15} />
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {effectiveSchedule.map((cls, i) => {
               const isStarted = isClassTimeStarted(cls.time);
               const isLive = isClassLiveNow(cls.time);
               const isCompleted = cls.status === 'Completed';
               const { startLabel } = parseTimeRangeMinutes(cls.time);
               const cardBorderColor = isCompleted ? '#16A34A' : isLive ? '#4F46E5' : isStarted ? '#F59E0B' : '#94A3B8';
+              const [startTime, endTime] = (cls.time || '').includes(' - ') ? cls.time.split(' - ') : [cls.time || '08:00 AM', '09:00 AM'];
 
               return (
                 <div key={i} className="teacher-schedule-card" style={{ 
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
                   padding: '16px 20px', 
                   borderRadius: '14px', 
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
                   borderLeft: `5px solid ${cardBorderColor}`,
                   boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  flexWrap: 'wrap',
+                  gap: '12px'
                 }}>
-                  <div style={{ display: 'flex', gap: '18px', alignItems: 'center' }}>
-                    <div style={{ textAlign: 'right', minWidth: '135px' }}>
-                      <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-main)' }}>{cls.time.split(' - ')[0]}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>{cls.time.split(' - ')[1]}</div>
+                  <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right', minWidth: '110px' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>{startTime}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)' }}>{endTime}</div>
                     </div>
-                    <div style={{ width: '1px', height: '36px', background: 'var(--color-border)' }}></div>
+                    <div style={{ width: '1px', height: '36px', background: 'var(--color-border, #cbd5e1)' }}></div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 800, fontSize: '1.02rem', color: 'var(--color-text-main)' }}>{cls.subject}</span>
+                        <span style={{ fontWeight: 800, fontSize: '1.02rem', color: 'var(--color-text-main, #1e293b)' }}>{cls.subject}</span>
                         {(cls.status === 'In Progress' || (isLive && !isCompleted)) && (
                           <span style={{ 
                             fontSize: '0.7rem', fontWeight: 700, background: '#4F46E5', color: 'white', 
@@ -819,16 +850,16 @@ const TeacherDashboard = () => {
                         )}
                         {!isStarted && !isCompleted && (
                           <span style={{ 
-                            fontSize: '0.68rem', fontWeight: 600, background: 'rgba(241, 245, 249, 0.8)', color: '#64748B', 
+                            fontSize: '0.68rem', fontWeight: 600, background: 'white', color: '#64748B', 
                             padding: '2px 8px', borderRadius: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px',
                             border: '1px solid #E2E8F0'
                           }}>
-                            <Clock size={11} /> Starts {startLabel || cls.time.split(' - ')[0]}
+                            <Clock size={11} /> Starts {startLabel || startTime}
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 600, color: 'var(--color-text-main, #334155)' }}>{cls.cls}</span>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-muted, #64748b)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 700, color: '#1e293b' }}>{cls.cls}</span>
                         <span>•</span>
                         <span>{cls.roomNumber || 'Room 201'}</span>
                         <span>•</span>
@@ -844,8 +875,9 @@ const TeacherDashboard = () => {
                         onClick={() => handleOpenRoster(cls)}
                         className="teacher-roster-pill hover-lift"
                         style={{ 
-                          padding: '7px 14px', borderRadius: '18px', 
-                          fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+                          padding: '7px 14px', borderRadius: '10px', 
+                          fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
+                          background: 'white', border: '1px solid #cbd5e1', color: '#475569',
                           transition: 'all 0.2s'
                         }}
                       >
@@ -859,10 +891,11 @@ const TeacherDashboard = () => {
                         disabled
                         className="teacher-status-action-pill completed"
                         style={{ 
-                          padding: '8px 18px', borderRadius: '20px', 
+                          padding: '8px 18px', borderRadius: '10px', 
                           fontSize: '0.8rem', fontWeight: 700, 
                           cursor: 'default',
-                          display: 'flex', alignItems: 'center', gap: '6px'
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          background: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0'
                         }} 
                       >
                         <Check size={14} /> Attendance Done
@@ -871,13 +904,14 @@ const TeacherDashboard = () => {
                       <button 
                         disabled
                         className="teacher-status-action-pill upcoming disabled"
-                        title={`Attendance locked until class start time (${startLabel || cls.time.split(' - ')[0]})`}
+                        title={`Attendance locked until class start time (${startLabel || startTime})`}
                         style={{ 
-                          padding: '8px 18px', borderRadius: '20px', 
+                          padding: '8px 18px', borderRadius: '10px', 
                           fontSize: '0.8rem', fontWeight: 700, 
                           cursor: 'not-allowed',
                           opacity: 0.7,
-                          display: 'flex', alignItems: 'center', gap: '6px'
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          background: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0'
                         }} 
                       >
                         <Clock size={14} /> Upcoming
@@ -889,11 +923,13 @@ const TeacherDashboard = () => {
                         }}
                         className="teacher-status-action-pill in-progress hover-lift"
                         style={{ 
-                          padding: '8px 18px', borderRadius: '20px', 
+                          padding: '8px 18px', borderRadius: '10px', 
                           fontSize: '0.8rem', fontWeight: 700, 
                           cursor: cls.cls === 'Staff Room' ? 'default' : 'pointer', 
                           transition: 'all 0.2s',
-                          display: 'flex', alignItems: 'center', gap: '6px'
+                          display: 'flex', alignItems: 'center', gap: '6px',
+                          background: '#4F46E5', color: 'white', border: 'none',
+                          boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)'
                         }} 
                       >
                         <UserCheck size={14} /> Mark Attendance
@@ -906,98 +942,112 @@ const TeacherDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Student Submissions for Grading */}
-        <div className="card" style={{ marginTop: '16px' }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Edit3 size={18} color="#4F46E5" />
-              <div className="card-title" style={{ fontSize: '1.05rem', fontWeight: 700 }}>Recent Submissions Awaiting Review</div>
+        {/* Assignment Submission Rates & Performance Chart (Balanced in Left Column) */}
+        <div className="card" style={{ padding: '20px 24px', background: 'var(--color-surface, white)', borderRadius: '16px', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(79, 70, 229, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Award size={20} color="#4F46E5" />
+              </div>
+              <div>
+                <div className="card-title" style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>Class Performance Metrics</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted, #64748b)' }}>Academic velocity & student submission analytics</div>
+              </div>
             </div>
-            <div style={{ fontSize: '0.8rem', color: '#0F766E', fontWeight: 700, background: 'rgba(15, 118, 110, 0.1)', padding: '3px 10px', borderRadius: '12px' }}>
-              {submissions.length} Pending
+            
+            {/* View Switcher */}
+            <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <button 
+                onClick={() => setMetricsMode('submissions')}
+                style={{
+                  background: metricsMode === 'submissions' ? 'white' : 'transparent',
+                  color: metricsMode === 'submissions' ? '#4F46E5' : '#64748b',
+                  border: 'none',
+                  boxShadow: metricsMode === 'submissions' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                  padding: '5px 12px', borderRadius: '7px', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Submissions
+              </button>
+              <button 
+                onClick={() => setMetricsMode('attendance')}
+                style={{
+                  background: metricsMode === 'attendance' ? 'white' : 'transparent',
+                  color: metricsMode === 'attendance' ? '#4F46E5' : '#64748b',
+                  border: 'none',
+                  boxShadow: metricsMode === 'attendance' ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                  padding: '5px 12px', borderRadius: '7px', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Attendance
+              </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-            {submissions.length === 0 ? (
-              <div style={{
-                textAlign: 'center', padding: '28px 16px', background: 'var(--color-bg, #f8fafc)',
-                borderRadius: '12px', border: '1px solid var(--color-border, #e2e8f0)', color: '#64748B'
-              }}>
-                <CheckCircle size={32} color="#16A34A" style={{ margin: '0 auto 8px auto', opacity: 0.8 }} />
-                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1e293b' }}>All student submissions reviewed!</div>
-                <div style={{ fontSize: '0.8rem', marginTop: '4px', color: '#64748B' }}>
-                  No pending assignments awaiting review. Create an assignment to assign student work.
-                </div>
-                <button
-                  onClick={() => setIsNewAssignmentModalOpen(true)}
-                  style={{
-                    marginTop: '12px', background: '#4F46E5', color: 'white', border: 'none',
-                    padding: '6px 14px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer'
-                  }}
-                >
-                  Create Assignment
-                </button>
-              </div>
-            ) : (
-              submissions.map((sub) => (
-                <div key={sub.id || sub._id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 16px', background: 'var(--color-bg, #f8fafc)', borderRadius: '12px',
-                  border: '1px solid var(--color-border, #e2e8f0)', transition: 'all 0.2s'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ 
-                      width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, #4F46E5, #60A5FA)', 
-                      color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem' 
-                    }}>
-                      {sub.studentName.charAt(0)}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text-main, #0f172a)' }}>{sub.studentName}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                        {sub.cls} • {sub.assignment} • <span style={{ color: '#0F766E', fontWeight: 600 }}>{sub.submittedAt}</span>
-                      </div>
-                    </div>
-                  </div>
+          <div style={{ height: '240px', marginTop: '16px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              {metricsMode === 'submissions' ? (
+                <BarChart data={performanceList} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B', fontWeight: 600 }} dy={8} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
+                  <Tooltip cursor={{ fill: 'rgba(226,232,240,0.4)' }} contentStyle={{ borderRadius: '10px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                  <Bar dataKey="submitted" name="Submitted" stackId="a" fill="#4F46E5" radius={[0, 0, 4, 4]} barSize={32} />
+                  <Bar dataKey="pending" name="Pending" stackId="a" fill="#0F766E" radius={[6, 6, 0, 0]} barSize={32} />
+                </BarChart>
+              ) : (
+                <BarChart data={performanceList} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B', fontWeight: 600 }} dy={8} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} domain={[80, 100]} />
+                  <Tooltip cursor={{ fill: 'rgba(226,232,240,0.4)' }} formatter={(val) => `${val}%`} contentStyle={{ borderRadius: '10px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
+                  <Bar dataKey="attendance" name="Attendance %" fill="#16A34A" radius={[6, 6, 0, 0]} barSize={32} />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
 
-                  <button 
-                    onClick={() => handleOpenGrading(sub)}
-                    style={{
-                      background: '#4F46E5', color: 'white', border: 'none',
-                      padding: '6px 14px', borderRadius: '16px', fontSize: '0.78rem',
-                      fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
-                    }}
-                    className="hover-lift"
-                  >
-                    Grade / Review
-                  </button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '14px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+            {metricsMode === 'submissions' ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#4F46E5' }}></div> Submitted
                 </div>
-              ))
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#0F766E' }}></div> Pending Review
+                </div>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#16A34A' }}></div> Class Avg Attendance (%)
+              </div>
             )}
           </div>
         </div>
-
       </div>
 
-      {/* RIGHT COLUMN */}
+      {/* RIGHT COLUMN: Operational Controls, Tasks & Submissions */}
       <div className="right-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Real-time Faculty Punch In / Punch Out Time Clock */}
         <StaffPunchClock onPunchSuccess={(data) => showToast(data.message)} />
 
         {/* Action Required / To-Do */}
-        <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Bell size={20} color="#0F766E" />
-              <div className="card-title" style={{ fontSize: '1.05rem', fontWeight: 700 }}>Action Required & To-Do</div>
+        <div className="card" style={{ padding: '20px 24px', background: 'var(--color-surface, white)', borderRadius: '16px', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'rgba(15, 118, 110, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Bell size={18} color="#0F766E" />
+              </div>
+              <div className="card-title" style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>Action Required & To-Do</div>
             </div>
             <button 
               onClick={() => setIsAddingTask(prev => !prev)}
               style={{
-                background: 'rgba(15, 118, 110, 0.12)', color: '#0F766E',
-                border: 'none', padding: '5px 10px', borderRadius: '12px',
-                fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                background: 'rgba(15, 118, 110, 0.1)', color: '#0F766E',
+                border: 'none', padding: '6px 12px', borderRadius: '10px',
+                fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: '4px'
               }}
               className="hover-lift"
@@ -1109,82 +1159,80 @@ const TeacherDashboard = () => {
           </div>
         </div>
 
-        {/* Assignment Submission Rates & Performance Chart */}
-        <div className="card" style={{ flex: 1, marginTop: '16px' }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Recent Student Submissions for Grading (Clean in Right Column) */}
+        <div className="card" style={{ padding: '20px 24px', background: 'var(--color-surface, white)', borderRadius: '16px', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Award size={20} color="#4F46E5" />
-              <div className="card-title" style={{ fontSize: '1.05rem', fontWeight: 700 }}>Class Performance Metrics</div>
-            </div>
-            
-            {/* View Switcher */}
-            <div style={{ display: 'flex', background: 'var(--color-bg, #f1f5f9)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border, transparent)' }}>
-              <button 
-                onClick={() => setMetricsMode('submissions')}
-                style={{
-                  background: metricsMode === 'submissions' ? 'var(--color-surface, white)' : 'transparent',
-                  color: metricsMode === 'submissions' ? 'var(--color-primary, #4F46E5)' : 'var(--color-text-muted, #64748B)',
-                  border: metricsMode === 'submissions' ? '1px solid var(--color-border, transparent)' : 'none',
-                  boxShadow: metricsMode === 'submissions' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                  padding: '4px 10px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Submissions
-              </button>
-              <button 
-                onClick={() => setMetricsMode('attendance')}
-                style={{
-                  background: metricsMode === 'attendance' ? 'var(--color-surface, white)' : 'transparent',
-                  color: metricsMode === 'attendance' ? 'var(--color-primary, #4F46E5)' : 'var(--color-text-muted, #64748B)',
-                  border: metricsMode === 'attendance' ? '1px solid var(--color-border, transparent)' : 'none',
-                  boxShadow: metricsMode === 'attendance' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                  padding: '4px 10px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Attendance
-              </button>
-            </div>
-          </div>
-
-          <div style={{ height: '220px', marginTop: '16px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              {metricsMode === 'submissions' ? (
-                <BarChart data={performanceList} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={8} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-                  <Tooltip cursor={{ fill: 'rgba(226,232,240,0.4)' }} />
-                  <Bar dataKey="submitted" name="Submitted" stackId="a" fill="#4F46E5" radius={[0, 0, 4, 4]} barSize={28} />
-                  <Bar dataKey="pending" name="Pending" stackId="a" fill="#0F766E" radius={[4, 4, 0, 0]} barSize={28} />
-                </BarChart>
-              ) : (
-                <BarChart data={performanceList} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} dy={8} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} domain={[80, 100]} />
-                  <Tooltip cursor={{ fill: 'rgba(226,232,240,0.4)' }} formatter={(val) => `${val}%`} />
-                  <Bar dataKey="attendance" name="Attendance %" fill="#16A34A" radius={[4, 4, 0, 0]} barSize={28} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '16px' }}>
-            {metricsMode === 'submissions' ? (
-              <>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#4F46E5' }}></div> Submitted
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#0F766E' }}></div> Pending
-                </div>
-              </>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#16A34A' }}></div> Class Avg Attendance (%)
+              <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'rgba(79, 70, 229, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Edit3 size={18} color="#4F46E5" />
               </div>
+              <div className="card-title" style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>Submissions For Review</div>
+            </div>
+            <div style={{ fontSize: '0.76rem', color: '#0F766E', fontWeight: 800, background: 'rgba(15, 118, 110, 0.1)', padding: '3px 10px', borderRadius: '10px' }}>
+              {submissions.length} Pending
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {submissions.length === 0 ? (
+              <div style={{
+                textAlign: 'center', padding: '24px 16px', background: 'var(--color-bg, #f8fafc)',
+                borderRadius: '12px', border: '1px solid var(--color-border, #e2e8f0)', color: '#64748B'
+              }}>
+                <CheckCircle size={28} color="#16A34A" style={{ margin: '0 auto 8px auto', opacity: 0.8 }} />
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#1e293b' }}>All submissions reviewed!</div>
+                <div style={{ fontSize: '0.78rem', marginTop: '2px', color: '#64748B' }}>
+                  No pending assignments awaiting review.
+                </div>
+                <button
+                  onClick={() => setIsNewAssignmentModalOpen(true)}
+                  style={{
+                    marginTop: '10px', background: '#4F46E5', color: 'white', border: 'none',
+                    padding: '6px 14px', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 700, cursor: 'pointer'
+                  }}
+                >
+                  Create Assignment
+                </button>
+              </div>
+            ) : (
+              submissions.map((sub) => (
+                <div key={sub.id || sub._id} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '12px 14px', background: 'var(--color-bg, #f8fafc)', borderRadius: '12px',
+                  border: '1px solid var(--color-border, #e2e8f0)', transition: 'all 0.2s', gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                    <div style={{ 
+                      width: '34px', height: '34px', borderRadius: '50%', background: 'linear-gradient(135deg, #4F46E5, #60A5FA)', 
+                      color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.82rem',
+                      flexShrink: 0
+                    }}>
+                      {sub.studentName.charAt(0)}
+                    </div>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--color-text-main, #0f172a)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {sub.studentName}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {sub.cls} • {sub.assignment}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => handleOpenGrading(sub)}
+                    style={{
+                      background: '#4F46E5', color: 'white', border: 'none',
+                      padding: '6px 14px', borderRadius: '10px', fontSize: '0.76rem',
+                      fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                      flexShrink: 0
+                    }}
+                    className="hover-lift"
+                  >
+                    Grade / Review
+                  </button>
+                </div>
+              ))
             )}
           </div>
         </div>

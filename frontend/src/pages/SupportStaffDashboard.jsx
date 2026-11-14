@@ -566,13 +566,13 @@ const SupportStaffDashboard = () => {
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', color: 'var(--color-text-main)', boxSizing: 'border-box' }}>
-      {/* 1. Modern Command Center Hero Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 52%, #0d9488 100%)',
-        borderRadius: '18px',
+      {/* 1. Modern Command Center Header Card - Clean White Surface */}
+      <div className="no-print" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
         padding: '20px 24px',
-        color: 'white',
-        boxShadow: '0 10px 25px -5px rgba(37, 99, 235, 0.3)',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         marginBottom: '20px',
         display: 'flex',
         flexWrap: 'wrap',
@@ -580,67 +580,167 @@ const SupportStaffDashboard = () => {
         justifyContent: 'space-between',
         gap: '16px',
         width: '100%',
-        boxSizing: 'border-box',
-        position: 'relative',
-        overflow: 'hidden'
+        boxSizing: 'border-box'
       }}>
-        {/* Subtle decorative background watermarks */}
-        <div style={{
-          position: 'absolute', right: '-40px', top: '-40px',
-          width: '240px', height: '240px', borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)',
-          pointerEvents: 'none'
-        }} />
-
-        {/* Left Side: School Branding & Operator Info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', zIndex: 1, minWidth: 0, flex: '1 1 300px' }}>
-          <div style={{
-            width: '56px',
-            height: '56px',
-            borderRadius: '14px',
-            background: 'rgba(255, 255, 255, 0.16)',
-            backdropFilter: 'blur(12px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '1.6rem',
-            boxShadow: '0 6px 14px rgba(0, 0, 0, 0.1)',
-            flexShrink: 0
-          }}>
-            🏢
+        <div style={{ maxWidth: '750px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <Building2 size={13} color="#4338ca" /> Front Desk & Support
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+              Active Shift
+            </span>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-              <h1 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                Front Desk & Support Command Center
-              </h1>
-              <span style={{
-                background: 'rgba(255, 255, 255, 0.22)',
-                border: '1px solid rgba(255, 255, 255, 0.35)',
-                padding: '2px 10px',
-                borderRadius: '999px',
-                fontSize: '0.7rem',
-                fontWeight: 800,
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em'
-              }}>
-                Support Staff • EMP-108
-              </span>
-            </div>
-            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.92, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Building2 size={14} />
-                <strong>{sessionStorage.getItem('schoolName') || 'Neel Public School (Main Campus)'}</strong>
-              </span>
-              <span>•</span>
-              <span>Operator: <strong>{userInfo.name || 'Mr. Sonu Kumar'}</strong> (Administration)</span>
-              <span>•</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.25)', padding: '1px 7px', borderRadius: '5px', fontSize: '0.72rem', fontWeight: 700 }}>
-                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#34d399', display: 'inline-block' }} />
-                Active Shift
-              </span>
-            </p>
+
+          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            Front Desk & Support Command Center
+          </h1>
+
+          {/* Quick Action Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => setIsVisitorModalOpen(true)}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <UserPlus size={14} color="#2563eb" /> New Visitor Check-In
+            </button>
+            <button 
+              onClick={() => switchTab('fees')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <CreditCard size={14} color="#059669" /> Accept Fee Payment
+            </button>
+            <button 
+              onClick={() => setIsInquiryModalOpen(true)}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Mail size={14} color="#d97706" /> New Walk-In Inquiry
+            </button>
+            <button 
+              onClick={() => switchTab('parcels')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Package size={14} color="#7c3aed" /> Gate Passes & Parcels
+            </button>
+            <button 
+              onClick={() => setIsAdmitStudentModalOpen(true)}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <UserCheck size={14} color="#0891b2" /> Admit Student
+            </button>
+          </div>
+        </div>
+
+        {/* Right side shift status */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          minWidth: '190px'
+        }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Current Shift Session
+          </div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div style={{
+            fontSize: '0.72rem',
+            color: '#1e3a8a',
+            fontWeight: 800,
+            background: '#e0e7ff',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            marginTop: '4px'
+          }}>
+            EMP-108 • Front Desk
           </div>
         </div>
       </div>
@@ -686,133 +786,137 @@ const SupportStaffDashboard = () => {
         <div 
           className="dashboard-grid support-dashboard-grid"
         >
-          {/* MAIN / LEFT COLUMN */}
-          <div className="left-column" style={{ minWidth: 0 }}>
-            {/* Quick KPI Stat Cards */}
-            <div 
-              className="kpi-row" 
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: '16px',
-                width: '100%'
-              }}
-            >
-              {[
-                {
-                  id: 'visitors',
-                  tab: 'reception',
-                  label: 'Active Campus Visitors',
-                  value: telemetry.activeVisitors,
-                  icon: Users,
-                  color: '#2563eb',
-                  bg: 'rgba(37, 99, 235, 0.1)',
-                  badge: 'On Campus',
-                  badgeColor: '#16a34a',
-                  badgeBg: 'rgba(22, 163, 74, 0.08)',
-                  sub: telemetry.activeVisitors > 0 ? `${telemetry.activeVisitors} checked in now` : 'No visitors on premises'
-                },
-                {
-                  id: 'fees',
-                  tab: 'fees',
-                  label: 'Fee Counter Total (Today)',
-                  value: `₹${(telemetry.todayCollectionTotal || 0).toLocaleString()}`,
-                  icon: CreditCard,
-                  color: '#059669',
-                  bg: 'rgba(5, 150, 105, 0.1)',
-                  badge: 'Today',
-                  badgeColor: '#059669',
-                  badgeBg: 'rgba(5, 150, 105, 0.08)',
-                  sub: `${telemetry.todayReceiptCount} payments logged`
-                },
-                {
-                  id: 'inquiries',
-                  tab: 'inquiries',
-                  label: 'Admission Inquiries',
-                  value: telemetry.todayInquiries,
-                  icon: Mail,
-                  color: '#d97706',
-                  bg: 'rgba(217, 119, 6, 0.1)',
-                  badge: 'Pending',
-                  badgeColor: '#d97706',
-                  badgeBg: 'rgba(217, 119, 6, 0.08)',
-                  sub: telemetry.todayInquiries > 0 ? 'Follow-ups pending' : 'All inquiries up to date'
-                }
-              ].map((kpi) => (
-                <div 
-                  key={kpi.id}
-                  className="card hover-lift"
-                  onClick={() => switchTab(kpi.tab)}
-                  title={`Click to view ${kpi.label}`}
-                  style={{
+          {/* Quick KPI Stat Cards (Full Width) */}
+          <div 
+            className="kpi-row" 
+            style={{
+              gridColumn: '1 / -1',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '16px',
+              width: '100%',
+              marginBottom: '4px'
+            }}
+          >
+            {[
+              {
+                id: 'visitors',
+                tab: 'reception',
+                label: 'Active Campus Visitors',
+                value: telemetry.activeVisitors,
+                icon: Users,
+                color: '#2563eb',
+                bg: 'rgba(37, 99, 235, 0.1)',
+                badge: 'On Campus',
+                badgeColor: '#16a34a',
+                badgeBg: 'rgba(22, 163, 74, 0.08)'
+              },
+              {
+                id: 'fees',
+                tab: 'fees',
+                label: 'Fee Counter Total (Today)',
+                value: `₹${(telemetry.todayCollectionTotal || 0).toLocaleString()}`,
+                icon: CreditCard,
+                color: '#059669',
+                bg: 'rgba(5, 150, 105, 0.1)',
+                badge: 'Today',
+                badgeColor: '#059669',
+                badgeBg: 'rgba(5, 150, 105, 0.08)'
+              },
+              {
+                id: 'inquiries',
+                tab: 'inquiries',
+                label: 'Admission Inquiries',
+                value: telemetry.todayInquiries,
+                icon: Mail,
+                color: '#d97706',
+                bg: 'rgba(217, 119, 6, 0.1)',
+                badge: 'Pending',
+                badgeColor: '#d97706',
+                badgeBg: 'rgba(217, 119, 6, 0.08)'
+              },
+              {
+                id: 'parcels',
+                tab: 'parcels',
+                label: 'Gate Passes & Parcels',
+                value: (telemetry.pendingParcels || 0) + (telemetry.activeGatePasses || 0),
+                icon: Package,
+                color: '#7c3aed',
+                bg: 'rgba(124, 58, 237, 0.1)',
+                badge: 'Dispatches',
+                badgeColor: '#7c3aed',
+                badgeBg: 'rgba(124, 58, 237, 0.08)'
+              }
+            ].map((kpi) => (
+              <div 
+                key={kpi.id}
+                className="card hover-lift"
+                onClick={() => switchTab(kpi.tab)}
+                title={`Click to view ${kpi.label}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  padding: '18px 20px',
+                  borderRadius: '16px',
+                  background: 'var(--color-surface, white)',
+                  border: '1px solid var(--color-border, #e2e8f0)',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '10px',
+                    background: kpi.bg,
                     display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    padding: '18px 20px',
-                    borderRadius: '16px',
-                    background: 'var(--color-surface, white)',
-                    border: '1px solid var(--color-border, #e2e8f0)',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: '10px',
-                      background: kpi.bg,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <kpi.icon size={22} color={kpi.color} />
-                    </div>
-                    <span style={{
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      color: kpi.badgeColor,
-                      background: kpi.badgeBg,
-                      padding: '3px 8px',
-                      borderRadius: '12px'
-                    }}>
-                      {kpi.badge}
-                    </span>
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <kpi.icon size={22} color={kpi.color} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                      {kpi.value}
-                    </div>
-                    <div style={{
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      color: 'var(--color-text-muted)',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.4px',
-                      marginTop: '2px'
-                    }}>
-                      {kpi.label}
-                    </div>
-                    <div style={{
-                      fontSize: '0.75rem',
-                      color: 'var(--color-text-muted)',
-                      marginTop: '4px'
-                    }}>
-                      {kpi.sub}
-                    </div>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: kpi.badgeColor,
+                    background: kpi.badgeBg,
+                    padding: '3px 8px',
+                    borderRadius: '12px'
+                  }}>
+                    {kpi.badge}
+                  </span>
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.65rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                    {kpi.value}
+                  </div>
+                  <div style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    color: 'var(--color-text-muted)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.4px',
+                    marginTop: '2px'
+                  }}>
+                    {kpi.label}
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
+          </div>
 
+          {/* MAIN / LEFT COLUMN */}
+          <div className="left-column" style={{ minWidth: 0 }}>
             {/* Active Visitors Live Snapshot */}
             <div style={{
               background: 'var(--color-surface, #ffffff)',
-              borderRadius: '18px',
+              borderRadius: '16px',
               border: '1px solid var(--color-border, #e2e8f0)',
-              padding: '24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+              padding: '20px 24px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
@@ -822,9 +926,6 @@ const SupportStaffDashboard = () => {
                       {visitors.filter(v => v.status === 'Checked In').length} active
                     </span>
                   </h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                    Security clearance log for visitors currently inside school grounds
-                  </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
@@ -924,10 +1025,10 @@ const SupportStaffDashboard = () => {
             {/* Today's Fee Counter Collections Snapshot */}
             <div style={{
               background: 'var(--color-surface, #ffffff)',
-              borderRadius: '18px',
+              borderRadius: '16px',
               border: '1px solid var(--color-border, #e2e8f0)',
-              padding: '24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+              padding: '20px 24px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
@@ -937,9 +1038,6 @@ const SupportStaffDashboard = () => {
                       ₹{(telemetry.todayCollectionTotal || 0).toLocaleString()} Collected
                     </span>
                   </h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                    Fee receipts logged at the counter during today's shift
-                  </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
@@ -1031,10 +1129,10 @@ const SupportStaffDashboard = () => {
             {/* Recent Admission Inquiries Snapshot */}
             <div style={{
               background: 'var(--color-surface, #ffffff)',
-              borderRadius: '18px',
+              borderRadius: '16px',
               border: '1px solid var(--color-border, #e2e8f0)',
-              padding: '24px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+              padding: '20px 24px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
@@ -1044,9 +1142,6 @@ const SupportStaffDashboard = () => {
                       {inquiries.filter(i => i.status === 'New').length} New
                     </span>
                   </h3>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                    Prospective parents and inquiry follow-ups logged at front desk
-                  </p>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <button
@@ -1150,14 +1245,16 @@ const SupportStaffDashboard = () => {
             {/* Front Desk Protocols & Safety Checklist */}
             <div style={{
               background: 'var(--color-surface, #ffffff)',
-              borderRadius: '18px',
+              borderRadius: '16px',
               border: '1px solid var(--color-border, #e2e8f0)',
-              padding: '22px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+              padding: '20px 22px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                <ShieldCheck size={20} color="#2563eb" />
-                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#1e293b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ width: '34px', height: '34px', borderRadius: '8px', background: 'rgba(37, 99, 235, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShieldCheck size={18} color="#2563eb" />
+                </div>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>
                   Front Desk Operational Protocols
                 </h4>
               </div>
@@ -1180,11 +1277,11 @@ const SupportStaffDashboard = () => {
 
             {/* Live Campus Security & Facility Status */}
             <div style={{
-              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-              borderRadius: '18px',
+              background: 'var(--color-surface, #ffffff)',
+              borderRadius: '16px',
               border: '1px solid var(--color-border, #e2e8f0)',
-              padding: '20px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+              padding: '20px 22px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
             }}>
               <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em', marginBottom: '12px' }}>
                 Campus Facilities Status

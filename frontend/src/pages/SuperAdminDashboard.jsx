@@ -603,221 +603,251 @@ const SuperAdminDashboard = () => {
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
 
-        {/* ─── ENTERPRISE EXECUTIVE METRIC CARDS ─── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-        gap: '16px'
-      }}>
-        {/* Card 1: Total Schools */}
-        <div className="card" style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '18px 22px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
+        {/* ─── UNIFIED EXECUTIVE TELEMETRY STRIP (5 HIGH-IMPACT METRICS) ─── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
           gap: '16px'
         }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(30, 58, 138, 0.1) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          {/* Metric 1: Active Campuses */}
+          <div className="card" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
           }}>
-            <Building2 size={24} color="#4F46E5" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Main Schools
-            </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>
-              {totalSchoolsCount}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#10b981', fontWeight: 600, marginTop: '2px' }}>
-              Parent Organizations
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Total Branches */}
-        <div className="card" style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '18px 22px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(2, 132, 199, 0.1) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Layers size={24} color="#0284c7" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Active Campuses
-            </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>
-              {schoolsList.length}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
-              {totalBranchesCount} Branches + {totalSchoolsCount} Main
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Branch Admins */}
-        <div className="card" style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '18px 22px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <ShieldCheck size={24} color="#059669" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Branch Admins
-            </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>
-              {appointedAdminsCount} <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 500 }}>/ {schoolsList.length}</span>
-            </div>
-            <div style={{ fontSize: '0.72rem', color: appointedAdminsCount === schoolsList.length ? '#10b981' : '#f59e0b', fontWeight: 600, marginTop: '2px' }}>
-              {appointedAdminsCount === schoolsList.length ? 'All Appointed' : `${schoolsList.length - appointedAdminsCount} Pending`}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Principals */}
-        <div className="card" style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '18px 22px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.1) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Award size={24} color="#d97706" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              School Principals
-            </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>
-              {appointedPrincipalsCount} <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 500 }}>/ {schoolsList.length}</span>
-            </div>
-            <div style={{ fontSize: '0.72rem', color: appointedPrincipalsCount === schoolsList.length ? '#10b981' : '#f59e0b', fontWeight: 600, marginTop: '2px' }}>
-              {appointedPrincipalsCount === schoolsList.length ? 'All Appointed' : `${schoolsList.length - appointedPrincipalsCount} Pending`}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 5: Total Staff & Faculty */}
-        <div className="card" style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '18px 22px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px'
-        }}>
-          <div style={{
-            width: '48px', height: '48px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(109, 40, 217, 0.1) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <Users size={24} color="#7c3aed" />
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-              Faculty & Staff
-            </div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#1e293b', lineHeight: 1.1 }}>
-              {totalStaffCount}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>
-              Across All Campuses
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── EXECUTIVE FINANCIAL & FACULTY INTELLIGENCE HUB ─── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', width: '100%', marginTop: '6px' }}>
-        {/* Hub Header & Scope Controller */}
-        <div className="card chart-card hub-telemetry-header" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px',
-          padding: '16px 22px',
-          borderRadius: '16px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{
-                background: 'linear-gradient(135deg, #4F46E5 0%, #7c3aed 100%)',
-                color: 'white',
-                fontSize: '0.68rem',
-                fontWeight: 800,
-                padding: '3px 8px',
-                borderRadius: '6px',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase'
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Active Campuses
+              </span>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'rgba(79, 70, 229, 0.08)',
+                color: '#4F46E5',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}>
-                Executive Telemetry
-              </span>
-              <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
-                • Consolidated Real-Time Analytics (AY 2026-2027)
-              </span>
+                <Building2 size={18} />
+              </div>
             </div>
-            <h2 style={{ margin: '4px 0 0 0', fontSize: '1.22rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
-              Financial Performance & Faculty Attendance Intelligence
-            </h2>
+            <div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', lineHeight: 1 }}>
+                {schoolsList.length}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600, marginTop: '6px' }}>
+                {totalSchoolsCount} Main • {totalBranchesCount} {totalBranchesCount === 1 ? 'Branch' : 'Branches'}
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {/* Campus Scope Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Building2 size={16} color="#64748b" />
+          {/* Metric 2: Gross Collections */}
+          <div className="card" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Total Collections
+              </span>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'rgba(16, 185, 129, 0.08)',
+                color: '#059669',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Wallet size={18} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', lineHeight: 1 }}>
+                {formatCurrency(financeAnalytics?.totalRevenue ?? financeStats.totalCollections)}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 700, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <CheckCircle2 size={12} /> {financeAnalytics?.collectionEfficiency !== undefined ? `${financeAnalytics.collectionEfficiency}%` : '100%'} Realized
+              </div>
+            </div>
+          </div>
+
+          {/* Metric 3: Operating Surplus */}
+          <div className="card" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Operating Surplus
+              </span>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'rgba(2, 132, 199, 0.08)',
+                color: '#0284c7',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <TrendingUp size={18} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#059669' : '#e11d48', lineHeight: 1 }}>
+                {formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600, marginTop: '6px' }}>
+                Expenses: {formatCurrency(financeAnalytics?.totalExpenses ?? financeStats.totalExpenses)}
+              </div>
+            </div>
+          </div>
+
+          {/* Metric 4: Faculty & Staff */}
+          <div className="card" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Faculty & Staff
+              </span>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'rgba(124, 58, 237, 0.08)',
+                color: '#7c3aed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <Users size={18} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', lineHeight: 1 }}>
+                {totalStaffCount}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600, marginTop: '6px' }}>
+                Across all {schoolsList.length} campuses
+              </div>
+            </div>
+          </div>
+
+          {/* Metric 5: Daily Attendance & Leadership */}
+          <div className="card" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '16px',
+            padding: '18px 20px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Faculty Attendance
+              </span>
+              <div style={{
+                width: '36px', height: '36px', borderRadius: '10px',
+                background: 'rgba(217, 119, 6, 0.08)',
+                color: '#d97706',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <UserCheck size={18} />
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', lineHeight: 1 }}>
+                {teacherStats.rate}%
+              </div>
+              <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 700, marginTop: '6px' }}>
+                {teacherStats.present} / {teacherStats.total} on duty today
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── OPERATIONAL & FINANCIAL INTELLIGENCE ─── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%' }}>
+          {/* Section Header Card */}
+          <div className="card" style={{
+            background: 'var(--color-surface, white)',
+            borderRadius: '16px',
+            padding: '14px 20px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '10px',
+                background: 'rgba(79, 70, 229, 0.08)',
+                color: '#4F46E5',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Activity size={18} />
+              </div>
+              <h2 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+                Operational & Financial Intelligence
+              </h2>
+              <span style={{
+                background: '#f1f5f9',
+                color: '#475569',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '3px 10px',
+                borderRadius: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                AY 2026-2027 Telemetry
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Campus Selector */}
               <select
                 value={financeScope}
                 onChange={e => setFinanceScope(e.target.value)}
                 style={{
                   padding: '7px 12px',
                   borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  background: '#f8fafc',
-                  fontSize: '0.82rem',
+                  border: '1px solid var(--color-border, #cbd5e1)',
+                  background: 'var(--color-bg, #f8fafc)',
+                  fontSize: '0.8rem',
                   fontWeight: 600,
-                  color: '#334155',
+                  color: 'var(--color-text-main, #334155)',
                   cursor: 'pointer',
-                  outline: 'none'
+                  outline: 'none',
+                  transition: 'border-color 0.15s ease'
                 }}
               >
                 <option value="all">🌐 All Campuses (Consolidated)</option>
@@ -827,686 +857,451 @@ const SuperAdminDashboard = () => {
                   </option>
                 ))}
               </select>
-            </div>
 
-            {/* Period Selector */}
-            <div className="period-toggle-group" style={{
-              display: 'flex',
-              padding: '3px',
-              borderRadius: '10px'
-            }}>
-              <button
-                type="button"
-                onClick={() => setFinancePeriod('monthly')}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: financePeriod === 'monthly' ? '#4F46E5' : 'transparent',
-                  color: financePeriod === 'monthly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                  boxShadow: financePeriod === 'monthly' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Monthly Trend
-              </button>
-              <button
-                type="button"
-                onClick={() => setFinancePeriod('quarterly')}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: financePeriod === 'quarterly' ? '#4F46E5' : 'transparent',
-                  color: financePeriod === 'quarterly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                  boxShadow: financePeriod === 'quarterly' ? '0 2px 8px rgba(79, 70, 229, 0.35)' : 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                Quarterly
-              </button>
-            </div>
-
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={() => fetchFinanceAndAttendanceAnalytics(financeScope)}
-              disabled={isFinanceLoading}
-              title="Refresh Live Financial & Faculty Telemetry"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '34px',
-                height: '34px',
-                borderRadius: '10px',
-                border: '1px solid var(--color-border, #e2e8f0)',
-                background: 'var(--color-surface, white)',
-                color: 'var(--color-text-muted, #64748b)',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-            >
-              <RefreshCw size={15} style={{ animation: isFinanceLoading ? 'spin 1s linear infinite' : 'none' }} />
-            </button>
-          </div>
-        </div>
-
-        {/* ─── 4 EXECUTIVE KPI CARDS (REAL DATABASE DATA) ─── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-          gap: '16px'
-        }}>
-          {/* Card 1: Revenue Generated */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '18px',
-            padding: '20px 22px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '4px',
-              background: 'linear-gradient(90deg, #10B981, #059669)'
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Revenue Generated
-                </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
-                  {formatCurrency(financeAnalytics?.totalRevenue ?? financeStats.totalCollections)}
-                </div>
-              </div>
+              {/* Period Selector */}
               <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: 'rgba(16, 185, 129, 0.1)',
-                color: '#059669',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Wallet size={22} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#059669', background: 'rgba(16, 185, 129, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
-                <TrendingUp size={12} /> Live Recorded
-              </span>
-              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
-                Margin: {financeAnalytics?.operatingMargin !== undefined ? `${financeAnalytics.operatingMargin}%` : '+0.5%'}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 2: Fees Collected */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '18px',
-            padding: '20px 22px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '4px',
-              background: 'linear-gradient(90deg, #4F46E5, #6366F1)'
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Fees Collected
-                </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
-                  {formatCurrency(financeAnalytics?.totalCollections ?? financeStats.totalCollections)}
-                </div>
-              </div>
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: 'rgba(79, 70, 229, 0.1)',
-                color: '#4F46E5',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <CreditCard size={22} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#6366f1', background: 'rgba(99, 102, 241, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
-                <CheckCircle2 size={12} /> {financeAnalytics?.collectionEfficiency !== undefined ? `${financeAnalytics.collectionEfficiency}%` : '90.1%'} Realized
-              </span>
-              <span style={{ fontSize: '0.74rem', color: '#f59e0b', fontWeight: 600 }}>
-                Dues: {formatCurrency(financeAnalytics?.pendingFees ?? financeStats.pendingFees)}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 3: Operating Expenses */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '18px',
-            padding: '20px 22px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '4px',
-              background: 'linear-gradient(90deg, #F43F5E, #E11D48)'
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Operating Expenses
-                </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
-                  {formatCurrency(financeAnalytics?.totalExpenses ?? financeStats.totalExpenses)}
-                </div>
-              </div>
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: 'rgba(244, 63, 94, 0.1)',
-                color: '#e11d48',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Receipt size={22} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#10b981' : '#e11d48', background: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
-                <Percent size={12} /> {(financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? 'Surplus Positive' : 'Deficit Monitored'}
-              </span>
-              <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>
-                Net: {formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}
-              </span>
-            </div>
-          </div>
-
-          {/* Card 4: Teachers Attendance */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '18px',
-            padding: '20px 22px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
-            position: 'relative',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              height: '4px',
-              background: 'linear-gradient(90deg, #0284C7, #06B6D4)'
-            }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Teachers Attendance
-                </span>
-                <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', marginTop: '6px', lineHeight: 1 }}>
-                  {teacherStats.rate}%
-                </div>
-              </div>
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: 'rgba(2, 132, 199, 0.1)',
-                color: '#0284c7',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <UserCheck size={22} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 700, color: '#0284c7', background: 'rgba(2, 132, 199, 0.15)', padding: '3px 8px', borderRadius: '6px' }}>
-                {teacherStats.present} / {teacherStats.total} Present
-              </span>
-              <span style={{ fontSize: '0.74rem', color: teacherStats.onLeave > 0 ? '#f59e0b' : '#10b981', fontWeight: 600 }}>
-                {teacherStats.onLeave > 0 ? `${teacherStats.onLeave} On Leave` : '100% Present'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── 2 INTERACTIVE ANALYTICS GRAPHS ─── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
-          gap: '16px',
-          width: '100%'
-        }}>
-          {/* GRAPH 1: Financial Trajectory (AreaChart) */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '20px',
-            padding: '24px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <TrendingUp size={18} color="#4F46E5" /> Consolidated Financial Performance
-                </h3>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', fontWeight: 700, color: '#4F46E5' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#4F46E5' }} /> Fees
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', fontWeight: 700, color: '#10B981' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#10B981' }} /> Revenue
-                </span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', fontWeight: 700, color: '#F43F5E' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#F43F5E' }} /> Expenses
-                </span>
-              </div>
-            </div>
-
-            <div style={{ width: '100%', height: '280px', marginTop: '10px' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={financialChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCollections" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.02}/>
-                    </linearGradient>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.45}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.02}/>
-                    </linearGradient>
-                    <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.35}/>
-                      <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.02}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.08)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={8} />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} 
-                    tickFormatter={v => `₹${v >= 100000 ? (v / 100000).toFixed(1) + 'L' : (v / 1000) + 'k'}`} 
-                  />
-                  <Tooltip content={<FinancialTooltip />} />
-                  <Area type="monotone" dataKey="collections" name="Fees Collected" stroke="#4F46E5" strokeWidth={2.5} fillOpacity={1} fill="url(#colorCollections)" />
-                  <Area type="monotone" dataKey="revenue" name="Revenue Generated" stroke="#10B981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorRevenue)" />
-                  <Area type="monotone" dataKey="expenses" name="Operating Expenses" stroke="#F43F5E" strokeWidth={2} strokeDasharray="4 4" fillOpacity={1} fill="url(#colorExpenses)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--color-border, #f1f5f9)', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>Realization Efficiency:</span>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#10b981' }}>
-                  {financeAnalytics?.collectionEfficiency !== undefined ? `${financeAnalytics.collectionEfficiency}%` : '90.1%'}
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600 }}>Net Available Balance:</span>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#10B981' : '#F43F5E' }}>
-                  {formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* GRAPH 2: Teachers Attendance & Faculty Presence */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '20px',
-            padding: '24px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <UserCheck size={18} color="#0284C7" /> Faculty & Teachers Attendance
-                </h3>
-              </div>
-
-              {/* View Switcher: Weekly vs Departments */}
-              <div className="period-toggle-group" style={{
                 display: 'inline-flex',
-                alignItems: 'center',
+                background: 'var(--color-bg, #f8fafc)',
+                border: '1px solid var(--color-border, #cbd5e1)',
                 padding: '3px',
                 borderRadius: '10px'
               }}>
                 <button
                   type="button"
-                  onClick={() => setAttendanceView('weekly')}
+                  onClick={() => setFinancePeriod('monthly')}
                   style={{
                     padding: '5px 12px',
-                    borderRadius: '8px',
+                    borderRadius: '7px',
                     border: 'none',
-                    background: attendanceView === 'weekly' ? '#0284C7' : 'transparent',
-                    color: attendanceView === 'weekly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
+                    background: financePeriod === 'monthly' ? '#4F46E5' : 'transparent',
+                    color: financePeriod === 'monthly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
                     fontWeight: 700,
-                    fontSize: '0.76rem',
+                    fontSize: '0.75rem',
                     cursor: 'pointer',
-                    boxShadow: attendanceView === 'weekly' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
-                    transition: 'all 0.2s'
+                    boxShadow: financePeriod === 'monthly' ? '0 1px 4px rgba(79, 70, 229, 0.25)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  Weekly
+                  Monthly
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAttendanceView('departments')}
+                  onClick={() => setFinancePeriod('quarterly')}
                   style={{
                     padding: '5px 12px',
-                    borderRadius: '8px',
+                    borderRadius: '7px',
                     border: 'none',
-                    background: attendanceView === 'departments' ? '#0284C7' : 'transparent',
-                    color: attendanceView === 'departments' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
+                    background: financePeriod === 'quarterly' ? '#4F46E5' : 'transparent',
+                    color: financePeriod === 'quarterly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
                     fontWeight: 700,
-                    fontSize: '0.76rem',
+                    fontSize: '0.75rem',
                     cursor: 'pointer',
-                    boxShadow: attendanceView === 'departments' ? '0 2px 8px rgba(2, 132, 199, 0.35)' : 'none',
-                    transition: 'all 0.2s'
+                    boxShadow: financePeriod === 'quarterly' ? '0 1px 4px rgba(79, 70, 229, 0.25)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  Departments
+                  Quarterly
                 </button>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                type="button"
+                onClick={() => fetchFinanceAndAttendanceAnalytics(financeScope)}
+                disabled={isFinanceLoading}
+                title="Refresh Live Telemetry"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--color-border, #cbd5e1)',
+                  background: 'var(--color-bg, #f8fafc)',
+                  color: 'var(--color-text-muted, #64748b)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseOver={e => { e.currentTarget.style.color = '#4F46E5'; e.currentTarget.style.borderColor = '#4F46E5'; }}
+                onMouseOut={e => { e.currentTarget.style.color = 'var(--color-text-muted, #64748b)'; e.currentTarget.style.borderColor = 'var(--color-border, #cbd5e1)'; }}
+              >
+                <RefreshCw size={14} style={{ animation: isFinanceLoading ? 'spin 1s linear infinite' : 'none' }} />
+              </button>
+            </div>
+          </div>
+
+          {/* ─── 2 INTERACTIVE ANALYTICS GRAPHS ─── */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+            gap: '16px',
+            width: '100%'
+          }}>
+            {/* GRAPH 1: Financial Trajectory */}
+            <div className="card" style={{
+              background: 'var(--color-surface, white)',
+              borderRadius: '16px',
+              padding: '20px',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={16} color="#4F46E5" />
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                    Financial Performance
+                  </h3>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 700, color: '#4F46E5' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#4F46E5' }} /> Fees
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 700, color: '#10B981' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#10B981' }} /> Revenue
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 700, color: '#F43F5E' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: '#F43F5E' }} /> Expenses
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ width: '100%', height: '240px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={financialChartData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorCollections" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.35}/>
+                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.01}/>
+                      </linearGradient>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
+                        <stop offset="95%" stopColor="#10B981" stopOpacity={0.01}/>
+                      </linearGradient>
+                      <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.01}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(226, 232, 240, 0.6)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={6} />
+                    <YAxis 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} 
+                      tickFormatter={v => `₹${v >= 100000 ? (v / 100000).toFixed(1) + 'L' : (v / 1000) + 'k'}`} 
+                    />
+                    <Tooltip content={<FinancialTooltip />} />
+                    <Area type="monotone" dataKey="collections" name="Fees Collected" stroke="#4F46E5" strokeWidth={2.2} fillOpacity={1} fill="url(#colorCollections)" />
+                    <Area type="monotone" dataKey="revenue" name="Revenue Generated" stroke="#10B981" strokeWidth={2.2} fillOpacity={1} fill="url(#colorRevenue)" />
+                    <Area type="monotone" dataKey="expenses" name="Operating Expenses" stroke="#F43F5E" strokeWidth={1.8} strokeDasharray="4 4" fillOpacity={1} fill="url(#colorExpenses)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Efficiency: <strong style={{ color: '#10b981' }}>{financeAnalytics?.collectionEfficiency !== undefined ? `${financeAnalytics.collectionEfficiency}%` : '100%'}</strong>
+                </span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Net Balance: <strong style={{ color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#10B981' : '#F43F5E' }}>{formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}</strong>
+                </span>
               </div>
             </div>
 
-            {attendanceView === 'weekly' ? (
-              <div style={{ width: '100%', height: '280px', marginTop: '10px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={teacherAttendanceWeekly} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255, 255, 255, 0.08)" />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={8} />
-                    <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} />
-                    <YAxis yAxisId="right" orientation="right" domain={[80, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6366F1' }} unit="%" />
-                    <Tooltip content={<AttendanceTooltip />} />
-                    <Bar yAxisId="left" dataKey="present" name="Present Teachers" fill="#10B981" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                    <Bar yAxisId="left" dataKey="onLeave" name="On Leave" fill="#F59E0B" radius={[6, 6, 0, 0]} maxBarSize={28} />
-                    <Line yAxisId="right" type="monotone" dataKey="rate" name="Attendance Rate" stroke="#6366F1" strokeWidth={2.5} dot={{ r: 4, fill: '#6366F1' }} />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '280px', marginTop: '10px', justifyContent: 'center' }}>
-                {departmentAttendance.map((dept, idx) => (
-                  <div key={idx} style={{ background: 'var(--color-bg, #f8fafc)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border, #f1f5f9)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--color-text-main, #1e293b)' }}>
-                        {dept.department} <span style={{ fontSize: '0.74rem', fontWeight: 500, color: 'var(--color-text-muted, #64748b)' }}>• Head: {dept.head}</span>
-                      </div>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: dept.color }}>
-                        {dept.rate} ({dept.present}/{dept.total})
-                      </span>
-                    </div>
-                    <div style={{ width: '100%', height: '8px', background: 'var(--color-border, #e2e8f0)', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{
-                        width: dept.rate,
-                        height: '100%',
-                        background: dept.color,
-                        borderRadius: '4px',
-                        transition: 'width 0.5s ease'
-                      }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            {/* GRAPH 2: Faculty Attendance */}
+            <div className="card" style={{
+              background: 'var(--color-surface, white)',
+              borderRadius: '16px',
+              padding: '20px',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <UserCheck size={16} color="#0284C7" />
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                    Faculty Attendance
+                  </h3>
+                </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', flexWrap: 'wrap', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Daily Attendance:</span>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0284c7' }}>
-                  {attendanceAnalytics?.overallRate !== undefined ? `${attendanceAnalytics.overallRate}%` : `${teacherStats.rate}%`}
-                </span>
+                <div style={{
+                  display: 'inline-flex',
+                  background: 'var(--color-bg, #f8fafc)',
+                  border: '1px solid var(--color-border, #e2e8f0)',
+                  padding: '2px',
+                  borderRadius: '6px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceView('weekly')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      background: attendanceView === 'weekly' ? '#0284C7' : 'transparent',
+                      color: attendanceView === 'weekly' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
+                      fontWeight: 700,
+                      fontSize: '0.72rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    Weekly
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceView('departments')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: 'none',
+                      background: attendanceView === 'departments' ? '#0284C7' : 'transparent',
+                      color: attendanceView === 'departments' ? '#ffffff' : 'var(--color-text-muted, #64748b)',
+                      fontWeight: 700,
+                      fontSize: '0.72rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    Departments
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>Active Coverage:</span>
-                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#10b981' }}>
-                  {teacherStats.present} / {teacherStats.total} Faculty Present
+
+              {attendanceView === 'weekly' ? (
+                <div style={{ width: '100%', height: '240px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={teacherAttendanceWeekly} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(226, 232, 240, 0.6)" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)', fontWeight: 600 }} dy={6} />
+                      <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--color-text-muted, #64748B)' }} />
+                      <YAxis yAxisId="right" orientation="right" domain={[80, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#6366F1' }} unit="%" />
+                      <Tooltip content={<AttendanceTooltip />} />
+                      <Bar yAxisId="left" dataKey="present" name="Present Teachers" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                      <Bar yAxisId="left" dataKey="onLeave" name="On Leave" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={24} />
+                      <Line yAxisId="right" type="monotone" dataKey="rate" name="Attendance Rate" stroke="#6366F1" strokeWidth={2.2} dot={{ r: 3, fill: '#6366F1' }} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '240px', justifyContent: 'center' }}>
+                  {departmentAttendance.slice(0, 5).map((dept, idx) => (
+                    <div key={idx} style={{ background: 'var(--color-bg, #f8fafc)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--color-border, #f1f5f9)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text-main, #1e293b)' }}>
+                          {dept.department}
+                        </span>
+                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: dept.color }}>
+                          {dept.rate} ({dept.present}/{dept.total})
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', background: 'var(--color-border, #e2e8f0)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: dept.rate, height: '100%', background: dept.color, borderRadius: '3px' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Daily Rate: <strong style={{ color: '#0284c7' }}>{teacherStats.rate}%</strong>
+                </span>
+                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
+                  Active Coverage: <strong style={{ color: '#10b981' }}>{teacherStats.present}/{teacherStats.total} Faculty</strong>
                 </span>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      {/* ─── MULTI-CAMPUS NETWORK OVERVIEW TABLE ─── */}
-      <div className="card" style={{
-        background: 'var(--color-surface, white)',
-            borderRadius: '20px',
-            padding: '26px 28px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.03)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Building2 size={20} color="#4F46E5" /> Multi-Campus Network Overview
-                </h3>
-              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleTabChange('schools')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    background: '#f8fafc',
-                    border: '1px solid #cbd5e1',
-                    color: '#334155',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Manage All in Directory <ChevronRight size={14} />
-                </button>
-              </div>
+        {/* ─── MULTI-CAMPUS NETWORK OVERVIEW TABLE ─── */}
+        <div className="card" style={{
+          background: 'var(--color-surface, white)',
+          borderRadius: '16px',
+          padding: '22px 24px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Building2 size={18} color="#4F46E5" />
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)' }}>
+                Multi-Campus Network Overview
+              </h3>
+              <span style={{
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                background: '#f1f5f9',
+                color: '#475569',
+                padding: '2px 8px',
+                borderRadius: '12px'
+              }}>
+                {schoolsList.length} Campuses
+              </span>
             </div>
 
-            {schoolsList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
-                <Building2 size={36} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-                <div style={{ fontWeight: 700, color: '#475569', fontSize: '0.95rem' }}>No schools or campuses registered</div>
-                <p style={{ fontSize: '0.82rem', margin: '4px 0 16px' }}>Click "Register School" to provision your first institution.</p>
-                <button
-                  onClick={() => {
-                    setCreateModalType('school');
-                    setCreateModalParentSlug('');
-                    setIsCreateSchoolOpen(true);
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '8px 16px',
-                    borderRadius: '10px',
-                    background: '#4F46E5',
-                    color: 'white',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Plus size={15} /> Register School
-                </button>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#1e3a8a', fontSize: '0.78rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '12px 16px', fontWeight: 800 }}>Campus / School</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 800 }}>Type</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 800 }}>Handle</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 800 }}>Branch Admin</th>
-                      <th style={{ padding: '12px 14px', fontWeight: 800 }}>Principal</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800 }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schoolsList.map(school => {
-                      const isMain = !school.parentSchoolSlug;
-                      const adminName = school.admin?.name || school.adminName || '';
-                      const adminEmail = school.admin?.email || school.adminEmail || '';
-                      const hasAdmin = !!adminName || !!adminEmail;
+            <button
+              type="button"
+              onClick={() => handleTabChange('schools')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                color: '#334155',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#4F46E5'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#4F46E5'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#334155'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+            >
+              <span>Manage All in Directory</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
 
-                      const principalName = school.principal?.name || school.principalName || '';
-                      const principalEmail = school.principal?.email || school.principalEmail || '';
-                      const hasPrincipal = !!principalName || !!principalEmail;
+          {schoolsList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8' }}>
+              <Building2 size={36} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
+              <div style={{ fontWeight: 700, color: '#475569', fontSize: '0.95rem' }}>No schools or campuses registered</div>
+              <p style={{ fontSize: '0.82rem', margin: '4px 0 16px' }}>Click "Register School" to provision your first institution.</p>
+              <button
+                onClick={() => {
+                  setCreateModalType('school');
+                  setCreateModalParentSlug('');
+                  setIsCreateSchoolOpen(true);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  background: '#4F46E5',
+                  color: 'white',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={14} /> Register School
+              </button>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <th style={{ padding: '10px 14px', fontWeight: 800 }}>Campus / School</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Type</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Handle</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Branch Admin</th>
+                    <th style={{ padding: '10px 12px', fontWeight: 800 }}>Principal</th>
+                    <th style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {schoolsList.map(school => {
+                    const isMain = !school.parentSchoolSlug;
+                    const adminName = school.admin?.name || school.adminName || '';
+                    const adminEmail = school.admin?.email || school.adminEmail || '';
+                    const hasAdmin = !!adminName || !!adminEmail;
 
-                      return (
-                        <tr key={school._id || school.slug} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '14px 16px' }}>
-                            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>
-                              {school.name}
+                    const principalName = school.principal?.name || school.principalName || '';
+                    const principalEmail = school.principal?.email || school.principalEmail || '';
+                    const hasPrincipal = !!principalName || !!principalEmail;
+
+                    return (
+                      <tr key={school._id || school.slug} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}>
+                        <td style={{ padding: '12px 14px' }}>
+                          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.88rem' }}>
+                            {school.name}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '1px' }}>
+                            <MapPin size={11} color="#94a3b8" /> {school.city || school.address || 'Central Campus'}
+                          </div>
+                        </td>
+
+                        <td style={{ padding: '12px 12px' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            background: isMain ? 'rgba(79, 70, 229, 0.08)' : '#f1f5f9',
+                            color: isMain ? '#4F46E5' : '#475569',
+                            border: isMain ? '1px solid rgba(79, 70, 229, 0.2)' : '1px solid #e2e8f0'
+                          }}>
+                            {isMain ? 'Main School' : 'Branch Campus'}
+                          </span>
+                        </td>
+
+                        <td style={{ padding: '12px 12px' }}>
+                          <code style={{ fontSize: '0.75rem', background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: 600 }}>
+                            /{school.slug}
+                          </code>
+                        </td>
+
+                        <td style={{ padding: '12px 12px' }}>
+                          {hasAdmin ? (
+                            <div>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#059669', fontSize: '0.78rem', fontWeight: 700 }}>
+                                <CheckCircle2 size={13} /> {adminName || 'Admin'}
+                              </span>
+                              {adminEmail && (
+                                <div style={{ fontSize: '0.7rem', color: '#64748b', paddingLeft: '17px' }}>
+                                  {adminEmail}
+                                </div>
+                              )}
                             </div>
-                            <div style={{ fontSize: '0.74rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                              <MapPin size={11} color="#94a3b8" /> {school.city || school.address || 'Central'}
-                            </div>
-                          </td>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setTargetSchoolForAdmin(school)}
+                              style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: '#fffbeb',
+                                border: '1px solid #fde68a',
+                                color: '#b45309',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              + Appoint Admin
+                            </button>
+                          )}
+                        </td>
 
-                          <td style={{ padding: '14px 14px' }}>
-                            <span style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              fontSize: '0.72rem',
-                              fontWeight: 700,
-                              background: isMain ? 'rgba(79, 70, 229, 0.08)' : '#f1f5f9',
-                              color: isMain ? '#4F46E5' : '#475569',
-                              border: isMain ? '1px solid rgba(79, 70, 229, 0.2)' : '1px solid #e2e8f0'
-                            }}>
-                              {isMain ? 'Main School' : 'Branch Campus'}
-                            </span>
-                          </td>
-
-                          <td style={{ padding: '14px 14px' }}>
-                            <code style={{ fontSize: '0.78rem', background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 600 }}>
-                              /{school.slug}
-                            </code>
-                          </td>
-
-                          <td style={{ padding: '14px 14px' }}>
-                            {hasAdmin ? (
+                        <td style={{ padding: '12px 12px' }}>
+                          {hasPrincipal ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <div>
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#059669', fontSize: '0.78rem', fontWeight: 700 }}>
-                                  <CheckCircle2 size={14} /> {adminName || 'Admin'}
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700 }}>
+                                  <CheckCircle2 size={13} /> {principalName || 'Principal'}
                                 </span>
-                                {adminEmail && (
-                                  <div style={{ fontSize: '0.72rem', color: '#64748b', paddingLeft: '19px', marginTop: '1px' }}>
-                                    {adminEmail}
+                                {principalEmail && (
+                                  <div style={{ fontSize: '0.7rem', color: '#64748b', paddingLeft: '17px' }}>
+                                    {principalEmail}
                                   </div>
                                 )}
                               </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => setTargetSchoolForAdmin(school)}
-                                style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  background: '#fffbeb',
-                                  border: '1px solid #fde68a',
-                                  color: '#b45309',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 700,
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                + Appoint Admin
-                              </button>
-                            )}
-                          </td>
-
-                          <td style={{ padding: '14px 14px' }}>
-                            {hasPrincipal ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: '#0f766e', fontSize: '0.78rem', fontWeight: 700 }}>
-                                    <CheckCircle2 size={14} /> {principalName || 'Principal'}
-                                  </span>
-                                  {principalEmail && (
-                                    <div style={{ fontSize: '0.72rem', color: '#64748b', paddingLeft: '19px', marginTop: '1px' }}>
-                                      {principalEmail}
-                                    </div>
-                                  )}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setPreSelectedTeacherForPrincipal(null);
-                                    setTargetSchoolForPrincipal(school);
-                                  }}
-                                  style={{
-                                    padding: '2px 7px',
-                                    borderRadius: '5px',
-                                    background: '#f1f5f9',
-                                    border: '1px solid #cbd5e1',
-                                    color: '#475569',
-                                    fontSize: '0.68rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer'
-                                  }}
-                                  title="Reassign or appoint new Principal"
-                                >
-                                  Change
-                                </button>
-                              </div>
-                            ) : (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1514,48 +1309,72 @@ const SuperAdminDashboard = () => {
                                   setTargetSchoolForPrincipal(school);
                                 }}
                                 style={{
-                                  padding: '4px 8px',
-                                  borderRadius: '6px',
-                                  background: '#f0fdf4',
-                                  border: '1px solid #bbf7d0',
-                                  color: '#15803d',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 700,
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  background: '#f1f5f9',
+                                  border: '1px solid #cbd5e1',
+                                  color: '#475569',
+                                  fontSize: '0.65rem',
+                                  fontWeight: 600,
                                   cursor: 'pointer'
                                 }}
+                                title="Reassign or appoint new Principal"
                               >
-                                + Appoint Principal
+                                Change
                               </button>
-                            )}
-                          </td>
-
-                          <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                            </div>
+                          ) : (
                             <button
                               type="button"
-                              onClick={() => handleTabChange('schools')}
+                              onClick={() => {
+                                setPreSelectedTeacherForPrincipal(null);
+                                setTargetSchoolForPrincipal(school);
+                              }}
                               style={{
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
-                                color: '#1e3a8a',
-                                fontSize: '0.75rem',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: '#f0fdf4',
+                                border: '1px solid #bbf7d0',
+                                color: '#15803d',
+                                fontSize: '0.7rem',
                                 fontWeight: 700,
                                 cursor: 'pointer'
                               }}
                             >
-                              Manage Branch →
+                              + Appoint Principal
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
+                          )}
+                        </td>
+
+                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleTabChange('schools')}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              background: '#f8fafc',
+                              border: '1px solid #cbd5e1',
+                              color: '#1e3a8a',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseOver={e => { e.currentTarget.style.background = '#4F46E5'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#4F46E5'; }}
+                            onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#1e3a8a'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                          >
+                            Manage Branch →
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>        </div>
       )}
 
       {/* ─── TAB 1: SCHOOLS & BRANCHES ECOSYSTEM ─── */}

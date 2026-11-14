@@ -18,20 +18,27 @@ const Communication = () => {
   // Role authority definitions: Superadmin, Admin, and Principal have leadership authority
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || '').toLowerCase().trim();
   const isAuthorizedLeader = ['superadmin', 'super_admin', 'admin', 'branch_admin', 'school_admin', 'school', 'principal'].includes(userRole);
-  const canPostClassMaterial = isAuthorizedLeader || ['teacher', 'faculty', 'staff'].includes(userRole);
+  const isAssistant = ['lab_assistant', 'assistant', 'support_staff', 'support', 'frontdesk'].includes(userRole) || userRole.includes('assistant');
+  const canPostClassMaterial = !isAssistant && (isAuthorizedLeader || ['teacher', 'faculty', 'staff'].includes(userRole));
 
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'announcements';
 
   // Tab: 'announcements', 'messages', 'emergency', 'events', 'grievances', 'classMaterials'
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState(initialTab === 'classMaterials' && isAssistant ? 'announcements' : initialTab);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam && ['announcements', 'messages', 'emergency', 'events', 'grievances', 'classMaterials'].includes(tabParam)) {
-      setActiveTab(tabParam);
+      if (isAssistant && tabParam === 'classMaterials') {
+        setActiveTab('announcements');
+      } else {
+        setActiveTab(tabParam);
+      }
+    } else if (isAssistant && activeTab === 'classMaterials') {
+      setActiveTab('announcements');
     }
-  }, [searchParams]);
+  }, [searchParams, isAssistant]);
 
   // Announcements State
   const [announcements, setAnnouncements] = useState([]);
@@ -154,9 +161,12 @@ const Communication = () => {
       if (res.ok) {
         const data = await res.json();
         const contactList = Array.isArray(data) ? data : [];
-        setContacts(contactList);
-        if (contactList.length > 0 && !selectedContact) {
-          setSelectedContact(contactList[0]);
+        const visibleContacts = isAssistant
+          ? contactList.filter(c => !c.role?.toLowerCase().includes('student') && !c.role?.startsWith('Student'))
+          : contactList;
+        setContacts(visibleContacts);
+        if (visibleContacts.length > 0 && !selectedContact) {
+          setSelectedContact(visibleContacts[0]);
         }
       }
     } catch (err) {
@@ -634,6 +644,13 @@ const Communication = () => {
   const handleSendMessage = () => {
     if (!replyText.trim() || !selectedContact) return;
 
+    // Block assistants from messaging students directly
+    const isStudentContact = selectedContact && (selectedContact.role?.toLowerCase().includes('student') || selectedContact.role?.startsWith('Student'));
+    if (isAssistant && isStudentContact) {
+      alert('Access Restricted: Assistants are not permitted to send direct messages to students.');
+      return;
+    }
+
     const contactId = selectedContact.id || selectedContact._id;
     const newMsg = {
       id: Date.now(),
@@ -661,8 +678,11 @@ const Communication = () => {
     return matchesFilter && matchesSearch;
   });
 
-  // Filtered contacts
+  // Filtered contacts (Strictly hides students from assistant accounts)
   const filteredContacts = contacts.filter(c => {
+    if (isAssistant && (c.role?.toLowerCase().includes('student') || c.role?.startsWith('Student'))) {
+      return false;
+    }
     if (!contactSearch) return true;
     const term = contactSearch.toLowerCase();
     return (
@@ -676,6 +696,8 @@ const Communication = () => {
   // Current selected contact messages
   const currentContactId = selectedContact ? (selectedContact.id || selectedContact._id) : null;
   const currentChatMessages = (currentContactId && messagesByContact[currentContactId]) || [];
+  const isSelectedContactStudent = selectedContact && (selectedContact.role?.toLowerCase().includes('student') || selectedContact.role?.startsWith('Student'));
+  const isStudentMessagingBlocked = isAssistant && isSelectedContactStudent;
 
   // Filtered events
   const filteredEvents = events.filter(e => {
@@ -782,19 +804,21 @@ const Communication = () => {
           </div>
         )}
 
-        <div 
-          onClick={() => setActiveTab('classMaterials')}
-          className="chart-card hover-lift" 
-          style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white', borderRadius: '16px', border: activeTab === 'classMaterials' ? '2px solid #0F766E' : '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', minHeight: '88px', boxSizing: 'border-box', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(15, 118, 110, 0.1)', color: '#0F766E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <BookOpen size={24} />
+        {!isAssistant && (
+          <div 
+            onClick={() => setActiveTab('classMaterials')}
+            className="chart-card hover-lift" 
+            style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '16px', background: 'white', borderRadius: '16px', border: activeTab === 'classMaterials' ? '2px solid #0F766E' : '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', minHeight: '88px', boxSizing: 'border-box', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(15, 118, 110, 0.1)', color: '#0F766E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <BookOpen size={24} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px', lineHeight: 1.2 }}>Class Materials</div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f766e', lineHeight: 1.15 }}>{classMaterials.length}</div>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 0 }}>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '2px', lineHeight: 1.2 }}>Class Materials</div>
-            <div style={{ fontSize: '1.65rem', fontWeight: 800, color: '#0f766e', lineHeight: 1.15 }}>{classMaterials.length}</div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Success Notification Alert */}
@@ -931,27 +955,29 @@ const Communication = () => {
             <MessageSquare size={15} /> Direct Messages ({contacts.length})
           </button>
 
-          <button 
-            onClick={() => setActiveTab('classMaterials')}
-            style={{ 
-              height: '36px',
-              padding: '0 16px', 
-              borderRadius: '10px', 
-              border: 'none', 
-              fontWeight: 700, 
-              fontSize: '0.85rem', 
-              cursor: 'pointer', 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '7px',
-              backgroundColor: activeTab === 'classMaterials' ? '#0F766E' : 'transparent', 
-              color: activeTab === 'classMaterials' ? 'white' : '#64748b', 
-              transition: 'all 0.2s',
-              boxShadow: activeTab === 'classMaterials' ? '0 2px 8px rgba(15, 118, 110, 0.3)' : 'none'
-            }}
-          >
-            <BookOpen size={15} /> Class Notes & Assignments ({classMaterials.length})
-          </button>
+          {!isAssistant && (
+            <button 
+              onClick={() => setActiveTab('classMaterials')}
+              style={{ 
+                height: '36px',
+                padding: '0 16px', 
+                borderRadius: '10px', 
+                border: 'none', 
+                fontWeight: 700, 
+                fontSize: '0.85rem', 
+                cursor: 'pointer', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: '7px',
+                backgroundColor: activeTab === 'classMaterials' ? '#0F766E' : 'transparent', 
+                color: activeTab === 'classMaterials' ? 'white' : '#64748b', 
+                transition: 'all 0.2s',
+                boxShadow: activeTab === 'classMaterials' ? '0 2px 8px rgba(15, 118, 110, 0.3)' : 'none'
+              }}
+            >
+              <BookOpen size={15} /> Class Notes & Assignments ({classMaterials.length})
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -1757,21 +1783,23 @@ const Communication = () => {
             >
               View Live Notice Board
             </button>
-            <button
-              onClick={() => setActiveTab('classMaterials')}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '10px',
-                border: '1px solid #cbd5e1',
-                background: 'white',
-                color: '#0F766E',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                cursor: 'pointer'
-              }}
-            >
-              Class Notes & Assignments
-            </button>
+            {!isAssistant && (
+              <button
+                onClick={() => setActiveTab('classMaterials')}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#0F766E',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Class Notes & Assignments
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -2057,7 +2085,7 @@ const Communication = () => {
                 <Search size={16} />
                 <input 
                   type="text" 
-                  placeholder="Search faculty or students..."
+                  placeholder={isAssistant ? "Search faculty & staff..." : "Search faculty or students..."}
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
                 />
@@ -2297,59 +2325,80 @@ const Communication = () => {
                   ))}
                 </div>
 
-                {/* Chat Input Field */}
-                <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border)', backgroundColor: 'white' }}>
-                  <form 
-                    onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
-                    style={{ display: 'flex', gap: '12px', alignItems: 'center' }}
-                  >
-                    <div style={{ 
-                      flex: 1, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      backgroundColor: '#f8fafc', 
-                      borderRadius: '24px', 
-                      padding: '10px 18px', 
-                      border: '1px solid #e2e8f0' 
-                    }}>
-                      <input 
-                        type="text" 
-                        placeholder={`Message ${selectedContact.name}...`}
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        style={{ flex: 1, border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: '0.92rem', color: '#1e293b' }}
-                      />
-                    </div>
-                    <button 
-                      type="submit"
-                      disabled={!replyText.trim()}
-                      style={{ 
-                        padding: '12px 18px', 
-                        borderRadius: '20px', 
-                        border: 'none', 
-                        backgroundColor: replyText.trim() ? '#4F46E5' : '#e2e8f0', 
-                        color: 'white', 
-                        cursor: replyText.trim() ? 'pointer' : 'not-allowed', 
+                {/* Chat Input Field / Blocked Notice for Assistants */}
+                {isStudentMessagingBlocked ? (
+                  <div style={{
+                    padding: '16px 20px',
+                    borderTop: '1px solid var(--color-border)',
+                    backgroundColor: '#fffbeb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    color: '#92400e',
+                    fontSize: '0.85rem',
+                    fontWeight: 600
+                  }}>
+                    <AlertTriangle size={20} color="#d97706" style={{ flexShrink: 0 }} />
+                    <span>Assistants are restricted from sending messages to students. Direct student messaging is reserved for academic faculty and campus administrators.</span>
+                  </div>
+                ) : (
+                  <div style={{ padding: '16px 20px', borderTop: '1px solid var(--color-border)', backgroundColor: 'white' }}>
+                    <form 
+                      onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
+                      style={{ display: 'flex', gap: '12px', alignItems: 'center' }}
+                    >
+                      <div style={{ 
+                        flex: 1, 
                         display: 'flex', 
                         alignItems: 'center', 
-                        gap: '6px',
-                        fontWeight: 700,
-                        fontSize: '0.88rem',
-                        transition: 'background-color 0.2s',
-                        boxShadow: replyText.trim() ? '0 4px 12px rgba(79, 70, 229, 0.25)' : 'none'
-                      }}
-                    >
-                      <span>Send</span>
-                      <SendHorizontal size={16} />
-                    </button>
-                  </form>
-                </div>
+                        backgroundColor: '#f8fafc', 
+                        borderRadius: '24px', 
+                        padding: '10px 18px', 
+                        border: '1px solid #e2e8f0' 
+                      }}>
+                        <input 
+                          type="text" 
+                          placeholder={`Message ${selectedContact.name}...`}
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          style={{ flex: 1, border: 'none', outline: 'none', backgroundColor: 'transparent', fontSize: '0.92rem', color: '#1e293b' }}
+                        />
+                      </div>
+                      <button 
+                        type="submit"
+                        disabled={!replyText.trim()}
+                        style={{ 
+                          padding: '12px 18px', 
+                          borderRadius: '20px', 
+                          border: 'none', 
+                          backgroundColor: replyText.trim() ? '#4F46E5' : '#e2e8f0', 
+                          color: 'white', 
+                          cursor: replyText.trim() ? 'pointer' : 'not-allowed', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '6px',
+                          fontWeight: 700,
+                          fontSize: '0.88rem',
+                          transition: 'background-color 0.2s',
+                          boxShadow: replyText.trim() ? '0 4px 12px rgba(79, 70, 229, 0.25)' : 'none'
+                        }}
+                      >
+                        <span>Send</span>
+                        <SendHorizontal size={16} />
+                      </button>
+                    </form>
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', padding: '40px' }}>
                 <MessageSquare size={48} style={{ color: '#cbd5e1', marginBottom: '16px' }} />
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e3a8a', marginBottom: '6px' }}>Select a Contact</h3>
-                <p style={{ fontSize: '0.88rem', maxWidth: '320px', textAlign: 'center' }}>Choose any faculty member or student from the left directory to start a direct message thread.</p>
+                <p style={{ fontSize: '0.88rem', maxWidth: '320px', textAlign: 'center' }}>
+                  {isAssistant 
+                    ? 'Choose any faculty or staff member from the left directory to start a direct message thread.' 
+                    : 'Choose any faculty member or student from the left directory to start a direct message thread.'}
+                </p>
               </div>
             )}
           </div>
@@ -2357,7 +2406,7 @@ const Communication = () => {
       )}
 
       {/* TAB 6: CLASS NOTES & ASSIGNMENTS (CLASS-WISE SYSTEM) */}
-      {activeTab === 'classMaterials' && (
+      {activeTab === 'classMaterials' && !isAssistant && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Filter Bar */}
           <div style={{ 

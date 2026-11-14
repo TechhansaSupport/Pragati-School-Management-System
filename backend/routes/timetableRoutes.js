@@ -145,7 +145,16 @@ const generateDefaultSchedule = (className = 'Class 10', section = 'A', teachers
       { subject: 'Computer Science Practical', teacher: getTeacher(4), room: 'IT Lab 2', type: 'Lab' },
       { subject: 'General Knowledge & Club', teacher: getTeacher(3), room: 'Room 201', type: 'Activity' },
     ],
-    Saturday: []
+    Saturday: [
+      { subject: 'Mathematics Revision', teacher: getTeacher(0), room: 'Room 201', type: 'Tutorial' },
+      { subject: 'Science Practical / Lab', teacher: getTeacher(1), room: 'Science Lab', type: 'Lab' },
+      { subject: 'English Communication & Debate', teacher: getTeacher(2), room: 'Room 201', type: 'Activity' },
+      { subject: 'Social Studies & Current Affairs', teacher: getTeacher(3), room: 'Room 201', type: 'Lecture' },
+      { subject: 'Computer Applications & Coding', teacher: getTeacher(4), room: 'IT Lab 2', type: 'Lab' },
+      { subject: 'Co-Curricular & Club Activities', teacher: getTeacher(5), room: 'Activity Hall', type: 'Activity' },
+      { subject: 'Library & Self Study', teacher: 'Librarian Incharge', room: 'Central Library', type: 'Self Study' },
+      { subject: 'Physical Education & Sports', teacher: getTeacher(5), room: 'Sports Ground', type: 'Activity' },
+    ]
   };
 
   const schedule = {};
@@ -1388,12 +1397,37 @@ router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => 
     let existingTimetable = await Timetable.findOne(query);
     let newSchedule = {};
 
+    const effectiveOffDays = Array.isArray(req.body.offDays)
+      ? req.body.offDays
+      : (Array.isArray(existingTimetable?.offDays) ? existingTimetable.offDays : ['Sunday']);
+
+    const isSaturdayOff = effectiveOffDays.includes('Saturday');
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    if (!isSaturdayOff) {
+      days.push('Saturday');
+    }
+
     if (existingTimetable && existingTimetable.schedule && Object.keys(existingTimetable.schedule).some(d => existingTimetable.schedule[d]?.length > 0)) {
       // Preserve existing bell schedule and recess slots 100% intact! Appoint recess as recess only!
       newSchedule = JSON.parse(JSON.stringify(existingTimetable.schedule));
       const defaultSched = generateDefaultSchedule(cleanClass, cleanSection, staffList);
 
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+      // If Saturday is an active working day and has no periods yet, clone the periods structure from Monday
+      const mondayPeriods = newSchedule['Monday'] || [];
+      if (!isSaturdayOff && (!newSchedule['Saturday'] || newSchedule['Saturday'].length === 0) && mondayPeriods.length > 0) {
+        newSchedule['Saturday'] = mondayPeriods.map((p, idx) => ({
+          periodNumber: p.periodNumber || idx + 1,
+          periodName: p.periodName || `P${idx + 1}`,
+          startTime: p.startTime || '08:30',
+          endTime: p.endTime || '09:20',
+          subject: p.isRecess ? (p.subject || 'Recess / Break') : '',
+          teacher: p.isRecess ? 'Duty Staff' : '',
+          room: p.room || 'Room 101',
+          type: p.isRecess ? 'Recess' : (p.type || 'Lecture'),
+          isRecess: Boolean(p.isRecess)
+        }));
+      }
+
       for (const d of days) {
         const dayPeriods = newSchedule[d] || [];
         const sourceDayPeriods = (defaultSched[d] || []).filter(p => !p.isRecess && p.type !== 'Recess' && p.type !== 'Break');
@@ -1430,8 +1464,15 @@ router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => 
           }
         });
       }
+
+      if (isSaturdayOff) {
+        newSchedule['Saturday'] = [];
+      }
     } else {
       newSchedule = generateDefaultSchedule(cleanClass, cleanSection, staffList);
+      if (isSaturdayOff) {
+        newSchedule['Saturday'] = [];
+      }
     }
 
     normalizeScheduleRecessAndPeriods(newSchedule);
@@ -1443,6 +1484,7 @@ router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => 
           className: cleanClass,
           section: cleanSection,
           schedule: newSchedule,
+          offDays: effectiveOffDays,
           status: 'Active',
           entityId: req.entityId,
           schoolSlug: schoolSlug || req.schoolSlug || '',
