@@ -53,8 +53,17 @@ const staffSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Active', 'On Leave', 'Resigned', 'Retired', 'Probation'],
+    enum: ['Active', 'On Leave', 'Resigned', 'Retired', 'Probation', 'Suspended'],
     default: 'Active',
+  },
+  permissions: {
+    type: [String],
+    default: ['academics', 'attendance'],
+  },
+  accessStatus: {
+    type: String,
+    enum: ['Granted', 'Limited', 'Suspended'],
+    default: 'Granted',
   },
   joiningDate: {
     type: Date,

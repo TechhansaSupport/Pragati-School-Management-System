@@ -9,6 +9,7 @@ import {
   Sparkles, Sliders, ExternalLink, Check, CalendarDays, Eye, Coffee
 } from 'lucide-react';
 import CreateSchoolModal from '../components/CreateSchoolModal';
+import StudentPromotionModal from '../components/StudentPromotionModal';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -94,6 +95,7 @@ const Academics = () => {
   const [classesList, setClassesList] = useState([]);
   const [schoolsList, setSchoolsList] = useState([]);
   const [isCreateSchoolOpen, setIsCreateSchoolOpen] = useState(false);
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
   const [distinctGrades, setDistinctGrades] = useState([]);
   const [teachersList, setTeachersList] = useState([]);
   const [stats, setStats] = useState({
@@ -947,6 +949,32 @@ const Academics = () => {
             >
               <Calendar size={16} color="#93c5fd" /> Timetable Matrix ↗
             </button>
+
+            {isAdmin && (
+              <button
+                onClick={() => setIsPromotionModalOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.25)',
+                  color: '#d1fae5',
+                  border: '1px solid rgba(110, 231, 183, 0.4)',
+                  padding: '11px 18px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.86rem',
+                  cursor: 'pointer',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.2s',
+                }}
+                onMouseOver={e => { e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.4)'; }}
+                onMouseOut={e => { e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.25)'; }}
+                title="Promote students to next class / Session rollover"
+              >
+                <GraduationCap size={16} color="#6ee7b7" /> Annual Promotion
+              </button>
+            )}
 
             {classesList.length > 0 && (
               <button
@@ -3843,6 +3871,17 @@ const Academics = () => {
           window.dispatchEvent(new CustomEvent('schoolListUpdated'));
         }}
         schoolsList={schoolsList}
+      />
+
+      {/* MODAL 6: ANNUAL STUDENT PROMOTION & SESSION ROLLOVER */}
+      <StudentPromotionModal
+        isOpen={isPromotionModalOpen}
+        onClose={() => setIsPromotionModalOpen(false)}
+        onSuccess={async () => {
+          await fetchClassesData();
+        }}
+        tenantSlug={tenantSlug}
+        token={token}
       />
 
     </div>

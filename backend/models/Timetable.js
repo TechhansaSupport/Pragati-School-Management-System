@@ -83,6 +83,22 @@ const timetableSchema = new mongoose.Schema({
     type: [String],
     default: ['Sunday'],
   },
+  subjects: {
+    type: [String],
+    default: [],
+  },
+  activityClasses: {
+    type: [String],
+    default: [],
+  },
+  curriculum: [{
+    name: { type: String, required: true },
+    type: { type: String, enum: ['Academic', 'Activity', 'Lab', 'Sports', 'Self Study', 'Tutorial', 'Lecture'], default: 'Academic' },
+    teacher: { type: String, default: '' },
+    teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+    room: { type: String, default: '' },
+    periodsPerWeek: { type: Number, default: 5 },
+  }],
   status: {
     type: String,
     enum: ['Active', 'Draft', 'Archived'],

@@ -42,6 +42,18 @@ const classSectionSchema = new mongoose.Schema({
     type: [String],
     default: ['Mathematics', 'Science', 'English', 'Social Studies'],
   },
+  activityClasses: {
+    type: [String],
+    default: ['Physical Education', 'Art & Craft', 'Library & Reading'],
+  },
+  curriculum: [{
+    name: { type: String, required: true },
+    type: { type: String, enum: ['Academic', 'Activity', 'Lab', 'Sports', 'Self Study', 'Tutorial', 'Lecture'], default: 'Academic' },
+    teacher: { type: String, default: '' },
+    teacherId: { type: mongoose.Schema.Types.ObjectId, ref: 'Staff', default: null },
+    room: { type: String, default: '' },
+    periodsPerWeek: { type: Number, default: 5 },
+  }],
   schedule: {
     type: String,
     trim: true,

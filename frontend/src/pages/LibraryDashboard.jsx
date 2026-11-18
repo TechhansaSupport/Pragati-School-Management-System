@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { 
   Book, 
@@ -19,7 +20,19 @@ import {
   DollarSign, 
   Check, 
   Send,
-  Sparkles
+  Sparkles,
+  Bell,
+  Smartphone,
+  MessageSquare,
+  Mail,
+  CheckCheck,
+  AlertCircle,
+  Filter,
+  Radio,
+  Volume2,
+  ExternalLink,
+  ShieldAlert,
+  ChevronRight
 } from 'lucide-react';
 
 const LibraryDashboard = () => {
@@ -65,16 +78,81 @@ const LibraryDashboard = () => {
   });
 
   const [transactions, setTransactions] = useState([
-    { id: 'TRX-101', student: 'Aarav Sharma', classSection: '10th A', book: 'Concepts of Physics (Vol 1)', category: 'Science', action: 'Issued', date: 'Oct 08, 2026', status: 'Active' },
-    { id: 'TRX-102', student: 'Diya Patel', classSection: '10th A', book: 'Advanced Mathematics for Secondary', category: 'Mathematics', action: 'Returned', date: 'Oct 08, 2026', status: 'Completed' },
-    { id: 'TRX-103', student: 'Kabir Mehta', classSection: '9th B', book: 'Computer Science with Python', category: 'Technology', action: 'Issued', date: 'Oct 07, 2026', status: 'Active' },
-    { id: 'TRX-104', student: 'Ananya Iyer', classSection: '9th A', book: 'Atomic Habits', category: 'Self Help', action: 'Returned', date: 'Oct 07, 2026', status: 'Completed' },
-    { id: 'TRX-105', student: 'Rohan Gupta', classSection: '12th Sci', book: 'A Brief History of Time', category: 'Science', action: 'Issued', date: 'Oct 06, 2026', status: 'Active' },
+    { 
+      id: 'TRX-101', 
+      student: 'Aarav Sharma', 
+      classSection: '10th A', 
+      rollNo: '10-A-01',
+      phone: '+91 98765 43210',
+      email: 'aarav.sharma@school.edu',
+      book: 'Concepts of Physics (Vol 1)', 
+      category: 'Science', 
+      action: 'Issued', 
+      date: 'Oct 08, 2026', 
+      dueDate: 'Oct 22, 2026',
+      status: 'Active' 
+    },
+    { 
+      id: 'TRX-102', 
+      student: 'Diya Patel', 
+      classSection: '10th A', 
+      rollNo: '10-A-14',
+      phone: '+91 98765 43211',
+      email: 'diya.patel@school.edu',
+      book: 'Advanced Mathematics for Secondary', 
+      category: 'Mathematics', 
+      action: 'Returned', 
+      date: 'Oct 08, 2026', 
+      dueDate: 'Oct 22, 2026',
+      status: 'Completed' 
+    },
+    { 
+      id: 'TRX-103', 
+      student: 'Kabir Mehta', 
+      classSection: '9th B', 
+      rollNo: '09-B-08',
+      phone: '+91 98765 43212',
+      email: 'kabir.mehta@school.edu',
+      book: 'Computer Science with Python', 
+      category: 'Technology', 
+      action: 'Issued', 
+      date: 'Oct 07, 2026', 
+      dueDate: 'Oct 11, 2026',
+      status: 'Active' 
+    },
+    { 
+      id: 'TRX-104', 
+      student: 'Ananya Iyer', 
+      classSection: '9th A', 
+      rollNo: '09-A-21',
+      phone: '+91 98765 43213',
+      email: 'ananya.iyer@school.edu',
+      book: 'Atomic Habits', 
+      category: 'Self Help', 
+      action: 'Returned', 
+      date: 'Oct 07, 2026', 
+      dueDate: 'Oct 21, 2026',
+      status: 'Completed' 
+    },
+    { 
+      id: 'TRX-105', 
+      student: 'Rohan Gupta', 
+      classSection: '12th Sci', 
+      rollNo: '12-S-05',
+      phone: '+91 98765 43214',
+      email: 'rohan.gupta@school.edu',
+      book: 'A Brief History of Time', 
+      category: 'Science', 
+      action: 'Issued', 
+      date: 'Oct 06, 2026', 
+      dueDate: 'Oct 13, 2026',
+      status: 'Active' 
+    },
   ]);
 
   const [overdueList, setOverdueList] = useState([
-    { id: 'OD-1', student: 'Kabir Mehta', classSection: 'Class 9 B', book: 'Atomic Habits', days: 5, fine: 50 },
-    { id: 'OD-2', student: 'Rohan Gupta', classSection: 'Class 12 Sci', book: 'Concepts of Physics (Vol 1)', days: 3, fine: 30 }
+    { id: 'OD-1', student: 'Kabir Mehta', classSection: 'Class 9 B', rollNo: '09-B-08', phone: '+91 98765 43212', book: 'Atomic Habits', days: 5, fine: 50 },
+    { id: 'OD-2', student: 'Rohan Gupta', classSection: 'Class 12 Sci', rollNo: '12-S-05', phone: '+91 98765 43214', book: 'Concepts of Physics (Vol 1)', days: 3, fine: 30 }
   ]);
 
   const [booksList, setBooksList] = useState([
@@ -171,10 +249,14 @@ const LibraryDashboard = () => {
       id: newTxId,
       student: issueForm.student.trim(),
       classSection: issueForm.classSection,
+      rollNo: `Roll-${Math.floor(10 + Math.random() * 80)}`,
+      phone: '+91 98765 ' + Math.floor(10000 + Math.random() * 90000),
+      email: `${issueForm.student.trim().toLowerCase().replace(/\s+/g, '.')}@school.edu`,
       book: targetBook.title,
       category: targetBook.category,
       action: 'Issued',
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      dueDate: issueForm.dueDate,
       status: 'Active'
     };
 
@@ -299,145 +381,6 @@ const LibraryDashboard = () => {
         </div>
       )}
 
-      {/* TOP COMMAND HEADER - Clean White Surface */}
-      <div style={{
-        background: 'var(--color-surface, white)',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        border: '1px solid var(--color-border, #e2e8f0)',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div style={{ maxWidth: '680px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              background: '#e0e7ff',
-              color: '#4338ca',
-              padding: '3px 10px',
-              borderRadius: '8px',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}>
-              <BookOpen size={13} color="#4338ca" /> Library & Media Center
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
-              Catalog Active
-            </span>
-          </div>
-
-          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
-            Library Management 📚
-          </h1>
-
-          {/* Quick Action Controls */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setIsIssueModalOpen(true)}
-              className="hover-lift"
-              style={{
-                background: '#4F46E5',
-                border: 'none',
-                color: 'white',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
-                transition: 'all 0.15s'
-              }}
-            >
-              <Plus size={15} /> Issue Book
-            </button>
-
-            <button
-              onClick={() => setIsAddBookModalOpen(true)}
-              className="hover-lift"
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-            >
-              <Plus size={15} color="#059669" /> Add New Book
-            </button>
-
-            <button
-              onClick={() => navigate(tenantSlug ? `/${tenantSlug}/books` : '/books')}
-              className="hover-lift"
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '8px 16px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.15s'
-              }}
-            >
-              <Book size={15} color="#0284c7" /> View All Books & Inventory <ArrowUpRight size={14} color="#64748b" />
-            </button>
-          </div>
-        </div>
-
-        {/* Right side session status */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          background: 'var(--color-bg, #f8fafc)',
-          padding: '12px 18px',
-          borderRadius: '12px',
-          border: '1px solid var(--color-border, #e2e8f0)',
-          minWidth: '190px'
-        }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Library Session
-          </div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
-          <div style={{
-            fontSize: '0.72rem',
-            color: '#4338ca',
-            fontWeight: 800,
-            background: '#e0e7ff',
-            padding: '2px 8px',
-            borderRadius: '6px',
-            marginTop: '4px'
-          }}>
-            {userInfo.name || 'Mr. Ganesh Kumar'} • Librarian
-          </div>
-        </div>
-      </div>
-
       {/* FULL-WIDTH BALANCED 5-KPI METRIC STRIP */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         {[
@@ -554,6 +497,93 @@ const LibraryDashboard = () => {
             </div>
 
             {/* Search Box */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setIsIssueModalOpen(true)}
+                className="hover-lift"
+                style={{
+                  background: '#4F46E5',
+                  border: 'none',
+                  color: 'white',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <Plus size={14} /> Issue Book
+              </button>
+
+              <button
+                onClick={() => setIsAddBookModalOpen(true)}
+                className="hover-lift"
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <Plus size={14} color="#059669" /> Add New Book
+              </button>
+
+              <button
+                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/books` : '/books')}
+                className="hover-lift"
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <Book size={14} color="#0284c7" /> View All Books
+              </button>
+
+              <button
+                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
+                className="hover-lift"
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#4338ca',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                <Bell size={14} color="#4338ca" /> Borrower Alerts
+              </button>
+            </div>
+
             <div style={{ position: 'relative', minWidth: '240px' }}>
               <Search size={15} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
               <input 
@@ -678,28 +708,50 @@ const LibraryDashboard = () => {
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
                           {t.status === 'Active' ? (
-                            <button
-                              onClick={() => {
-                                setSelectedTransactionForReturn(t);
-                                setIsReturnModalOpen(true);
-                              }}
-                              className="hover-lift"
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: '8px',
-                                border: '1px solid #c7d2fe',
-                                background: '#eef2ff',
-                                color: '#4338ca',
-                                fontWeight: 700,
-                                fontSize: '0.76rem',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              <RotateCcw size={13} /> Return Book
-                            </button>
+                            <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                              <button
+                                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
+                                title="Open Borrower Alerts Dispatcher"
+                                className="hover-lift"
+                                style={{
+                                  padding: '6px 9px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #fed7aa',
+                                  background: '#fff7ed',
+                                  color: '#c2410c',
+                                  fontWeight: 700,
+                                  fontSize: '0.76rem',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Bell size={13} /> Alert
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedTransactionForReturn(t);
+                                  setIsReturnModalOpen(true);
+                                }}
+                                className="hover-lift"
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #c7d2fe',
+                                  background: '#eef2ff',
+                                  color: '#4338ca',
+                                  fontWeight: 700,
+                                  fontSize: '0.76rem',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <RotateCcw size={13} /> Return Book
+                              </button>
+                            </div>
                           ) : (
                             <span style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                               <Check size={14} /> Completed
@@ -829,23 +881,43 @@ const LibraryDashboard = () => {
                       <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#b45309' }}>
                         Fine: ₹{item.fine}
                       </span>
-                      <button
-                        onClick={() => handleSettleOverdue(item)}
-                        className="hover-lift"
-                        style={{
-                          marginTop: '4px',
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          background: '#059669',
-                          color: 'white',
-                          fontWeight: 700,
-                          fontSize: '0.72rem',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Settle & Return
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                        <button
+                          onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
+                          className="hover-lift"
+                          style={{
+                            padding: '3px 7px',
+                            borderRadius: '6px',
+                            border: '1px solid #fecdd3',
+                            background: '#fff1f2',
+                            color: '#e11d48',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                        >
+                          <Bell size={11} /> Alert
+                        </button>
+                        <button
+                          onClick={() => handleSettleOverdue(item)}
+                          className="hover-lift"
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: '#059669',
+                            color: 'white',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Settle & Return
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -879,8 +951,8 @@ const LibraryDashboard = () => {
         </div>
       </div>
 
-      {/* MODAL 1: ISSUE BOOK */}
-      {isIssueModalOpen && (
+      {/* MODAL 1: ISSUE BOOK (PORTAL) */}
+      {isIssueModalOpen && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -889,7 +961,7 @@ const LibraryDashboard = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 9999999,
           padding: '16px'
         }}>
           <div style={{
@@ -986,11 +1058,12 @@ const LibraryDashboard = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 2: ADD NEW BOOK */}
-      {isAddBookModalOpen && (
+      {/* MODAL 2: ADD NEW BOOK (PORTAL) */}
+      {isAddBookModalOpen && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -999,7 +1072,7 @@ const LibraryDashboard = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 9999999,
           padding: '16px'
         }}>
           <div style={{
@@ -1096,11 +1169,12 @@ const LibraryDashboard = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* MODAL 3: RETURN CONFIRMATION */}
-      {isReturnModalOpen && selectedTransactionForReturn && (
+      {/* MODAL 3: RETURN CONFIRMATION (PORTAL) */}
+      {isReturnModalOpen && selectedTransactionForReturn && createPortal(
         <div style={{
           position: 'fixed',
           inset: 0,
@@ -1109,7 +1183,7 @@ const LibraryDashboard = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          zIndex: 9999,
+          zIndex: 9999999,
           padding: '16px'
         }}>
           <div style={{
@@ -1158,7 +1232,8 @@ const LibraryDashboard = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

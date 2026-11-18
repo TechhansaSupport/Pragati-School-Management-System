@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
 const User = require('../models/User');
+const PromotionLog = require('../models/PromotionLog');
+const ClassSection = require('../models/ClassSection');
+
+const resolveSchoolSlug = (req) => {
+  return (req.query?.schoolSlug || req.body?.schoolSlug || req.headers['x-school-slug'] || req.schoolSlug || '').trim();
+};
 
 // Helper to verify authority to admit and manage students
 const checkAdminAuthority = (req, res) => {
@@ -262,6 +268,443 @@ router.get('/stats', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+// ==========================================
+// STUDENT PROMOTION & SESSION ROLLOVER API
+// ==========================================
+
+const STANDARD_GRADE_ORDER = [
+  'Nursery', 'LKG', 'UKG',
+  'Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5',
+  'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10',
+  'Class 11', 'Class 12'
+];
+
+const getNextGradeInfo = (currentGrade = '') => {
+  const cg = String(currentGrade || '').trim();
+  const idx = STANDARD_GRADE_ORDER.findIndex(g => g.toLowerCase() === cg.toLowerCase());
+  if (idx !== -1) {
+    if (idx === STANDARD_GRADE_ORDER.length - 1) {
+      return { nextGrade: 'Graduated', isFinalYear: true };
+    }
+    return { nextGrade: STANDARD_GRADE_ORDER[idx + 1], isFinalYear: false };
+  }
+  const match = cg.match(/(?:Class|Grade)\s*(\d+)/i);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num >= 12) return { nextGrade: 'Graduated', isFinalYear: true };
+    return { nextGrade: `Class ${num + 1}`, isFinalYear: false };
+  }
+  return { nextGrade: cg, isFinalYear: false };
+};
+
+// GET /api/students/promotion-classes — Summary of all classes for session rollover planning
+router.get('/promotion-classes', async (req, res) => {
+  try {
+    const schoolSlug = resolveSchoolSlug(req);
+    const query = { entityId: req.entityId, status: 'Active' };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const students = await Student.find(query).select('grade section academicSession');
+
+    const classMap = {};
+    students.forEach(st => {
+      const g = st.grade || 'Unassigned';
+      const s = st.section || 'A';
+      const key = `${g} - Section ${s}`;
+      if (!classMap[key]) {
+        const nextInfo = getNextGradeInfo(g);
+        classMap[key] = {
+          grade: g,
+          section: s,
+          classLabel: key,
+          studentCount: 0,
+          currentSession: st.academicSession || '2026-2027',
+          suggestedNextGrade: nextInfo.nextGrade,
+          isFinalYear: nextInfo.isFinalYear
+        };
+      }
+      classMap[key].studentCount++;
+    });
+
+    const classList = Object.values(classMap).sort((a, b) => {
+      const idxA = STANDARD_GRADE_ORDER.findIndex(g => g.toLowerCase() === a.grade.toLowerCase());
+      const idxB = STANDARD_GRADE_ORDER.findIndex(g => g.toLowerCase() === b.grade.toLowerCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      return a.grade.localeCompare(b.grade, undefined, { numeric: true });
+    });
+
+    res.json({
+      success: true,
+      classes: classList,
+      totalActiveStudents: students.length,
+      standardSessions: ['2025-2026', '2026-2027', '2027-2028', '2028-2029', '2029-2030']
+    });
+  } catch (error) {
+    console.error('Error fetching promotion classes:', error);
+    res.status(500).json({ message: 'Error retrieving promotion classes', error: error.message });
+  }
+});
+
+// GET /api/students/promotion-candidates — Get active students eligible for promotion in a class
+router.get('/promotion-candidates', async (req, res) => {
+  try {
+    const { grade, section } = req.query;
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!grade) {
+      return res.status(400).json({ message: 'Grade/Class parameter is required' });
+    }
+
+    const query = { entityId: req.entityId, grade: grade.trim() };
+    if (section && section !== 'All') {
+      query.section = section.trim().toUpperCase();
+    }
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const students = await Student.find(query)
+      .select('name rollNo grade section attendance status academicSession parentName parentContact')
+      .sort({ rollNo: 1, name: 1 });
+
+    const nextInfo = getNextGradeInfo(grade);
+
+    res.json({
+      success: true,
+      grade,
+      section: section || 'All',
+      suggestedNextGrade: nextInfo.nextGrade,
+      isFinalYear: nextInfo.isFinalYear,
+      totalCandidates: students.length,
+      candidates: students
+    });
+  } catch (error) {
+    console.error('Error fetching promotion candidates:', error);
+    res.status(500).json({ message: 'Error retrieving promotion candidates', error: error.message });
+  }
+});
+
+// POST /api/students/promote-batch — Execute class-wise student promotion & rollover
+router.post('/promote-batch', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const {
+      sourceClass,
+      sourceSection,
+      targetClass,
+      targetSection,
+      fromSession = '2026-2027',
+      toSession = '2027-2028',
+      students = [],
+      remarks = ''
+    } = req.body;
+
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!sourceClass || !Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ message: 'Source class and student actions list are required' });
+    }
+
+    const userName = req.user?.name || req.headers['x-user-name'] || 'Administrator';
+    const userRole = (req.user?.role || req.headers['x-user-role'] || 'admin').toLowerCase();
+
+    let promotedCount = 0;
+    let retainedCount = 0;
+    let graduatedCount = 0;
+    let transferredCount = 0;
+    const logDetails = [];
+
+    for (const item of students) {
+      const { studentId, action, targetGrade, targetSec, studentRemarks } = item;
+      if (!studentId) continue;
+
+      const studentDoc = await Student.findOne({ _id: studentId, entityId: req.entityId });
+      if (!studentDoc) continue;
+
+      const prevGrade = studentDoc.grade;
+      const prevSec = studentDoc.section;
+      const effectiveAction = action || 'Promoted';
+
+      let newGrade = prevGrade;
+      let newSec = prevSec;
+      let newStatus = studentDoc.status || 'Active';
+
+      if (effectiveAction === 'Promoted') {
+        const destGrade = targetGrade || targetClass || getNextGradeInfo(prevGrade).nextGrade;
+        if (destGrade === 'Graduated') {
+          newStatus = 'Graduated';
+          newGrade = prevGrade;
+          graduatedCount++;
+        } else {
+          newGrade = destGrade;
+          newSec = targetSec || targetSection || prevSec;
+          newStatus = 'Active';
+          promotedCount++;
+        }
+      } else if (effectiveAction === 'Graduated') {
+        newStatus = 'Graduated';
+        graduatedCount++;
+      } else if (effectiveAction === 'Retained') {
+        newGrade = prevGrade;
+        newSec = targetSec || prevSec;
+        newStatus = 'Active';
+        retainedCount++;
+      } else if (effectiveAction === 'Transferred') {
+        newStatus = 'Transferred';
+        transferredCount++;
+      }
+
+      studentDoc.grade = newGrade;
+      studentDoc.section = newSec;
+      studentDoc.status = newStatus;
+      studentDoc.academicSession = toSession;
+
+      if (!Array.isArray(studentDoc.promotionHistory)) {
+        studentDoc.promotionHistory = [];
+      }
+
+      studentDoc.promotionHistory.push({
+        fromGrade: prevGrade,
+        toGrade: newGrade,
+        fromSection: prevSec,
+        toSection: newSec,
+        fromSession,
+        toSession,
+        action: effectiveAction,
+        remarks: studentRemarks || remarks || `Class progression: ${fromSession} to ${toSession}`,
+        promotedAt: new Date(),
+        promotedBy: userName
+      });
+
+      await studentDoc.save();
+
+      logDetails.push({
+        studentId: studentDoc._id,
+        studentName: studentDoc.name,
+        rollNo: studentDoc.rollNo,
+        fromGrade: prevGrade,
+        toGrade: newGrade,
+        fromSection: prevSec,
+        toSection: newSec,
+        action: effectiveAction,
+        remarks: studentRemarks || remarks || ''
+      });
+    }
+
+    // Ensure target class exists in ClassSection for the new session
+    if (targetClass && targetClass !== 'Graduated') {
+      const effectiveTargetSec = targetSection || sourceSection || 'A';
+      await ClassSection.findOneAndUpdate(
+        {
+          className: targetClass.trim(),
+          section: effectiveTargetSec.trim().toUpperCase(),
+          entityId: req.entityId
+        },
+        {
+          $setOnInsert: {
+            className: targetClass.trim(),
+            section: effectiveTargetSec.trim().toUpperCase(),
+            academicSession: toSession,
+            entityId: req.entityId,
+            schoolSlug: schoolSlug || req.schoolSlug || '',
+            status: 'Active',
+            capacity: 40,
+            subjects: ['Mathematics', 'Science', 'English', 'Social Studies']
+          }
+        },
+        { upsert: true }
+      ).catch(() => null);
+    }
+
+    const promotionLog = new PromotionLog({
+      entityId: req.entityId,
+      schoolSlug: schoolSlug || req.schoolSlug || '',
+      mode: 'class_wise',
+      fromSession,
+      toSession,
+      sourceClass: `${sourceClass}${sourceSection ? ` - ${sourceSection}` : ''}`,
+      targetClass: `${targetClass || 'Graduated'}${targetSection ? ` - ${targetSection}` : ''}`,
+      totalProcessed: logDetails.length,
+      promotedCount,
+      retainedCount,
+      graduatedCount,
+      transferredCount,
+      executedBy: userName,
+      executedByRole: userRole,
+      details: logDetails,
+      notes: remarks || `Promoted ${promotedCount} students from ${sourceClass} to ${targetClass || 'next level'}`
+    });
+
+    await promotionLog.save();
+
+    res.json({
+      success: true,
+      message: `Promotion complete! ${promotedCount} promoted, ${retainedCount} retained, ${graduatedCount} graduated, ${transferredCount} marked transferred for session ${toSession}.`,
+      summary: {
+        totalProcessed: logDetails.length,
+        promotedCount,
+        retainedCount,
+        graduatedCount,
+        transferredCount,
+        fromSession,
+        toSession
+      },
+      promotionLogId: promotionLog._id
+    });
+  } catch (error) {
+    console.error('Error in batch student promotion:', error);
+    res.status(500).json({ message: 'Error processing batch promotion', error: error.message });
+  }
+});
+
+// POST /api/students/promote-school-rollover — Whole-school automated academic session progression
+router.post('/promote-school-rollover', async (req, res) => {
+  if (!checkAdminAuthority(req, res)) return;
+
+  try {
+    const { fromSession = '2026-2027', toSession = '2027-2028', remarks = '' } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
+    const userName = req.user?.name || req.headers['x-user-name'] || 'Administrator';
+    const userRole = (req.user?.role || req.headers['x-user-role'] || 'admin').toLowerCase();
+
+    const query = { entityId: req.entityId, status: 'Active' };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const activeStudents = await Student.find(query);
+
+    let promotedCount = 0;
+    let graduatedCount = 0;
+    const logDetails = [];
+
+    for (const st of activeStudents) {
+      const prevGrade = st.grade;
+      const prevSec = st.section;
+      const nextInfo = getNextGradeInfo(prevGrade);
+
+      let newGrade = prevGrade;
+      let newStatus = 'Active';
+      let action = 'Promoted';
+
+      if (nextInfo.isFinalYear || nextInfo.nextGrade === 'Graduated') {
+        newStatus = 'Graduated';
+        action = 'Graduated';
+        graduatedCount++;
+      } else {
+        newGrade = nextInfo.nextGrade;
+        promotedCount++;
+      }
+
+      st.grade = newGrade;
+      st.status = newStatus;
+      st.academicSession = toSession;
+
+      if (!Array.isArray(st.promotionHistory)) {
+        st.promotionHistory = [];
+      }
+
+      st.promotionHistory.push({
+        fromGrade: prevGrade,
+        toGrade: newGrade,
+        fromSection: prevSec,
+        toSection: prevSec,
+        fromSession,
+        toSession,
+        action,
+        remarks: remarks || `Annual School Rollover ${fromSession} → ${toSession}`,
+        promotedAt: new Date(),
+        promotedBy: userName
+      });
+
+      await st.save();
+
+      logDetails.push({
+        studentId: st._id,
+        studentName: st.name,
+        rollNo: st.rollNo,
+        fromGrade: prevGrade,
+        toGrade: newGrade,
+        fromSection: prevSec,
+        toSection: prevSec,
+        action,
+        remarks
+      });
+    }
+
+    const classQuery = { entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      classQuery.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+    await ClassSection.updateMany(classQuery, { $set: { academicSession: toSession } }).catch(() => null);
+
+    const promotionLog = new PromotionLog({
+      entityId: req.entityId,
+      schoolSlug: schoolSlug || req.schoolSlug || '',
+      mode: 'school_rollover',
+      fromSession,
+      toSession,
+      sourceClass: 'All School Classes',
+      targetClass: 'Next Grade Hierarchy',
+      totalProcessed: logDetails.length,
+      promotedCount,
+      retainedCount: 0,
+      graduatedCount,
+      transferredCount: 0,
+      executedBy: userName,
+      executedByRole: userRole,
+      details: logDetails,
+      notes: remarks || `Whole-school annual session rollover from ${fromSession} to ${toSession}`
+    });
+
+    await promotionLog.save();
+
+    res.json({
+      success: true,
+      message: `Annual school session rollover successful! ${promotedCount} students advanced to next classes, ${graduatedCount} graduated. Active session is now ${toSession}.`,
+      summary: {
+        totalProcessed: logDetails.length,
+        promotedCount,
+        graduatedCount,
+        fromSession,
+        toSession
+      },
+      promotionLogId: promotionLog._id
+    });
+  } catch (error) {
+    console.error('Error in school-wide rollover:', error);
+    res.status(500).json({ message: 'Error processing annual rollover', error: error.message });
+  }
+});
+
+// GET /api/students/promotion-history — Retrieve promotion audit history
+router.get('/promotion-history', async (req, res) => {
+  try {
+    const schoolSlug = resolveSchoolSlug(req);
+    const query = { entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const history = await PromotionLog.find(query)
+      .sort({ createdAt: -1 })
+      .limit(30);
+
+    res.json({
+      success: true,
+      history: history || []
+    });
+  } catch (error) {
+    console.error('Error retrieving promotion history:', error);
+    res.status(500).json({ message: 'Error retrieving promotion history', error: error.message });
+  }
+});
+
+
 
 // GET /api/students/:id — Get single student
 router.get('/:id', async (req, res) => {

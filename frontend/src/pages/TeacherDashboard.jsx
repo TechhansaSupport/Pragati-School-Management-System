@@ -601,7 +601,7 @@ const TeacherDashboard = () => {
         </div>
       )}
 
-      {/* Top Header Card - Clean White Surface */}
+      {/* Top Header Card - Clean White Surface (TOP OF DASHBOARD) */}
       <div className="no-print" style={{
         gridColumn: '1 / -1',
         background: 'var(--color-surface, white)',
@@ -752,6 +752,11 @@ const TeacherDashboard = () => {
             AY 2026-2027 • Term 2
           </div>
         </div>
+      </div>
+
+      {/* ─── STAFF ATTENDANCE MODULE ─── */}
+      <div style={{ gridColumn: '1 / -1', width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+        <StaffPunchClock onPunchSuccess={(data) => showToast(data?.message || 'Attendance recorded')} />
       </div>
 
       {/* FULL-WIDTH 4-KPI SCORECARDS STRIP */}
@@ -1030,9 +1035,6 @@ const TeacherDashboard = () => {
 
       {/* RIGHT COLUMN: Operational Controls, Tasks & Submissions */}
       <div className="right-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        {/* Real-time Faculty Punch In / Punch Out Time Clock */}
-        <StaffPunchClock onPunchSuccess={(data) => showToast(data.message)} />
-
         {/* Action Required / To-Do */}
         <div className="card" style={{ padding: '20px 24px', background: 'var(--color-surface, white)', borderRadius: '16px', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>

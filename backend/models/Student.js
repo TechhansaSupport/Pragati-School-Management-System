@@ -60,6 +60,27 @@ const studentSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  academicSession: {
+    type: String,
+    default: '2026-2027',
+    trim: true,
+  },
+  promotionHistory: [{
+    fromGrade: String,
+    toGrade: String,
+    fromSection: String,
+    toSection: String,
+    fromSession: String,
+    toSession: String,
+    action: {
+      type: String,
+      enum: ['Promoted', 'Retained', 'Graduated', 'Transferred'],
+      default: 'Promoted',
+    },
+    remarks: String,
+    promotedAt: { type: Date, default: Date.now },
+    promotedBy: String,
+  }],
   schoolSlug: { type: String, trim: true, index: true },
   entityId: { type: String, required: true, index: true },
   // Student Portal Login Credentials

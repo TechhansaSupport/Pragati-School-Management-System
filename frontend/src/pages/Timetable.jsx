@@ -5,7 +5,7 @@ import {
   CalendarDays, Clock, Users, Building, Building2, ShieldCheck, RefreshCw, 
   FileText, CheckCircle2, AlertTriangle, Award, X, Sparkles, BookOpen, Plus,
   Trash2, Coffee, SlidersHorizontal, Check, LayoutGrid, RotateCcw, Edit3, Grid,
-  GraduationCap
+  GraduationCap, Activity, Palette, Dumbbell, Music, Bookmark, Layers, Filter, Printer
 } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
@@ -180,6 +180,25 @@ const Timetable = () => {
 
   // Reset to Scratch Modal State
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+  // Class-wise Subjects & Activity Classes Modal State (Restricting AI Matrix Generator)
+  const [isClassCurriculumModalOpen, setIsClassCurriculumModalOpen] = useState(false);
+  const [curriculumLoading, setCurriculumLoading] = useState(false);
+  const [curriculumSaving, setCurriculumSaving] = useState(false);
+  const [curriculumClassTarget, setCurriculumClassTarget] = useState({ className: 'Class 10', section: 'A' });
+  const [classAcademicSubjects, setClassAcademicSubjects] = useState([]);
+  const [classActivityClasses, setClassActivityClasses] = useState([]);
+  const [classCurriculumItems, setClassCurriculumItems] = useState([]);
+  const [curriculumStaffList, setCurriculumStaffList] = useState([]);
+  const [curriculumActiveTab, setCurriculumActiveTab] = useState('ALL'); // 'ALL' | 'ACADEMIC' | 'ACTIVITY'
+  const [curriculumFeedback, setCurriculumFeedback] = useState({ type: '', message: '' });
+  const [newCurriculumInput, setNewCurriculumInput] = useState({
+    name: '',
+    type: 'Academic', // 'Academic' | 'Activity' | 'Lab'
+    teacher: '',
+    room: '',
+    periodsPerWeek: 5
+  });
   const [resetOptions, setResetOptions] = useState({
     resetType: 'blank_slots', // 'blank_slots' | 'clear_all'
     periodsPerDay: 8,
@@ -384,12 +403,239 @@ const Timetable = () => {
     }
   };
 
+  const fetchClassCurriculum = async (targetClass, targetSec) => {
+    const cName = targetClass || currentSelectedClassName;
+    const sName = targetSec || currentSelectedSectionName;
+    if (!cName || !sName) return;
+
+    setCurriculumLoading(true);
+    try {
+      const slugQuery = effectiveSchoolSlug ? `&schoolSlug=${encodeURIComponent(effectiveSchoolSlug)}` : '';
+      const res = await fetch(
+        `${API_BASE}/timetable/class-curriculum?className=${encodeURIComponent(cName)}&section=${encodeURIComponent(sName)}${slugQuery}`,
+        { headers: getAuthHeaders() }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setClassAcademicSubjects(data.subjects || []);
+        setClassActivityClasses(data.activityClasses || []);
+        setClassCurriculumItems(data.curriculum || []);
+        if (Array.isArray(data.staffList) && data.staffList.length > 0) {
+          setCurriculumStaffList(data.staffList);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching class curriculum:', err);
+    } finally {
+      setCurriculumLoading(false);
+    }
+  };
+
+  const handleOpenClassCurriculumModal = (cls = null, sec = null) => {
+    const targetC = cls || currentSelectedClassName;
+    const targetS = sec || currentSelectedSectionName;
+    setCurriculumFeedback({ type: '', message: '' });
+    setCurriculumClassTarget({ className: targetC, section: targetS });
+    fetchClassCurriculum(targetC, targetS);
+    setIsClassCurriculumModalOpen(true);
+  };
+
+  const handleSaveClassCurriculum = async (autoGenerateImmediately = false) => {
+    if (!canSetup) return;
+    setCurriculumSaving(true);
+    try {
+      const { className, section } = curriculumClassTarget;
+      const res = await fetch(`${API_BASE}/timetable/class-curriculum`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          className,
+          section,
+          schoolSlug: effectiveSchoolSlug,
+          subjects: classAcademicSubjects,
+          activityClasses: classActivityClasses,
+          curriculum: classCurriculumItems
+        })
+      });
+
+      if (res.ok) {
+        if (autoGenerateImmediately) {
+          setTimetableNotification(`✨ Generating AI Matrix timetable strictly restricted to ${classAcademicSubjects.length} subjects & ${classActivityClasses.length} activity classes...`);
+          setIsAutoGenerating(true);
+          const genRes = await fetch(`${API_BASE}/timetable/auto-generate`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+              className,
+              section,
+              schoolSlug: effectiveSchoolSlug,
+              offDays,
+              subjects: classAcademicSubjects,
+              activityClasses: classActivityClasses,
+              curriculum: classCurriculumItems
+            })
+          });
+          if (genRes.ok) {
+            const genData = await genRes.json();
+            if (genData.timetable?.schedule) {
+              setTimetableSchedule(genData.timetable.schedule);
+            }
+            if (Array.isArray(genData.timetable?.offDays)) {
+              setOffDays(genData.timetable.offDays);
+            }
+            setSelectedTimetableClass(`${className} - ${section}`);
+            setTimetableNotification(`🎉 AI Timetable Matrix generated successfully! Strictly includes only the ${classAcademicSubjects.length} subjects and ${classActivityClasses.length} activity classes configured for ${className} - ${section}.`);
+            setIsClassCurriculumModalOpen(false);
+          } else {
+            const err = await genRes.json().catch(() => ({}));
+            setTimetableNotification(`⚠️ ${err.message || 'Error auto-generating timetable'}`);
+          }
+          setIsAutoGenerating(false);
+        } else {
+          setTimetableNotification(`✅ Class curriculum saved! AI Matrix is now locked to schedule only these ${classAcademicSubjects.length} subjects & ${classActivityClasses.length} activity classes for ${className} - ${section}.`);
+          setIsClassCurriculumModalOpen(false);
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setTimetableNotification(`⚠️ ${err.message || 'Failed to save class curriculum'}`);
+      }
+    } catch (err) {
+      setTimetableNotification('⚠️ Network error saving curriculum');
+    } finally {
+      setCurriculumSaving(false);
+      setTimeout(() => setTimetableNotification(''), 5500);
+    }
+  };
+
+  const showCurriculumFeedback = (type, message) => {
+    setCurriculumFeedback({ type, message });
+    setTimeout(() => {
+      setCurriculumFeedback(prev => (prev.message === message ? { type: '', message: '' } : prev));
+    }, 4500);
+  };
+
+  const handleAddCurriculumItem = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const rawName = newCurriculumInput.name || '';
+    const name = rawName.trim();
+    if (!name) {
+      showCurriculumFeedback('error', 'Please enter a subject or activity name (e.g. Mathematics, Robotics, Karate) before clicking Add.');
+      const inputEl = document.getElementById('curriculum-subject-input');
+      if (inputEl) inputEl.focus();
+      return;
+    }
+
+    const type = newCurriculumInput.type || 'Academic';
+    const isActivity = type === 'Activity';
+    const lowerName = name.toLowerCase();
+
+    const existsInAcademic = classAcademicSubjects.some(s => String(s || '').trim().toLowerCase() === lowerName);
+    const existsInActivity = classActivityClasses.some(a => String(a || '').trim().toLowerCase() === lowerName);
+
+    if (existsInAcademic || existsInActivity) {
+      showCurriculumFeedback('warning', `"${name}" is already included in this class's curriculum as ${existsInAcademic ? 'an Academic Subject' : 'an Activity Class'}.`);
+      return;
+    }
+
+    if (isActivity) {
+      setClassActivityClasses(prev => [...prev, name]);
+    } else {
+      setClassAcademicSubjects(prev => [...prev, name]);
+    }
+
+    setClassCurriculumItems(prev => {
+      const filtered = prev.filter(item => String(item.name || '').trim().toLowerCase() !== lowerName);
+      return [...filtered, {
+        name,
+        type,
+        teacher: newCurriculumInput.teacher || '',
+        room: newCurriculumInput.room || (isActivity ? 'Activity Hall' : 'Room 101'),
+        periodsPerWeek: Number(newCurriculumInput.periodsPerWeek) || (isActivity ? 2 : 5)
+      }];
+    });
+
+    setNewCurriculumInput({
+      name: '',
+      type,
+      teacher: '',
+      room: '',
+      periodsPerWeek: 5
+    });
+
+    showCurriculumFeedback('success', `✓ Added "${name}" (${type}) to ${curriculumClassTarget.className} - Section ${curriculumClassTarget.section}!`);
+  };
+
+  const handleQuickAddSubject = (name, type = 'Academic', defaultRoom = '') => {
+    const isActivity = type === 'Activity';
+    const cleanName = String(name || '').trim();
+    const lowerName = cleanName.toLowerCase();
+
+    if (isActivity) {
+      if (classActivityClasses.some(a => String(a || '').trim().toLowerCase() === lowerName)) {
+        showCurriculumFeedback('warning', `"${cleanName}" is already in this class's activity list.`);
+        return;
+      }
+      setClassActivityClasses(prev => [...prev, cleanName]);
+      setClassCurriculumItems(prev => [
+        ...prev.filter(i => String(i.name || '').trim().toLowerCase() !== lowerName),
+        { name: cleanName, type: 'Activity', teacher: '', room: defaultRoom || 'Activity Hall', periodsPerWeek: 2 }
+      ]);
+      showCurriculumFeedback('success', `✓ Added "${cleanName}" (Activity)`);
+    } else {
+      if (classAcademicSubjects.some(s => String(s || '').trim().toLowerCase() === lowerName)) {
+        showCurriculumFeedback('warning', `"${cleanName}" is already in this class's subjects list.`);
+        return;
+      }
+      setClassAcademicSubjects(prev => [...prev, cleanName]);
+      setClassCurriculumItems(prev => [
+        ...prev.filter(i => String(i.name || '').trim().toLowerCase() !== lowerName),
+        { name: cleanName, type: type || 'Academic', teacher: '', room: defaultRoom || 'Room 101', periodsPerWeek: 5 }
+      ]);
+      showCurriculumFeedback('success', `✓ Added "${cleanName}" (Academic)`);
+    }
+  };
+
+  const handleRemoveAcademicSubject = (subjectName) => {
+    const target = String(subjectName || '').trim().toLowerCase();
+    setClassAcademicSubjects(prev => prev.filter(s => String(s || '').trim().toLowerCase() !== target));
+    setClassCurriculumItems(prev => prev.filter(i => String(i.name || '').trim().toLowerCase() !== target));
+    showCurriculumFeedback('warning', `Removed "${subjectName}" from curriculum.`);
+  };
+
+  const handleRemoveActivityClass = (activityName) => {
+    const target = String(activityName || '').trim().toLowerCase();
+    setClassActivityClasses(prev => prev.filter(a => String(a || '').trim().toLowerCase() !== target));
+    setClassCurriculumItems(prev => prev.filter(i => String(i.name || '').trim().toLowerCase() !== target));
+    showCurriculumFeedback('warning', `Removed "${activityName}" from curriculum.`);
+  };
+
+  const handleCurriculumItemTeacherChange = (itemName, teacherName) => {
+    setClassCurriculumItems(prev => {
+      const exists = prev.some(i => i.name.toLowerCase() === itemName.toLowerCase());
+      if (exists) {
+        return prev.map(i => i.name.toLowerCase() === itemName.toLowerCase() ? { ...i, teacher: teacherName } : i);
+      }
+      return [...prev, { name: itemName, type: 'Academic', teacher: teacherName, room: '', periodsPerWeek: 5 }];
+    });
+  };
+
+  const handleCurriculumItemRoomChange = (itemName, roomName) => {
+    setClassCurriculumItems(prev => {
+      const exists = prev.some(i => i.name.toLowerCase() === itemName.toLowerCase());
+      if (exists) {
+        return prev.map(i => i.name.toLowerCase() === itemName.toLowerCase() ? { ...i, room: roomName } : i);
+      }
+      return [...prev, { name: itemName, type: 'Academic', teacher: '', room: roomName, periodsPerWeek: 5 }];
+    });
+  };
+
   useEffect(() => {
     if (selectedTimetableClass) {
       const parts = selectedTimetableClass.split(' - ');
       const className = parts[0] || selectedTimetableClass;
       const section = parts[1] || 'A';
       fetchLiveTimetable(className, section);
+      fetchClassCurriculum(className, section);
     }
   }, [selectedTimetableClass, effectiveSchoolSlug]);
 
@@ -522,7 +768,10 @@ const Timetable = () => {
           className,
           section,
           schoolSlug: effectiveSchoolSlug,
-          offDays
+          offDays,
+          subjects: classAcademicSubjects,
+          activityClasses: classActivityClasses,
+          curriculum: classCurriculumItems
         })
       });
 
@@ -534,7 +783,13 @@ const Timetable = () => {
         if (Array.isArray(data.timetable?.offDays)) {
           setOffDays(data.timetable.offDays);
         }
-        setTimetableNotification(`✅ Collision-free timetable auto-generated and saved to DB for ${selectedTimetableClass}!`);
+        if (Array.isArray(data.subjects)) {
+          setClassAcademicSubjects(data.subjects);
+        }
+        if (Array.isArray(data.activityClasses)) {
+          setClassActivityClasses(data.activityClasses);
+        }
+        setTimetableNotification(`✨ AI Matrix Timetable auto-generated! Strictly restricted to the ${data.subjects?.length || classAcademicSubjects.length} subjects & ${data.activityClasses?.length || classActivityClasses.length} activity classes listed for ${selectedTimetableClass}.`);
       } else {
         const errData = await res.json().catch(() => ({}));
         setTimetableNotification(`⚠️ ${errData.message || 'Failed to auto-generate timetable'}`);
@@ -1071,32 +1326,63 @@ const Timetable = () => {
       
       {/* CONTROL & CONSTRAINT ACTION BAR */}
       {!isStudent && (
-        <div className="chart-card no-print" style={{ padding: '20px 24px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
-                CONFLICT ENGINE
-              </span>
+        <div className="chart-card no-print" style={{
+          padding: '18px 22px',
+          background: 'white',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          {/* Header Row: Title, Category Badge & Campus Selector */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px',
+            borderBottom: '1px solid #f1f5f9',
+            paddingBottom: '12px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                <span style={{
+                  background: '#e0e7ff',
+                  color: '#4338ca',
+                  padding: '2px 8px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.4px'
+                }}>
+                  CONFLICT ENGINE
+                </span>
+                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>
+                  Real-Time Matrix Allocation & Optimization
+                </span>
+              </div>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', letterSpacing: '-0.01em' }}>
+                Schedule Matrix & Allocation Controls
+              </h2>
             </div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a' }}>
-              Schedule Matrix & Allocation Controls
-            </h2>
-          </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* Campus Selector for Super Admin */}
             {isSuperAdmin && schoolsList.length > 0 && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
+                gap: '7px',
                 background: '#f8fafc',
-                padding: '6px 12px',
+                padding: '0 12px',
                 borderRadius: '10px',
-                border: '1.5px solid #cbd5e1'
+                border: '1px solid #cbd5e1',
+                height: '36px',
+                boxSizing: 'border-box'
               }}>
-                <Building2 size={16} color="#4F46E5" />
-                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <Building2 size={15} color="#4F46E5" />
+                <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
                   Campus:
                 </span>
                 <select
@@ -1107,15 +1393,14 @@ const Timetable = () => {
                     sessionStorage.setItem('tenantSlug', val);
                   }}
                   style={{
-                    background: 'white',
+                    background: 'transparent',
                     color: '#1e3a8a',
-                    border: '1px solid #cbd5e1',
-                    borderRadius: '6px',
-                    padding: '4px 8px',
+                    border: 'none',
                     fontSize: '0.84rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    outline: 'none'
+                    outline: 'none',
+                    padding: 0
                   }}
                 >
                   {schoolsList.map(s => (
@@ -1126,217 +1411,342 @@ const Timetable = () => {
                 </select>
               </div>
             )}
+          </div>
 
-            <select
-              value={selectedTimetableClass}
-              onChange={(e) => setSelectedTimetableClass(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', fontWeight: 700, color: '#1e3a8a', background: 'white', cursor: 'pointer' }}
-            >
-              {classesList.length > 0 ? (
-                classesList.map(c => (
-                  <option key={c._id} value={`${c.className} - ${c.section}`}>
-                    {c.className} - Section {c.section}
-                  </option>
-                ))
-              ) : (
+          {/* Tier 1: Matrix Operations (Left: Actions, Right: Class Scope & Print) */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            {/* Left Operational Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {canSetup && (
                 <>
-                  <option value="Class 10 - A">Class 10 - Section A</option>
-                  <option value="Class 9 - B">Class 9 - Section B</option>
-                  <option value="Class 11 - SCIENCE">Class 11 - Section Science</option>
-                  <option value="Class 8 - A">Class 8 - Section A</option>
+                  <button
+                    type="button"
+                    onClick={handleAutoGenerateTimetable}
+                    disabled={isAutoGenerating}
+                    style={{
+                      height: '36px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      padding: '0 15px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: isAutoGenerating ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { if (!isAutoGenerating) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                    title="Super Admin & Admin: Auto-Generate conflict-free timetable"
+                  >
+                    <RefreshCw size={14} className={isAutoGenerating ? 'spin' : ''} />
+                    <span>Auto-Optimize Matrix</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allNames = classesList.map(c => `${c.className} - ${c.section}`);
+                      setMasterStructureConfig(prev => ({
+                        ...prev,
+                        targetClasses: 'all',
+                        selectedClassesList: allNames
+                      }));
+                      setIsMasterStructureModalOpen(true);
+                    }}
+                    style={{
+                      height: '36px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      padding: '0 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #1e1b4b',
+                      background: '#1e1b4b',
+                      color: '#f8fafc',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(30, 27, 75, 0.15)',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#2e1065'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#1e1b4b'; }}
+                    title="Super Admin & Admin: Structure timetable for all school classes at once"
+                  >
+                    <Sparkles size={14} color="#c7d2fe" />
+                    <span>Structure All Classes (Master)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAddPeriodModal()}
+                    style={{
+                      height: '36px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '0 13px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.2)',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                    onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                    title="Add a new period or recess slot"
+                  >
+                    <Plus size={15} />
+                    <span>Add Period</span>
+                  </button>
                 </>
               )}
-            </select>
 
-            <button
-              onClick={handleValidateConflicts}
-              disabled={isValidatingConflicts}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '9px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                background: '#0F766E',
-                color: 'white',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: isValidatingConflicts ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 12px rgba(15, 118, 110, 0.25)'
-              }}
-            >
-              <ShieldCheck size={16} />
-              <span>{isValidatingConflicts ? 'Validating...' : 'Run Conflict Validator'}</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleValidateConflicts}
+                disabled={isValidatingConflicts}
+                style={{
+                  height: '36px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0 13px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #0d9488',
+                  background: '#f0fdfa',
+                  color: '#0f766e',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: isValidatingConflicts ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s'
+                }}
+                onMouseOver={e => { if (!isValidatingConflicts) e.currentTarget.style.background = '#ccfbf1'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#f0fdfa'; }}
+                title="Run live teacher, room, and period constraint checker"
+              >
+                <ShieldCheck size={15} color="#0d9488" />
+                <span>{isValidatingConflicts ? 'Validating...' : 'Run Conflict Validator'}</span>
+              </button>
+            </div>
 
+            {/* Right Side: Class Selector & Print Schedule */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <select
+                value={selectedTimetableClass}
+                onChange={(e) => setSelectedTimetableClass(e.target.value)}
+                style={{
+                  height: '36px',
+                  padding: '0 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #cbd5e1',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  color: '#1e3a8a',
+                  background: 'white',
+                  cursor: 'pointer',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                }}
+              >
+                {classesList.length > 0 ? (
+                  classesList.map(c => (
+                    <option key={c._id} value={`${c.className} - ${c.section}`}>
+                      {c.className} - Section {c.section}
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Class 10 - A">Class 10 - Section A</option>
+                    <option value="Class 9 - B">Class 9 - Section B</option>
+                    <option value="Class 11 - SCIENCE">Class 11 - Section Science</option>
+                    <option value="Class 8 - A">Class 8 - Section A</option>
+                  </>
+                )}
+              </select>
+
+              <button
+                type="button"
+                onClick={handlePrintTimetable}
+                style={{
+                  height: '36px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0 13px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #cbd5e1',
+                  background: 'white',
+                  color: '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#1e293b'; }}
+                onMouseOut={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#475569'; }}
+                title="Print official academic weekly timetable schedule"
+              >
+                <Printer size={15} />
+                <span>Print Schedule</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tier 2: Rules & Configurations (Left: Constraints, Right: Reset) */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px',
+            paddingTop: '10px',
+            borderTop: '1px dashed #e2e8f0'
+          }}>
+            {/* Left: Curriculum & Timing Rules */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {canSetup && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenClassCurriculumModal()}
+                    style={{
+                      height: '36px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      padding: '0 13px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #c7d2fe',
+                      background: '#eef2ff',
+                      color: '#3730a3',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#e0e7ff'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#eef2ff'; }}
+                    title="Configure Class Subjects & Activity Classes for AI Matrix"
+                  >
+                    <BookOpen size={14} color="#4f46e5" />
+                    <span>Class Subjects & Activities</span>
+                    {(classAcademicSubjects.length + classActivityClasses.length) > 0 && (
+                      <span style={{
+                        background: '#4f46e5',
+                        color: 'white',
+                        borderRadius: '10px',
+                        padding: '1px 6px',
+                        fontSize: '0.72rem',
+                        fontWeight: 800
+                      }}>
+                        {classAcademicSubjects.length + classActivityClasses.length}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenBellScheduleModal}
+                    style={{
+                      height: '36px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '0 13px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #fed7aa',
+                      background: '#fff7ed',
+                      color: '#c2410c',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#ffedd5'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#fff7ed'; }}
+                    title="Configure Bell & Recess Timings across all days"
+                  >
+                    <Coffee size={14} color="#ea580c" />
+                    <span>Bell & Recess Timings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenWorkingDaysModal}
+                    style={{
+                      height: '36px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '0 13px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      background: '#f8fafc',
+                      color: '#475569',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseOver={e => { e.currentTarget.style.background = '#f1f5f9'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; }}
+                    title="Manage instructional working days & holidays"
+                  >
+                    <CalendarDays size={14} color="#64748b" />
+                    <span>Days ON / OFF</span>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Right: Reset Action */}
             {canSetup && (
-              <>
-                {/* PRIMARY MASTER STRUCTURE BUTTON FOR ALL CLASSES AT ONCE */}
-                <button
-                  onClick={() => {
-                    const allNames = classesList.map(c => `${c.className} - ${c.section}`);
-                    setMasterStructureConfig(prev => ({
-                      ...prev,
-                      targetClasses: 'all',
-                      selectedClassesList: allNames
-                    }));
-                    setIsMasterStructureModalOpen(true);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '7px',
-                    padding: '9px 18px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4338ca 100%)',
-                    color: 'white',
-                    fontWeight: 800,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(55, 48, 163, 0.35)',
-                    transition: 'all 0.15s'
-                  }}
-                  title="Super Admin & Admin: Structure the timetable for all school classes at once (8 periods + dedicated recess), then assign periods separately"
-                >
-                  <Sparkles size={16} color="#a5b4fc" />
-                  <span>Structure All Classes (Master)</span>
-                </button>
-
-                <button
-                  onClick={() => handleOpenAddPeriodModal()}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
-                  }}
-                  title="Super Admin & Admin: Add a new period or recess slot"
-                >
-                  <Plus size={16} />
-                  <span>Add Period</span>
-                </button>
-
-                <button
-                  onClick={handleOpenBellScheduleModal}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #fed7aa',
-                    background: '#fff7ed',
-                    color: '#c2410c',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                  title="Super Admin & Admin: Configure bell timings and recess breaks across all days"
-                >
-                  <Coffee size={15} color="#ea580c" />
-                  <span>Bell & Recess Timings</span>
-                </button>
-
-                <button
-                  onClick={handleAutoGenerateTimetable}
-                  disabled={isAutoGenerating}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: '#4F46E5',
-                    color: 'white',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: isAutoGenerating ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)'
-                  }}
-                  title="Super Admin & Admin: Auto-Generate conflict-free timetable"
-                >
-                  <RefreshCw size={15} className={isAutoGenerating ? 'spin' : ''} />
-                  <span>Auto-Optimize Matrix</span>
-                </button>
-
-                <button
-                  onClick={() => setIsResetModalOpen(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #fecaca',
-                    background: '#fff1f2',
-                    color: '#e11d48',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                  title="Reset this class' schedule to blank scratch matrix"
-                >
-                  <RotateCcw size={14} color="#e11d48" />
-                  <span>Reset to Scratch</span>
-                </button>
-
-                <button
-                  onClick={handleOpenWorkingDaysModal}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 16px',
-                    borderRadius: '10px',
-                    border: '1.5px solid #fed7aa',
-                    background: '#fff7ed',
-                    color: '#c2410c',
-                    fontWeight: 700,
-                    fontSize: '0.85rem',
-                    cursor: 'pointer'
-                  }}
-                  title="Manage instructional working days & off days (e.g. make Saturday or any day ON or OFF)"
-                >
-                  <CalendarDays size={15} color="#ea580c" />
-                  <span>Days ON / OFF</span>
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(true)}
+                style={{
+                  height: '36px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '0 12px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #fecdd3',
+                  background: '#fff1f2',
+                  color: '#e11d48',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#ffe4e6'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#fff1f2'; }}
+                title="Reset this class' schedule to blank scratch matrix"
+              >
+                <RotateCcw size={13} color="#e11d48" />
+                <span>Reset to Scratch</span>
+              </button>
             )}
-
-            <button
-              onClick={handlePrintTimetable}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '9px 16px',
-                borderRadius: '10px',
-                border: '1px solid #cbd5e1',
-                background: 'white',
-                color: '#475569',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer'
-              }}
-              title="Print official academic weekly timetable schedule"
-            >
-              <FileText size={15} />
-              <span>Print Schedule</span>
-            </button>
           </div>
         </div>
       )}
+
 
       {/* NOTIFICATION BANNER */}
       {timetableNotification && (
@@ -1519,6 +1929,43 @@ const Timetable = () => {
                 <CheckCircle2 size={14} color="#059669" />
                 Active Class: <strong>{selectedTimetableClass}</strong>
               </span>
+
+              {canSetup && (
+                <button
+                  type="button"
+                  onClick={() => handleOpenClassCurriculumModal()}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 13px',
+                    borderRadius: '8px',
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1.5px solid #bfdbfe',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 3px rgba(37, 99, 235, 0.1)'
+                  }}
+                  title="Add subjects & activity classes classwise so AI Matrix only schedules listed items"
+                >
+                  <SlidersHorizontal size={13} color="#2563eb" />
+                  <span>Configure Subjects & Activities</span>
+                  {(classAcademicSubjects.length + classActivityClasses.length) > 0 && (
+                    <span style={{
+                      background: '#2563eb',
+                      color: 'white',
+                      borderRadius: '10px',
+                      padding: '1px 6px',
+                      fontSize: '0.68rem',
+                      fontWeight: 800
+                    }}>
+                      {classAcademicSubjects.length + classActivityClasses.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -3628,6 +4075,827 @@ const Timetable = () => {
                 {isSavingBellSchedule ? 'Saving...' : 'Save Bell Schedule'}
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* CLASS-WISE SUBJECTS & ACTIVITY CLASSES MODAL (AI MATRIX RESTRICTION) */}
+      {isClassCurriculumModalOpen && createPortal(
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 10000, padding: '20px'
+        }}>
+          <div
+            id="class-curriculum-modal"
+            style={{
+              background: 'white',
+              borderRadius: '24px',
+              width: '100%',
+              maxWidth: '880px',
+              height: '90vh',
+              maxHeight: '880px',
+              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <style>{`
+              #class-curriculum-modal *::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+              }
+              #class-curriculum-modal *::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 4px;
+              }
+              #class-curriculum-modal *::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+              }
+              #class-curriculum-modal *::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+              }
+            `}</style>
+
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 28px',
+              borderBottom: '1px solid #e2e8f0',
+              background: 'linear-gradient(to right, #f8fafc, #ffffff)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #4F46E5, #3730A3)',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 16px rgba(79, 70, 229, 0.3)'
+                }}>
+                  <BookOpen size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      color: '#4F46E5',
+                      background: '#e0e7ff',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}>
+                      AI Matrix Curriculum Control
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                      Class-Wise Subjects & Activity Classes
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '4px 0 0 0', fontSize: '1.22rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>Curriculum for:</span>
+                    <select
+                      value={`${curriculumClassTarget.className} - ${curriculumClassTarget.section}`}
+                      onChange={(e) => {
+                        const parts = e.target.value.split(' - ');
+                        const nextC = parts[0];
+                        const nextS = parts[1] || 'A';
+                        setCurriculumClassTarget({ className: nextC, section: nextS });
+                        fetchClassCurriculum(nextC, nextS);
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #4f46e5',
+                        background: '#eff6ff',
+                        color: '#1e3a8a',
+                        fontWeight: 800,
+                        fontSize: '0.92rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {effectiveClassesList.map(c => (
+                        <option key={`${c.className}-${c.section}`} value={`${c.className} - ${c.section}`}>
+                          🏫 {c.className} - Section {c.section}
+                        </option>
+                      ))}
+                    </select>
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsClassCurriculumModalOpen(false)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{
+              padding: '20px 28px',
+              overflowY: 'auto',
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '18px'
+            }}>
+              
+              {/* Summary Counters Strip */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: '12px',
+                flexShrink: 0
+              }}>
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Configured</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                      {classAcademicSubjects.length + classActivityClasses.length} Items
+                    </div>
+                  </div>
+                  <Layers size={22} color="#64748b" />
+                </div>
+
+                <div style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>Academic Subjects</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#1e40af', marginTop: '2px' }}>
+                      {classAcademicSubjects.length} Subjects
+                    </div>
+                  </div>
+                  <BookOpen size={22} color="#2563eb" />
+                </div>
+
+                <div style={{
+                  background: '#fef3c7',
+                  border: '1px solid #fde68a',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase' }}>Activity Classes</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#92400e', marginTop: '2px' }}>
+                      {classActivityClasses.length} Activities
+                    </div>
+                  </div>
+                  <Activity size={22} color="#d97706" />
+                </div>
+              </div>
+
+              {/* Quick Presets Bar */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                flexWrap: 'wrap',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
+                  ⚡ Quick Presets:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const subs = ['Mathematics', 'General Science', 'English Literature', 'Social Studies', 'Hindi', 'Computer Applications'];
+                    const acts = ['Physical Education / Sports', 'Art & Craft', 'Library & Reading', 'Yoga & Wellness'];
+                    setClassAcademicSubjects(subs);
+                    setClassActivityClasses(acts);
+                  }}
+                  style={{
+                    background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 12px',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#334155', cursor: 'pointer'
+                  }}
+                >
+                  Secondary (Class 6 - 10)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const subs = ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'English Core', 'Computer Science'];
+                    const acts = ['Physical Education', 'Library & Research', 'STEM Lab Practical'];
+                    setClassAcademicSubjects(subs);
+                    setClassActivityClasses(acts);
+                  }}
+                  style={{
+                    background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 12px',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#334155', cursor: 'pointer'
+                  }}
+                >
+                  Senior Science (11 & 12)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const subs = ['Accountancy', 'Business Studies', 'Economics', 'English Core', 'Applied Mathematics'];
+                    const acts = ['Physical Education', 'Library & Research', 'Debate & Case Studies'];
+                    setClassAcademicSubjects(subs);
+                    setClassActivityClasses(acts);
+                  }}
+                  style={{
+                    background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 12px',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#334155', cursor: 'pointer'
+                  }}
+                >
+                  Senior Commerce (11 & 12)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const subs = ['English Language', 'Mathematics', 'Environmental Studies (EVS)', 'Hindi', 'General Knowledge'];
+                    const acts = ['Art & Craft', 'Physical Education / Sports', 'Storytelling & Library', 'Music & Rhymes'];
+                    setClassAcademicSubjects(subs);
+                    setClassActivityClasses(acts);
+                  }}
+                  style={{
+                    background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '5px 12px',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#334155', cursor: 'pointer'
+                  }}
+                >
+                  Primary (Class 1 - 5)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setClassAcademicSubjects([]);
+                    setClassActivityClasses([]);
+                    setClassCurriculumItems([]);
+                  }}
+                  style={{
+                    background: '#fff1f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '5px 12px',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#e11d48', cursor: 'pointer', marginLeft: 'auto'
+                  }}
+                >
+                  Clear All
+                </button>
+              </div>
+
+              {/* Add New Subject / Activity Class Input Box */}
+              <div style={{
+                background: 'white',
+                border: '1.5px solid #c7d2fe',
+                borderRadius: '16px',
+                padding: '16px',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.05)',
+                flexShrink: 0
+              }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Plus size={16} color="#4f46e5" />
+                  <span>Add Subject or Activity Class to this Class:</span>
+                </div>
+                <form
+                  onSubmit={handleAddCurriculumItem}
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '10px',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div style={{ flex: '2 1 200px', minWidth: '180px' }}>
+                    <input
+                      id="curriculum-subject-input"
+                      type="text"
+                      placeholder="e.g. Mathematics, Robotics, Karate"
+                      value={newCurriculumInput.name}
+                      onChange={(e) => {
+                        setNewCurriculumInput({ ...newCurriculumInput, name: e.target.value });
+                        if (curriculumFeedback.message) setCurriculumFeedback({ type: '', message: '' });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCurriculumItem(e);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        border: curriculumFeedback.type === 'error' ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        transition: 'all 0.2s',
+                        background: curriculumFeedback.type === 'error' ? '#fff5f5' : 'white'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ flex: '1 1 150px', minWidth: '140px' }}>
+                    <select
+                      value={newCurriculumInput.type}
+                      onChange={(e) => setNewCurriculumInput({ ...newCurriculumInput, type: e.target.value })}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.85rem',
+                        background: 'white',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="Academic">📚 Academic Subject</option>
+                      <option value="Activity">🎨 Activity Class</option>
+                      <option value="Lab">🔬 Practical / Lab</option>
+                    </select>
+                  </div>
+
+                  <div style={{ flex: '1 1 160px', minWidth: '150px' }}>
+                    <select
+                      value={newCurriculumInput.teacher}
+                      onChange={(e) => setNewCurriculumInput({ ...newCurriculumInput, teacher: e.target.value })}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.85rem',
+                        background: 'white',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="">Default Faculty (Optional)</option>
+                      {curriculumStaffList.map(st => {
+                        const tName = st.name || `${st.firstName || ''} ${st.lastName || ''}`.trim();
+                        return (
+                          <option key={st._id} value={tName}>
+                            👤 {tName} ({st.department || st.role || 'Faculty'})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div style={{ flex: '1 1 130px', minWidth: '120px' }}>
+                    <input
+                      type="text"
+                      placeholder="Venue (Room 101...)"
+                      value={newCurriculumInput.room}
+                      onChange={(e) => setNewCurriculumInput({ ...newCurriculumInput, room: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCurriculumItem(e);
+                        }
+                      }}
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddCurriculumItem}
+                    style={{
+                      flex: '0 0 auto',
+                      padding: '10px 22px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: '#4f46e5',
+                      color: 'white',
+                      fontWeight: 700,
+                      fontSize: '0.86rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#4338ca'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#4f46e5'}
+                  >
+                    <Plus size={16} strokeWidth={2.5} /> Add
+                  </button>
+                </form>
+
+                {/* Validation and Success Notification Banner */}
+                {curriculumFeedback.message && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '9px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: curriculumFeedback.type === 'error' ? '#fef2f2' : curriculumFeedback.type === 'warning' ? '#fffbeb' : '#f0fdf4',
+                    border: `1px solid ${curriculumFeedback.type === 'error' ? '#fecaca' : curriculumFeedback.type === 'warning' ? '#fde68a' : '#bbf7d0'}`,
+                    color: curriculumFeedback.type === 'error' ? '#b91c1c' : curriculumFeedback.type === 'warning' ? '#b45309' : '#15803d'
+                  }}>
+                    <span>{curriculumFeedback.type === 'error' || curriculumFeedback.type === 'warning' ? '⚠️' : '✓'}</span>
+                    <span>{curriculumFeedback.message}</span>
+                  </div>
+                )}
+
+              {/* Quick-Pick Suggestions */}
+                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#2563eb' }}>Suggested Academic:</span>
+                    {['Mathematics', 'Physics', 'Chemistry', 'Biology', 'General Science', 'English', 'Social Studies', 'Hindi', 'Computer Science', 'Economics'].map(sub => (
+                      <button
+                        key={sub}
+                        type="button"
+                        onClick={() => handleQuickAddSubject(sub, 'Academic', 'Room 101')}
+                        style={{
+                          background: classAcademicSubjects.includes(sub) ? '#dbeafe' : '#f8fafc',
+                          color: classAcademicSubjects.includes(sub) ? '#1d4ed8' : '#475569',
+                          border: `1px solid ${classAcademicSubjects.includes(sub) ? '#93c5fd' : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {classAcademicSubjects.includes(sub) ? '✓ ' : '+ '}
+                        {sub}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#d97706' }}>Suggested Activities:</span>
+                    {['Physical Education / Sports', 'Art & Craft', 'Library & Reading', 'Music & Dance', 'Yoga & Wellness', 'Robotics & STEM', 'Debate & Public Speaking', 'Martial Arts'].map(act => (
+                      <button
+                        key={act}
+                        type="button"
+                        onClick={() => handleQuickAddSubject(act, 'Activity', act.includes('Sports') ? 'Sports Ground' : act.includes('Art') ? 'Art Studio' : act.includes('Library') ? 'Central Library' : 'Activity Hall')}
+                        style={{
+                          background: classActivityClasses.includes(act) ? '#fef3c7' : '#f8fafc',
+                          color: classActivityClasses.includes(act) ? '#92400e' : '#475569',
+                          border: `1px solid ${classActivityClasses.includes(act) ? '#fde68a' : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          padding: '2px 8px',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {classActivityClasses.includes(act) ? '✓ ' : '+ '}
+                        {act}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter Tabs */}
+              <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexShrink: 0 }}>
+                {[
+                  { id: 'ALL', label: `All Listed (${classAcademicSubjects.length + classActivityClasses.length})` },
+                  { id: 'ACADEMIC', label: `Academic Subjects (${classAcademicSubjects.length})` },
+                  { id: 'ACTIVITY', label: `Activity Classes (${classActivityClasses.length})` }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setCurriculumActiveTab(tab.id)}
+                    style={{
+                      background: curriculumActiveTab === tab.id ? '#4f46e5' : '#f8fafc',
+                      color: curriculumActiveTab === tab.id ? 'white' : '#475569',
+                      border: '1px solid',
+                      borderColor: curriculumActiveTab === tab.id ? '#4f46e5' : '#e2e8f0',
+                      borderRadius: '8px',
+                      padding: '6px 14px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Items Rendered */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                {/* Academic Subjects Block */}
+                {(curriculumActiveTab === 'ALL' || curriculumActiveTab === 'ACADEMIC') && (
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#1e3a8a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <BookOpen size={16} color="#2563eb" />
+                      <span>Academic Subjects ({classAcademicSubjects.length})</span>
+                    </div>
+
+                    {classAcademicSubjects.length === 0 ? (
+                      <div style={{ padding: '16px', border: '1px dashed #cbd5e1', borderRadius: '10px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
+                        No academic subjects listed. Add above or click a quick preset.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px' }}>
+                        {classAcademicSubjects.map((sub) => {
+                          const currItem = classCurriculumItems.find(i => i.name.toLowerCase() === sub.toLowerCase());
+                          return (
+                            <div
+                              key={sub}
+                              style={{
+                                border: '1px solid #bfdbfe',
+                                background: '#f0f9ff',
+                                borderRadius: '12px',
+                                padding: '12px 14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontWeight: 800, color: '#0369a1', fontSize: '0.88rem' }}>
+                                  {sub}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveAcademicSubject(sub)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px' }}
+                                  title="Remove subject from class"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#0284c7', background: '#e0f2fe', padding: '2px 6px', borderRadius: '4px' }}>
+                                  Academic
+                                </span>
+                                <input
+                                  type="text"
+                                  placeholder="Room (e.g. 101)"
+                                  value={currItem?.room || ''}
+                                  onChange={(e) => handleCurriculumItemRoomChange(sub, e.target.value)}
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    padding: '3px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    width: '90px'
+                                  }}
+                                />
+                              </div>
+
+                              <select
+                                value={currItem?.teacher || ''}
+                                onChange={(e) => handleCurriculumItemTeacherChange(sub, e.target.value)}
+                                style={{
+                                  fontSize: '0.72rem',
+                                  padding: '4px 6px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  background: 'white'
+                                }}
+                              >
+                                <option value="">Auto-Assign Certified Teacher</option>
+                                {curriculumStaffList.map(st => {
+                                  const tName = st.name || `${st.firstName || ''} ${st.lastName || ''}`.trim();
+                                  return (
+                                    <option key={st._id} value={tName}>
+                                      👤 {tName} ({st.department || 'Faculty'})
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Activity Classes Block */}
+                {(curriculumActiveTab === 'ALL' || curriculumActiveTab === 'ACTIVITY') && (
+                  <div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#92400e', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Activity size={16} color="#d97706" />
+                      <span>Activity & Co-Curricular Classes ({classActivityClasses.length})</span>
+                    </div>
+
+                    {classActivityClasses.length === 0 ? (
+                      <div style={{ padding: '16px', border: '1px dashed #fde68a', borderRadius: '10px', textAlign: 'center', color: '#b45309', fontSize: '0.82rem', background: '#fffbeb' }}>
+                        No activity classes listed. Add activities (PE, Art, Library, Music) above to give students a balanced schedule!
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px' }}>
+                        {classActivityClasses.map((act) => {
+                          const currItem = classCurriculumItems.find(i => i.name.toLowerCase() === act.toLowerCase());
+                          return (
+                            <div
+                              key={act}
+                              style={{
+                                border: '1px solid #fde68a',
+                                background: '#fffbeb',
+                                borderRadius: '12px',
+                                padding: '12px 14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontWeight: 800, color: '#92400e', fontSize: '0.88rem' }}>
+                                  {act}
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveActivityClass(act)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '2px' }}
+                                  title="Remove activity class"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#d97706', background: '#fef3c7', padding: '2px 6px', borderRadius: '4px' }}>
+                                  Co-Curricular
+                                </span>
+                                <input
+                                  type="text"
+                                  placeholder="Venue (Field, Studio)"
+                                  value={currItem?.room || ''}
+                                  onChange={(e) => handleCurriculumItemRoomChange(act, e.target.value)}
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    padding: '3px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #cbd5e1',
+                                    width: '120px'
+                                  }}
+                                />
+                              </div>
+
+                              <select
+                                value={currItem?.teacher || ''}
+                                onChange={(e) => handleCurriculumItemTeacherChange(act, e.target.value)}
+                                style={{
+                                  fontSize: '0.72rem',
+                                  padding: '4px 6px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  background: 'white'
+                                }}
+                              >
+                                <option value="">Auto-Assign Activity Instructor</option>
+                                {curriculumStaffList.map(st => {
+                                  const tName = st.name || `${st.firstName || ''} ${st.lastName || ''}`.trim();
+                                  return (
+                                    <option key={st._id} value={tName}>
+                                      👤 {tName} ({st.department || 'Staff'})
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 28px',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                Configuring <strong>{classAcademicSubjects.length}</strong> academic subjects & <strong>{classActivityClasses.length}</strong> activity classes for <strong>{curriculumClassTarget.className} - {curriculumClassTarget.section}</strong>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsClassCurriculumModalOpen(false)}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    background: 'white',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveClassCurriculum(false)}
+                  disabled={curriculumSaving}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #c7d2fe',
+                    background: '#eef2ff',
+                    color: '#3730a3',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: curriculumSaving ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {curriculumSaving ? 'Saving...' : 'Save Curriculum'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveClassCurriculum(true)}
+                  disabled={curriculumSaving || isAutoGenerating}
+                  style={{
+                    padding: '9px 20px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #4F46E5 0%, #3730A3 100%)',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: (curriculumSaving || isAutoGenerating) ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Sparkles size={16} />
+                  <span>{(curriculumSaving || isAutoGenerating) ? 'Generating...' : 'Save & Auto-Generate AI Timetable Now'}</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>,
         document.body

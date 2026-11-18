@@ -40,31 +40,78 @@ const ParentDashboard = () => {
 
   return (
     <div className="dashboard-grid">
-      {/* Top Banner - Glassmorphism */}
-      <div style={{
+      {/* Top Banner - Clean White Surface */}
+      <div className="no-print" style={{
         gridColumn: '1 / -1',
-        background: 'linear-gradient(135deg, rgba(22, 163, 74,0.9) 0%, rgba(79,70,229,0.9) 100%)',
-        borderRadius: '20px',
-        padding: '24px 32px',
-        color: 'white',
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 10px 25px -5px rgba(22, 163, 74, 0.4)'
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: '0 0 8px 0' }}>Welcome, {parentSummary.parentName}! 👨‍👩‍👦</h2>
-          <p style={{ opacity: 0.9, fontSize: '0.95rem', margin: 0 }}>
-            Here is the latest live database update on {parentSummary.studentName}'s academic progress and fee status.
+        <div style={{ maxWidth: '750px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <User size={13} color="#4338ca" /> Parent Portal
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+              Ward: {parentSummary.studentName} ({parentSummary.grade})
+            </span>
+          </div>
+
+          <h1 style={{ margin: '0 0 8px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            Welcome, {parentSummary.parentName}! 👋
+          </h1>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
+            Latest updates on {parentSummary.studentName}'s attendance, academic progress, and fee ledger.
           </p>
         </div>
-        <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{parentSummary.studentName}</div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 600, opacity: 0.9 }}>{parentSummary.grade}</div>
+
+        {/* Right side session card */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          minWidth: '190px'
+        }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Academic Session
           </div>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <User size={24} color="#16A34A" />
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div style={{
+            fontSize: '0.72rem',
+            color: '#15803d',
+            fontWeight: 800,
+            background: '#dcfce7',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            marginTop: '4px'
+          }}>
+            Enrolled • Active
           </div>
         </div>
       </div>

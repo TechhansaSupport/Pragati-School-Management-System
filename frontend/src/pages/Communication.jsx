@@ -18,27 +18,31 @@ const Communication = () => {
   // Role authority definitions: Superadmin, Admin, and Principal have leadership authority
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || '').toLowerCase().trim();
   const isAuthorizedLeader = ['superadmin', 'super_admin', 'admin', 'branch_admin', 'school_admin', 'school', 'principal'].includes(userRole);
-  const isAssistant = ['lab_assistant', 'assistant', 'support_staff', 'support', 'frontdesk'].includes(userRole) || userRole.includes('assistant');
-  const canPostClassMaterial = !isAssistant && (isAuthorizedLeader || ['teacher', 'faculty', 'staff'].includes(userRole));
+  const isLibrarian = userRole === 'librarian' || userRole.includes('librar');
+  const isTransport = userRole === 'transport' || userRole.includes('transport');
+  const isAccountant = userRole === 'accountant' || userRole.includes('account');
+  const isAssistant = ['lab_assistant', 'assistant', 'support_staff', 'support', 'frontdesk', 'librarian', 'transport', 'accountant'].includes(userRole) || userRole.includes('assistant') || isLibrarian || isTransport || isAccountant;
+  const canViewClassMaterials = !isAssistant && (isAuthorizedLeader || ['teacher', 'faculty'].includes(userRole) || userRole === 'staff');
+  const canPostClassMaterial = canViewClassMaterials && (isAuthorizedLeader || ['teacher', 'faculty'].includes(userRole));
 
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'announcements';
 
   // Tab: 'announcements', 'messages', 'emergency', 'events', 'grievances', 'classMaterials'
-  const [activeTab, setActiveTab] = useState(initialTab === 'classMaterials' && isAssistant ? 'announcements' : initialTab);
+  const [activeTab, setActiveTab] = useState(initialTab === 'classMaterials' && !canViewClassMaterials ? 'announcements' : initialTab);
 
   useEffect(() => {
     const tabParam = searchParams.get('tab');
     if (tabParam && ['announcements', 'messages', 'emergency', 'events', 'grievances', 'classMaterials'].includes(tabParam)) {
-      if (isAssistant && tabParam === 'classMaterials') {
+      if (!canViewClassMaterials && tabParam === 'classMaterials') {
         setActiveTab('announcements');
       } else {
         setActiveTab(tabParam);
       }
-    } else if (isAssistant && activeTab === 'classMaterials') {
+    } else if (!canViewClassMaterials && activeTab === 'classMaterials') {
       setActiveTab('announcements');
     }
-  }, [searchParams, isAssistant]);
+  }, [searchParams, canViewClassMaterials, activeTab]);
 
   // Announcements State
   const [announcements, setAnnouncements] = useState([]);
@@ -804,7 +808,7 @@ const Communication = () => {
           </div>
         )}
 
-        {!isAssistant && (
+        {canViewClassMaterials && (
           <div 
             onClick={() => setActiveTab('classMaterials')}
             className="chart-card hover-lift" 
@@ -955,7 +959,7 @@ const Communication = () => {
             <MessageSquare size={15} /> Direct Messages ({contacts.length})
           </button>
 
-          {!isAssistant && (
+          {canViewClassMaterials && (
             <button 
               onClick={() => setActiveTab('classMaterials')}
               style={{ 
@@ -1783,7 +1787,7 @@ const Communication = () => {
             >
               View Live Notice Board
             </button>
-            {!isAssistant && (
+            {canViewClassMaterials && (
               <button
                 onClick={() => setActiveTab('classMaterials')}
                 style={{
@@ -2406,7 +2410,7 @@ const Communication = () => {
       )}
 
       {/* TAB 6: CLASS NOTES & ASSIGNMENTS (CLASS-WISE SYSTEM) */}
-      {activeTab === 'classMaterials' && !isAssistant && (
+      {activeTab === 'classMaterials' && canViewClassMaterials && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Filter Bar */}
           <div style={{ 

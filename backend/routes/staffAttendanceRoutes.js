@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const Staff = require('../models/Staff');
 const StaffAttendance = require('../models/StaffAttendance');
 const User = require('../models/User');
@@ -16,15 +17,89 @@ const getTodayDateString = (dateObj = new Date()) => {
 // Helper to check admin authority
 const checkAdminAuthority = (req) => {
   const allowed = ['admin', 'superadmin', 'principal', 'frontdesk', 'school', 'school_admin'];
-  const role = (req.user && req.user.role) ? req.user.role.toLowerCase() : '';
+  const role = (req.user && req.user.role) ? req.user.role.toLowerCase() : (req.headers['x-user-role'] || '').toLowerCase();
   if (!role && req.headers['x-school-slug'] && !req.headers.authorization) {
     return true;
   }
   return allowed.includes(role);
 };
 
+// Router-level authentication & context resolution middleware
+router.use(async (req, res, next) => {
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      const rawToken = req.headers.authorization.split(' ')[1];
+      if (rawToken) {
+        const decoded = jwt.verify(rawToken, process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024');
+        if (decoded && (decoded.id || decoded.userId)) {
+          const userDoc = await User.findById(decoded.id || decoded.userId);
+          if (userDoc) {
+            req.user = userDoc;
+            if (!req.entityId && userDoc.entityId) req.entityId = userDoc.entityId;
+            if (!req.schoolSlug && userDoc.schoolSlug) req.schoolSlug = userDoc.schoolSlug;
+          } else {
+            req.user = decoded;
+            if (!req.entityId && decoded.entityId) req.entityId = decoded.entityId;
+            if (!req.schoolSlug && decoded.schoolSlug) req.schoolSlug = decoded.schoolSlug;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore invalid token in middleware, handlers will enforce
+    }
+  }
+
+  if (!req.user && (req.headers['x-user-name'] || req.headers['x-user-username'])) {
+    req.user = {
+      name: req.headers['x-user-name'],
+      role: req.headers['x-user-role'] || 'staff',
+      username: req.headers['x-user-username'] || '',
+      email: req.headers['x-user-email'] || ''
+    };
+  }
+  if (!req.entityId && req.headers['x-entity-id']) {
+    req.entityId = req.headers['x-entity-id'];
+  }
+  if (!req.schoolSlug && (req.headers['x-school-slug'] || req.headers['x-tenant-slug'])) {
+    req.schoolSlug = req.headers['x-school-slug'] || req.headers['x-tenant-slug'];
+  }
+  next();
+});
+
 // Helper to resolve the Staff profile for the current user
 const resolveStaffMember = async (req) => {
+  // 0. Auto-decode JWT token if req.user is not yet populated
+  if (!req.user && req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      const rawToken = req.headers.authorization.split(' ')[1];
+      if (rawToken) {
+        const decoded = jwt.verify(rawToken, process.env.JWT_SECRET || 'pragati_school_jwt_secret_key_2024');
+        if (decoded && (decoded.id || decoded.userId)) {
+          const userDoc = await User.findById(decoded.id || decoded.userId);
+          if (userDoc) {
+            req.user = userDoc;
+            if (!req.entityId && userDoc.entityId) req.entityId = userDoc.entityId;
+          } else {
+            req.user = decoded;
+            if (!req.entityId && decoded.entityId) req.entityId = decoded.entityId;
+          }
+        }
+      }
+    } catch (e) {
+      // ignore token error
+    }
+  }
+
+  // 0b. Header-based user context fallback from authenticated client session
+  if (!req.user && (req.headers['x-user-name'] || req.headers['x-user-username'])) {
+    req.user = {
+      name: req.headers['x-user-name'],
+      role: req.headers['x-user-role'] || 'staff',
+      username: req.headers['x-user-username'] || '',
+      email: req.headers['x-user-email'] || ''
+    };
+  }
+
   // 1. If explicit staffId is passed by an Admin
   if (req.body?.staffId && checkAdminAuthority(req)) {
     const staff = await Staff.findOne({
@@ -70,21 +145,24 @@ const resolveStaffMember = async (req) => {
     if (staff) return staff;
   }
 
-  // 6. If role is teacher/staff and there is a matching staff record in this entity
-  const anyTeacher = await Staff.findOne({
-    entityId: req.entityId,
-    role: { $in: ['Teacher', 'Principal', 'Administrator', 'Support Staff'] }
-  });
-  if (anyTeacher) return anyTeacher;
-
-  // 7. Auto-provision staff record if user is an authentic staff/teacher account
+  // 6. Auto-provision staff record if user is an authentic staff/account
   if (req.user) {
     try {
+      const userRole = (req.user.role || '').toLowerCase();
+      let staffRole = 'Staff';
+      let staffDept = 'General';
+      if (userRole === 'teacher') { staffRole = 'Teacher'; staffDept = 'Academics'; }
+      else if (userRole === 'principal') { staffRole = 'Principal'; staffDept = 'Administration'; }
+      else if (userRole === 'accountant' || userRole === 'accounts') { staffRole = 'Accounts Officer'; staffDept = 'Finance'; }
+      else if (userRole === 'lab_assistant') { staffRole = 'Lab Assistant'; staffDept = 'Science'; }
+      else if (userRole === 'librarian') { staffRole = 'Librarian'; staffDept = 'Library'; }
+      else if (userRole === 'transport') { staffRole = 'Transport Manager'; staffDept = 'Transport'; }
+
       const newStaff = await Staff.create({
         name: req.user.name || req.user.username || 'Faculty Member',
         employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-        role: req.user.role === 'teacher' ? 'Teacher' : 'Administrator',
-        department: 'General',
+        role: staffRole,
+        department: staffDept,
         email: req.user.email || '',
         portalUsername: req.user.username || '',
         entityId: req.entityId,
@@ -95,6 +173,13 @@ const resolveStaffMember = async (req) => {
       // Ignore in race
     }
   }
+
+  // 7. Fallback: If role is teacher/staff and there is a matching staff record in this entity
+  const anyTeacher = await Staff.findOne({
+    entityId: req.entityId,
+    role: { $in: ['Teacher', 'Principal', 'Administrator', 'Support Staff', 'Accounts Officer'] }
+  });
+  if (anyTeacher) return anyTeacher;
 
   return null;
 };
@@ -510,22 +595,21 @@ router.get('/my-status', async (req, res) => {
   }
 });
 
-// GET /api/staff-attendance/daily-sheet — Full Daily Staff Punch Sheet (Admin & Management View)
+// GET /api/staff-attendance/daily-sheet — Full Daily Staff Punch Sheet (Admin & Super Admin View)
 router.get('/daily-sheet', async (req, res) => {
   try {
     const { date, department, search, schoolSlug } = req.query;
     const targetDate = date || getTodayDateString();
-    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
-    const targetSlug = isSuperAdmin ? (schoolSlug || req.schoolSlug) : req.schoolSlug;
+    const isSuperAdmin = (req.user?.role || req.headers['x-user-role'] || '').toLowerCase() === 'superadmin';
+    const targetSlug = isSuperAdmin ? (schoolSlug || 'all') : (schoolSlug || req.schoolSlug);
 
-    // 1. Fetch all Staff members for this campus
-    const staffQuery = { entityId: req.entityId, status: { $ne: 'Resigned' } };
+    // 1. Fetch all Staff members (across all branches if targetSlug === 'all' or specific campus)
+    const staffQuery = { status: { $ne: 'Resigned' } };
+    if (req.entityId) {
+      staffQuery.entityId = req.entityId;
+    }
     if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
-      staffQuery.$or = [
-        { schoolSlug: targetSlug },
-        { schoolSlug: null },
-        { schoolSlug: { $exists: false } }
-      ];
+      staffQuery.schoolSlug = targetSlug;
     }
     if (department && department !== 'All') {
       staffQuery.department = department;
@@ -542,10 +626,12 @@ router.get('/daily-sheet', async (req, res) => {
     const allStaff = await Staff.find(staffQuery).sort({ name: 1 });
 
     // 2. Fetch all attendance punch records for targetDate
-    const attendanceRecords = await StaffAttendance.find({
-      entityId: req.entityId,
-      date: targetDate
-    });
+    const attFilter = { date: targetDate };
+    if (req.entityId) attFilter.entityId = req.entityId;
+    if (targetSlug && targetSlug !== 'all' && targetSlug !== 'central') {
+      attFilter.schoolSlug = targetSlug;
+    }
+    const attendanceRecords = await StaffAttendance.find(attFilter);
 
     const attendanceMap = new Map();
     attendanceRecords.forEach(att => {
@@ -593,6 +679,7 @@ router.get('/daily-sheet', async (req, res) => {
         employeeId: staff.employeeId,
         role: staff.role,
         department: staff.department,
+        schoolSlug: staff.schoolSlug || '',
         email: staff.email,
         phone: staff.phone,
         status: staff.status,
@@ -644,17 +731,17 @@ router.post('/manual-entry', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Staff member selection is required' });
     }
 
-    const staff = await Staff.findOne({ _id: staffId, entityId: req.entityId });
+    const staffQuery = { _id: staffId };
+    if (req.entityId) staffQuery.entityId = req.entityId;
+    const staff = await Staff.findOne(staffQuery);
     if (!staff) {
       return res.status(404).json({ success: false, message: 'Staff member not found' });
     }
 
     const targetDate = date || getTodayDateString();
-    let attendance = await StaffAttendance.findOne({
-      staffId: staff._id,
-      date: targetDate,
-      entityId: req.entityId
-    });
+    const attQuery = { staffId: staff._id, date: targetDate };
+    if (staff.entityId || req.entityId) attQuery.entityId = staff.entityId || req.entityId;
+    let attendance = await StaffAttendance.findOne(attQuery);
 
     const inDate = punchInTime ? new Date(punchInTime) : new Date(`${targetDate}T09:00:00`);
     const outDate = punchOutTime ? new Date(punchOutTime) : null;
@@ -677,7 +764,7 @@ router.post('/manual-entry', async (req, res) => {
         workDurationMinutes: workMinutes,
         status: status,
         notes: notes.trim(),
-        entityId: req.entityId,
+        entityId: staff.entityId || req.entityId || 'central',
         schoolSlug: staff.schoolSlug || req.schoolSlug,
         punches: [
           { type: 'IN', time: inDate, note: notes || 'Admin Manual Entry', location: 'Administrative Override' },

@@ -29,7 +29,14 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
-  const userRole = (userInfo.role || '').toLowerCase();
+  const userRole = (userInfo.role || sessionStorage.getItem('userRole') || '').toLowerCase();
+  const isSuperAdmin = userRole === 'superadmin' || userInfo.isSuperAdmin || (sessionStorage.getItem('userRole') || '').toLowerCase() === 'superadmin';
+
+  // Super Admin is platform governance and is never subject to campus punch clocks
+  if (isSuperAdmin) {
+    return null;
+  }
+
   const isAdmin = ['admin', 'superadmin', 'principal', 'school', 'school_admin'].includes(userRole);
 
   // Current live time ticker
@@ -92,6 +99,10 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+    if (userInfo.name) headers['x-user-name'] = userInfo.name;
+    if (userInfo.role) headers['x-user-role'] = userInfo.role;
+    if (userInfo.username) headers['x-user-username'] = userInfo.username;
+    if (userInfo.email) headers['x-user-email'] = userInfo.email;
     return headers;
   };
 
@@ -338,55 +349,126 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
     (!geoState.isWithinCampus || geoState.loading)
   );
 
+  // Intelligently resolve the staff display name, ensuring logged in user identity is prioritized
+  const safeUserName = typeof userInfo?.name === 'string' ? userInfo.name.trim() : (typeof userInfo?.fullName === 'string' ? userInfo.fullName.trim() : '');
+  const safeStaffName = typeof punchStatus?.staff?.name === 'string' ? punchStatus.staff.name.trim() : '';
+  const safeStaffRole = typeof punchStatus?.staff?.role === 'string' ? punchStatus.staff.role.trim() : '';
+  const safeStaffEmpId = typeof punchStatus?.staff?.employeeId === 'string' ? punchStatus.staff.employeeId.trim() : '';
+
+  const isFallbackRecord = Boolean(
+    safeStaffName && 
+    safeUserName && 
+    safeStaffName.toLowerCase() !== safeUserName.toLowerCase() &&
+    punchStatus?.staff?.portalUsername !== userInfo?.username && 
+    punchStatus?.staff?.email !== userInfo?.email
+  );
+  const displayName = (!isFallbackRecord && safeStaffName) || safeUserName || userInfo?.username || 'Staff Member';
+  const displayRole = (!isFallbackRecord && safeStaffRole) || (userInfo?.role ? String(userInfo.role).charAt(0).toUpperCase() + String(userInfo.role).slice(1) : 'Staff');
+  const displayEmpId = (!isFallbackRecord && safeStaffEmpId) || userInfo?.uniqueId || 'EMP';
+
   return (
     <div style={{
       background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-      borderRadius: '20px',
+      borderRadius: '18px',
       border: '1px solid #e2e8f0',
-      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.02)',
-      padding: compact ? '16px' : '22px',
+      boxShadow: '0 4px 20px -4px rgba(0, 0, 0, 0.05)',
+      padding: compact ? '14px 18px' : '18px 22px',
       position: 'relative',
-      overflow: 'hidden',
+      overflow: 'visible',
       width: '100%',
       maxWidth: '100%',
+      minHeight: 'fit-content',
+      flexShrink: 0,
+      display: 'block',
       boxSizing: 'border-box'
     }}>
-      {/* Decorative top accent line */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '4px',
-        background: punchStatus.isPunchedIn 
-          ? 'linear-gradient(90deg, #10B981, #059669)' 
-          : punchStatus.lastPunchOut 
-            ? 'linear-gradient(90deg, #6366F1, #8B5CF6)' 
-            : 'linear-gradient(90deg, #F59E0B, #D97706)'
-      }} />
-
       {/* Header with Live Status Indicator & Admin Setup */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '14px',
+        paddingBottom: '12px',
+        borderBottom: '1px solid #f1f5f9',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: '34px',
-            height: '34px',
+            width: '38px',
+            height: '38px',
             borderRadius: '10px',
             background: punchStatus.isPunchedIn ? 'rgba(16, 185, 129, 0.12)' : 'rgba(99, 102, 241, 0.12)',
             color: punchStatus.isPunchedIn ? '#10B981' : '#6366F1',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
           }}>
-            <Clock size={18} />
+            <Clock size={19} />
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#1e3a8a' }}>
-              Staff Attendance & Time Clock
-            </h3>
-            <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
-              {punchStatus.staff?.name ? `${punchStatus.staff.name} (${punchStatus.staff.employeeId || 'Faculty'})` : 'Daily Shift Recording'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.01em' }}>
+                Staff Attendance & Time Clock
+              </h3>
+              {punchStatus.isPunchedIn ? (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '2px 9px',
+                  borderRadius: '20px',
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  border: '1px solid #bbf7d0'
+                }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                  Active Shift {liveWorkingTime ? `• ⏱ ${liveWorkingTime}` : ''}
+                </span>
+              ) : punchStatus.lastPunchOut ? (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '2px 9px',
+                  borderRadius: '20px',
+                  background: '#eef2ff',
+                  color: '#4338ca',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  border: '1px solid #c7d2fe'
+                }}>
+                  <CheckCircle2 size={12} /> Shift Completed
+                </span>
+              ) : (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '2px 9px',
+                  borderRadius: '20px',
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  border: '1px solid #fde68a'
+                }}>
+                  <AlertCircle size={12} /> Not Punched In
+                </span>
+              )}
+            </div>
+
+            <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, color: '#334155' }}>{displayName}</span>
+              <span>•</span>
+              <span style={{ background: '#f1f5f9', color: '#475569', padding: '1px 6px', borderRadius: '5px', fontWeight: 700, fontSize: '0.72rem' }}>
+                {displayRole}
+              </span>
+              <span style={{ color: '#94a3b8' }}>({displayEmpId})</span>
+            </div>
           </div>
         </div>
 
@@ -394,226 +476,307 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
           {isAdmin && (
             <button
               onClick={() => setIsGeofenceModalOpen(true)}
+              className="hover-lift"
               style={{
                 background: '#eff6ff',
                 border: '1px solid #bfdbfe',
-                borderRadius: '8px',
-                padding: '5px 10px',
-                fontSize: '0.74rem',
+                borderRadius: '9px',
+                padding: '6px 12px',
+                fontSize: '0.76rem',
                 fontWeight: 700,
                 color: '#1d4ed8',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                cursor: 'pointer'
+                gap: '5px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
               }}
               title="Configure Campus Geofence Boundary"
             >
-              <Compass size={13} /> Campus Geofence
+              <Compass size={14} /> Campus Geofence
             </button>
           )}
 
           <button
             onClick={() => setIsHistoryOpen(true)}
+            className="hover-lift"
             style={{
-              background: '#f1f5f9',
+              background: '#f8fafc',
               border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              padding: '5px 10px',
-              fontSize: '0.74rem',
+              borderRadius: '9px',
+              padding: '6px 12px',
+              fontSize: '0.76rem',
               fontWeight: 700,
               color: '#475569',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              cursor: 'pointer'
+              gap: '5px',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
             }}
             title="View recent punch history"
           >
-            <History size={13} /> Punch Log
+            <History size={14} /> Punch Log
           </button>
         </div>
       </div>
 
-      {/* Live Digital Clock & Shift Status Display */}
+      {/* Balanced 2-Card Cockpit Grid */}
       <div style={{
-        background: punchStatus.isPunchedIn 
-          ? 'linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.6))'
-          : 'linear-gradient(135deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 0.8))',
-        border: punchStatus.isPunchedIn ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
-        borderRadius: '16px',
-        padding: '16px 20px',
-        marginBottom: '14px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px'
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '14px',
+        alignItems: 'stretch',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
-        <div>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Current Campus Time
-          </div>
-          <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace', letterSpacing: '-0.02em', marginTop: '2px' }}>
-            {formattedTime}
-          </div>
-          <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-            <Calendar size={13} /> {formattedDate}
-          </div>
-        </div>
-
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-            Shift Status
-          </div>
-          
-          <div style={{ marginTop: '4px' }}>
-            {punchStatus.isPunchedIn ? (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                background: '#10B981',
-                color: 'white',
-                fontSize: '0.8rem',
-                fontWeight: 800,
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
-              }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                Punched In (Active)
-              </span>
-            ) : punchStatus.lastPunchOut ? (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                background: '#EEF2FF',
-                color: '#4F46E5',
-                border: '1px solid #C7D2FE',
-                fontSize: '0.8rem',
-                fontWeight: 700
-              }}>
-                <CheckCircle2 size={14} /> Shift Completed
-              </span>
-            ) : (
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 12px',
-                borderRadius: '20px',
-                background: '#FEF3C7',
-                color: '#92400E',
-                border: '1px solid #FDE68A',
-                fontSize: '0.8rem',
-                fontWeight: 700
-              }}>
-                <AlertCircle size={14} /> Not Punched In
-              </span>
-            )}
-          </div>
-
-          {punchStatus.isPunchedIn && liveWorkingTime && (
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#059669', marginTop: '4px', fontFamily: 'monospace' }}>
-              ⏱ Working: {liveWorkingTime}
+        {/* Card 1: Time, Date & Campus Geofence Radar */}
+        <div style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '14px',
+          padding: '16px 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: '14px',
+          minHeight: '135px',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Campus Time & Date
+              </div>
+              <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace', letterSpacing: '-0.02em', marginTop: '2px' }}>
+                {formattedTime}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px' }}>
+                <Calendar size={13} /> {formattedDate}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* CAMPUS GEOFENCE LIVE RADAR / STATUS BADGE */}
-      <div style={{
-        marginBottom: '14px',
-        padding: '11px 15px',
-        borderRadius: '12px',
-        border: geoState.loading
-          ? '1px solid #e0e7ff'
-          : geoState.isWithinCampus
-            ? '1px solid #bbf7d0'
-            : '1px solid #fecaca',
-        background: geoState.loading
-          ? '#f8fafc'
-          : geoState.isWithinCampus
-            ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
-            : 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '8px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Today's Total
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: punchStatus.isPunchedIn ? '#10B981' : '#334155', fontFamily: 'monospace', marginTop: '2px' }}>
+                {punchStatus.isPunchedIn && liveWorkingTime ? (
+                  liveWorkingTime
+                ) : punchStatus.totalDurationMinutes > 0 ? (
+                  `${Math.floor(punchStatus.totalDurationMinutes / 60)}h ${punchStatus.totalDurationMinutes % 60}m`
+                ) : (
+                  '0h 0m'
+                )}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, marginTop: '2px' }}>
+                {punchStatus.punches ? `${punchStatus.punches.length} punches recorded` : '0 punches'}
+              </div>
+            </div>
+          </div>
+
+          {/* Geofence Radar Box */}
           <div style={{
-            width: '32px',
-            height: '32px',
+            background: 'white',
             borderRadius: '10px',
-            background: geoState.loading ? '#e2e8f0' : geoState.isWithinCampus ? '#dcfce7' : '#fee2e2',
-            color: geoState.loading ? '#64748b' : geoState.isWithinCampus ? '#15803d' : '#b91c1c',
+            border: geoState.loading
+              ? '1px solid #e2e8f0'
+              : geoState.isWithinCampus
+                ? '1px solid #bbf7d0'
+                : '1px solid #fecaca',
+            padding: '10px 14px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'space-between',
+            gap: '10px'
           }}>
-            {geoState.loading ? <RefreshCw size={15} style={{ animation: 'spin 1.5s linear infinite' }} /> : <MapPin size={16} />}
-          </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                flexShrink: 0,
+                background: geoState.loading ? '#e2e8f0' : geoState.isWithinCampus ? '#dcfce7' : '#fee2e2',
+                color: geoState.loading ? '#64748b' : geoState.isWithinCampus ? '#15803d' : '#b91c1c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {geoState.loading ? <RefreshCw size={14} style={{ animation: 'spin 1.5s linear infinite' }} /> : <MapPin size={15} />}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 800, color: geoState.isWithinCampus ? '#166534' : '#991b1b', lineHeight: 1.2 }}>
+                  {geoState.loading ? (
+                    'Verifying Geofence GPS...'
+                  ) : !geofenceConfig.isConfigured ? (
+                    '🟢 Inside Campus Area • GPS Active'
+                  ) : geoState.isWithinCampus ? (
+                    `🟢 Inside Campus Area ${geoState.distance !== null ? `(${geoState.distance}m)` : ''}`
+                  ) : (
+                    `🔴 Outside Campus (${geoState.distance !== null ? `${geoState.distance}m` : 'Locked'})`
+                  )}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px', lineHeight: 1.2 }}>
+                  {geoState.loading ? (
+                    'Acquiring coordinates...'
+                  ) : !geofenceConfig.geofenceEnabled || !geofenceConfig.isConfigured ? (
+                    'Attendance unlocked on campus network.'
+                  ) : geoState.isWithinCampus ? (
+                    `Allowed campus radius: ${geofenceConfig.campusRadiusMeters}m.`
+                  ) : (
+                    geoState.error || `Locked outside ${geofenceConfig.campusRadiusMeters}m limit.`
+                  )}
+                </div>
+              </div>
+            </div>
 
-          <div>
-            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: geoState.isWithinCampus ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {geoState.loading ? (
-                'Verifying Campus Geofence GPS...'
-              ) : !geofenceConfig.isConfigured ? (
-                <>🟢 Inside Campus Area • GPS Active</>
-              ) : geoState.isWithinCampus ? (
-                <>🟢 Inside Campus Area {geoState.distance !== null ? `(${geoState.distance}m from center)` : '• GPS Active'}</>
-              ) : (
-                <>🔴 Outside Campus Area {geoState.distance !== null ? `(${geoState.distance}m away)` : '• Locked'}</>
-              )}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: '#475569', marginTop: '2px' }}>
-              {geoState.loading ? (
-                'Acquiring live location coordinates...'
-              ) : !geofenceConfig.geofenceEnabled || !geofenceConfig.isConfigured ? (
-                'Attendance unlocked on campus network.'
-              ) : geoState.isWithinCampus ? (
-                `Campus center verified (allowed radius: ${geofenceConfig.campusRadiusMeters}m). Attendance unlocked.`
-              ) : (
-                geoState.error || `Attendance can only be recorded within ${geofenceConfig.campusRadiusMeters}m of campus.`
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => refreshLocation()}
+              disabled={geoState.loading}
+              className="hover-lift"
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #cbd5e1',
+                borderRadius: '7px',
+                padding: '6px 10px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                color: '#334155',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: geoState.loading ? 'not-allowed' : 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.15s'
+              }}
+              title="Re-check live device GPS location"
+            >
+              <RefreshCw size={11} style={{ animation: geoState.loading ? 'spin 1.5s linear infinite' : 'none' }} />
+              Re-check GPS
+            </button>
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => refreshLocation()}
-          disabled={geoState.loading}
-          style={{
-            background: 'white',
-            border: '1px solid #cbd5e1',
-            borderRadius: '8px',
-            padding: '5px 10px',
-            fontSize: '0.73rem',
-            fontWeight: 700,
-            color: '#334155',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            cursor: geoState.loading ? 'not-allowed' : 'pointer',
-            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-          }}
-          title="Re-check live device GPS location"
-        >
-          <RefreshCw size={12} style={{ animation: geoState.loading ? 'spin 1.5s linear infinite' : 'none' }} />
-          {geoState.loading ? 'Detecting...' : 'Re-check GPS'}
-        </button>
+        {/* Card 2: Big Tactile Action Buttons & Punch Controls */}
+        <div style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '14px',
+          padding: '16px 18px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          gap: '12px',
+          minHeight: '135px',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Attendance Actions
+            </div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+              {punchStatus.firstPunchIn ? (
+                <span>
+                  First In: <strong style={{ color: '#0f172a' }}>{new Date(punchStatus.firstPunchIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
+                  {punchStatus.lastPunchOut && (
+                    <> • Last Out: <strong style={{ color: '#0f172a' }}>{new Date(punchStatus.lastPunchOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></>
+                  )}
+                </span>
+              ) : (
+                <span style={{ color: '#94a3b8' }}>No punches recorded yet</span>
+              )}
+            </div>
+          </div>
+
+          {/* Big Action Buttons */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <button
+              onClick={() => handlePunch('IN')}
+              disabled={isPunching || punchStatus.isPunchedIn || isGeofenceLocked}
+              className={punchStatus.isPunchedIn || isGeofenceLocked ? '' : 'hover-lift'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '13px 18px',
+                borderRadius: '12px',
+                border: 'none',
+                background: punchStatus.isPunchedIn || isGeofenceLocked
+                  ? '#e2e8f0' 
+                  : 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                color: punchStatus.isPunchedIn || isGeofenceLocked ? '#94a3b8' : 'white',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                cursor: punchStatus.isPunchedIn || isPunching || isGeofenceLocked ? 'not-allowed' : 'pointer',
+                boxShadow: punchStatus.isPunchedIn || isGeofenceLocked ? 'none' : '0 4px 14px rgba(16, 185, 129, 0.35)',
+                transition: 'all 0.2s',
+                opacity: punchStatus.isPunchedIn || isGeofenceLocked ? 0.65 : 1
+              }}
+            >
+              <LogIn size={18} />
+              <span>{isPunching && !punchStatus.isPunchedIn ? 'Recording...' : 'Punch In'}</span>
+            </button>
+
+            <button
+              onClick={() => handlePunch('OUT')}
+              disabled={isPunching || !punchStatus.isPunchedIn || isGeofenceLocked}
+              className={!punchStatus.isPunchedIn || isGeofenceLocked ? '' : 'hover-lift'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '13px 18px',
+                borderRadius: '12px',
+                border: 'none',
+                background: !punchStatus.isPunchedIn || isGeofenceLocked
+                  ? '#e2e8f0' 
+                  : 'linear-gradient(135deg, #F43F5E 0%, #E11D48 100%)',
+                color: !punchStatus.isPunchedIn || isGeofenceLocked ? '#94a3b8' : 'white',
+                fontWeight: 800,
+                fontSize: '0.92rem',
+                cursor: !punchStatus.isPunchedIn || isPunching || isGeofenceLocked ? 'not-allowed' : 'pointer',
+                boxShadow: !punchStatus.isPunchedIn || isGeofenceLocked ? 'none' : '0 4px 14px rgba(244, 63, 94, 0.35)',
+                transition: 'all 0.2s',
+                opacity: !punchStatus.isPunchedIn || isGeofenceLocked ? 0.65 : 1
+              }}
+            >
+              <LogOut size={18} />
+              <span>{isPunching && punchStatus.isPunchedIn ? 'Recording...' : 'Punch Out'}</span>
+            </button>
+          </div>
+
+          {/* Note Toggle & Subtext */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem' }}>
+            <button
+              onClick={() => setShowNoteInput(!showNoteInput)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#4F46E5',
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              {showNoteInput ? '− Hide Shift Note' : '+ Add Punch Note'}
+            </button>
+
+            <span style={{ color: '#94a3b8', fontSize: '0.72rem' }}>
+              {punchStatus.isPunchedIn ? 'Click Punch Out when ending shift' : 'Click Punch In when starting duty'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Optional Note / Purpose Input */}
       {showNoteInput && (
-        <div style={{ marginBottom: '14px' }}>
+        <div style={{ marginTop: '12px' }}>
           <input
             type="text"
             placeholder="Add note (e.g. Lab duty, Library period, Half-day, Field visit)..."
@@ -621,7 +784,7 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
             onChange={(e) => setPunchNote(e.target.value)}
             style={{
               width: '100%',
-              padding: '9px 12px',
+              padding: '10px 14px',
               borderRadius: '10px',
               border: '1px solid #cbd5e1',
               fontSize: '0.84rem',
@@ -632,73 +795,16 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
         </div>
       )}
 
-      {/* Big Tactile Punch Action Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        <button
-          onClick={() => handlePunch('IN')}
-          disabled={isPunching || punchStatus.isPunchedIn || isGeofenceLocked}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '13px 18px',
-            borderRadius: '14px',
-            border: 'none',
-            background: punchStatus.isPunchedIn || isGeofenceLocked
-              ? '#f1f5f9' 
-              : 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-            color: punchStatus.isPunchedIn || isGeofenceLocked ? '#94a3b8' : 'white',
-            fontWeight: 800,
-            fontSize: '0.92rem',
-            cursor: punchStatus.isPunchedIn || isPunching || isGeofenceLocked ? 'not-allowed' : 'pointer',
-            boxShadow: punchStatus.isPunchedIn || isGeofenceLocked ? 'none' : '0 4px 14px rgba(16, 185, 129, 0.35)',
-            transition: 'all 0.2s',
-            opacity: punchStatus.isPunchedIn || isGeofenceLocked ? 0.65 : 1
-          }}
-        >
-          <LogIn size={18} />
-          <span>{isPunching && !punchStatus.isPunchedIn ? 'Recording...' : 'Punch In'}</span>
-        </button>
-
-        <button
-          onClick={() => handlePunch('OUT')}
-          disabled={isPunching || !punchStatus.isPunchedIn || isGeofenceLocked}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            padding: '13px 18px',
-            borderRadius: '14px',
-            border: 'none',
-            background: !punchStatus.isPunchedIn || isGeofenceLocked
-              ? '#f1f5f9' 
-              : 'linear-gradient(135deg, #F43F5E 0%, #E11D48 100%)',
-            color: !punchStatus.isPunchedIn || isGeofenceLocked ? '#94a3b8' : 'white',
-            fontWeight: 800,
-            fontSize: '0.92rem',
-            cursor: !punchStatus.isPunchedIn || isPunching || isGeofenceLocked ? 'not-allowed' : 'pointer',
-            boxShadow: !punchStatus.isPunchedIn || isGeofenceLocked ? 'none' : '0 4px 14px rgba(244, 63, 94, 0.35)',
-            transition: 'all 0.2s',
-            opacity: !punchStatus.isPunchedIn || isGeofenceLocked ? 0.65 : 1
-          }}
-        >
-          <LogOut size={18} />
-          <span>{isPunching && punchStatus.isPunchedIn ? 'Recording...' : 'Punch Out'}</span>
-        </button>
-      </div>
-
       {/* Geofence Lock Warning Banner under buttons */}
       {isGeofenceLocked && (
         <div style={{
-          marginTop: '10px',
-          padding: '8px 12px',
+          marginTop: '8px',
+          padding: '7px 12px',
           borderRadius: '8px',
           background: '#FFF1F2',
           border: '1px solid #FFE4E6',
           color: '#BE123C',
-          fontSize: '0.76rem',
+          fontSize: '0.75rem',
           fontWeight: 700,
           textAlign: 'center',
           display: 'flex',
@@ -706,39 +812,10 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
           justifyContent: 'center',
           gap: '6px'
         }}>
-          <AlertCircle size={14} />
+          <AlertCircle size={13} />
           <span>Punch locked: You must be inside the campus area ({geofenceConfig.campusRadiusMeters}m radius) to record attendance.</span>
         </div>
       )}
-
-      {/* Note toggle & Quick summary row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', fontSize: '0.78rem' }}>
-        <button
-          onClick={() => setShowNoteInput(!showNoteInput)}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: '#4F46E5',
-            fontWeight: 700,
-            cursor: 'pointer',
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
-        >
-          {showNoteInput ? '− Hide Note' : '+ Add Punch Note'}
-        </button>
-
-        {punchStatus.firstPunchIn && (
-          <span style={{ color: '#64748b', fontWeight: 600 }}>
-            First In: <strong style={{ color: '#1e3a8a' }}>{new Date(punchStatus.firstPunchIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
-            {punchStatus.lastPunchOut && (
-              <> • Last Out: <strong style={{ color: '#1e3a8a' }}>{new Date(punchStatus.lastPunchOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong></>
-            )}
-          </span>
-        )}
-      </div>
 
       {/* Live Toast alert within widget */}
       {message.show && (

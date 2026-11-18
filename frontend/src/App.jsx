@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import PrincipalDashboard from './pages/PrincipalDashboard';
 import LibraryDashboard from './pages/LibraryDashboard';
 import LibraryBooks from './pages/LibraryBooks';
+import LibraryAlerts from './pages/LibraryAlerts';
 import TransportDashboard from './pages/TransportDashboard';
 import Students from './pages/Students';
 import Staff from './pages/Staff';
@@ -510,6 +511,7 @@ const AppRoutes = () => {
         {/* Library */}
         <Route path="/:tenantSlug/library-dashboard" element={(isStudent || isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <LibraryDashboard />} />
         <Route path="/:tenantSlug/books" element={(isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <LibraryBooks />} />
+        <Route path="/:tenantSlug/library-alerts" element={(isStudent || isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <LibraryAlerts />} />
 
         {/* Dedicated Role Portals */}
         <Route path="/:tenantSlug/teacher-dashboard" element={(isStudent || isLabAssistant) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : isSupportStaff ? <Navigate to={`/${tenantSlug}/support-dashboard`} replace /> : <TeacherDashboard />} />

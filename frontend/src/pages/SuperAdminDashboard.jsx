@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { 
   Building2, Users, UserPlus, UserCheck, ShieldCheck, Plus, ExternalLink, 
   MapPin, UserCog, RefreshCw, Key, Search, Filter, AlertCircle, 
   CheckCircle2, ArrowRight, Layers, Award, Trash2, Mail, Phone, 
-  Calendar, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
+  Calendar, CalendarCheck, CalendarDays, Server, Shield, Sparkles, ChevronRight, Activity, Globe,
   Briefcase, BookOpen, Clock, HelpCircle, Check, Copy, X, Settings,
   AlertTriangle, Save, Database, Lock, Edit3, TrendingUp, TrendingDown,
   Wallet, CreditCard, Receipt, Percent, DollarSign, CheckCircle,
-  Bus, Book, Navigation, Bookmark, Wrench
+  Bus, Book, Navigation, Bookmark, Wrench, FileText, Download, Printer
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, BarChart, Bar, Line, 
@@ -19,6 +20,7 @@ import EditSchoolModal from '../components/EditSchoolModal';
 import AppointAdminModal from '../components/AppointAdminModal';
 import AppointPrincipalModal from '../components/AppointPrincipalModal';
 import AssignStaffModal from '../components/AssignStaffModal';
+import ManageStaffRoleModal from '../components/ManageStaffRoleModal';
 import DeleteSchoolModal from '../components/DeleteSchoolModal';
 import TransportDashboard from './TransportDashboard';
 import LibraryDashboard from './LibraryDashboard';
@@ -119,6 +121,7 @@ const SuperAdminDashboard = () => {
   const [targetSchoolForPrincipal, setTargetSchoolForPrincipal] = useState(null);
   const [preSelectedTeacherForPrincipal, setPreSelectedTeacherForPrincipal] = useState(null);
   const [targetSchoolForStaff, setTargetSchoolForStaff] = useState(null);
+  const [targetStaffForRoleEdit, setTargetStaffForRoleEdit] = useState(null);
   const [targetSchoolForDelete, setTargetSchoolForDelete] = useState(null);
   const [targetSchoolForEdit, setTargetSchoolForEdit] = useState(null);
 
@@ -166,6 +169,196 @@ const SuperAdminDashboard = () => {
     overdueCopies: 2,
     finesCollected: 4500
   });
+
+  // ─── STAFF ATTENDANCE STATE (MULTI-CAMPUS CONSOLIDATED) ───
+  const getTodayDateStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const [attendanceDate, setAttendanceDate] = useState(getTodayDateStr);
+  const [attendanceSchoolFilter, setAttendanceSchoolFilter] = useState('all');
+  const [attendanceDeptFilter, setAttendanceDeptFilter] = useState('All');
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState('All');
+  const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
+  const [attendanceSheetData, setAttendanceSheetData] = useState(null);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState(false);
+  const [selectedStaffPunches, setSelectedStaffPunches] = useState(null);
+  const [manualPunchStaff, setManualPunchStaff] = useState(null);
+  const [manualPunchForm, setManualPunchForm] = useState({
+    punchInTime: '09:00',
+    punchOutTime: '17:00',
+    status: 'Present',
+    notes: ''
+  });
+  const [isManualPunchSubmitting, setIsManualPunchSubmitting] = useState(false);
+  const [isAttendanceReportModalOpen, setIsAttendanceReportModalOpen] = useState(false);
+
+  // Fetch full staff attendance daily sheet
+  const fetchStaffAttendanceSheet = async () => {
+    setIsAttendanceLoading(true);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+      headers['x-user-role'] = 'superadmin';
+
+      const querySlug = attendanceSchoolFilter || 'all';
+      const url = `http://localhost:5000/api/staff-attendance/daily-sheet?date=${attendanceDate}&schoolSlug=${querySlug}`;
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setAttendanceSheetData(data);
+      }
+    } catch (err) {
+      console.warn('Failed to load multi-campus staff attendance sheet:', err);
+    } finally {
+      setIsAttendanceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'attendance') {
+      fetchStaffAttendanceSheet();
+    }
+  }, [activeTab, attendanceDate, attendanceSchoolFilter]);
+
+  // Listen for live punch events across all tabs
+  useEffect(() => {
+    const handlePunchEvent = () => {
+      if (activeTab === 'attendance') {
+        fetchStaffAttendanceSheet();
+      }
+      fetchFinanceAndAttendanceAnalytics(financeScope);
+    };
+    window.addEventListener('staffPunchUpdated', handlePunchEvent);
+    return () => window.removeEventListener('staffPunchUpdated', handlePunchEvent);
+  }, [activeTab, attendanceDate, attendanceSchoolFilter, financeScope]);
+
+  // Manual Punch adjustment submit
+  const handleManualPunchSubmit = async (e) => {
+    if (e) e.preventDefault();
+    if (!manualPunchStaff) return;
+    setIsManualPunchSubmitting(true);
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      headers['x-user-role'] = 'superadmin';
+
+      const payload = {
+        staffId: manualPunchStaff.staffId || manualPunchStaff._id,
+        date: attendanceDate,
+        punchInTime: manualPunchForm.punchInTime ? `${attendanceDate}T${manualPunchForm.punchInTime}:00` : null,
+        punchOutTime: manualPunchForm.punchOutTime ? `${attendanceDate}T${manualPunchForm.punchOutTime}:00` : null,
+        status: manualPunchForm.status,
+        notes: manualPunchForm.notes || 'Super Admin Override'
+      };
+
+      const res = await fetch('http://localhost:5000/api/staff-attendance/manual-entry', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update punch');
+
+      setManualPunchStaff(null);
+      await fetchStaffAttendanceSheet();
+      window.dispatchEvent(new CustomEvent('staffPunchUpdated'));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setIsManualPunchSubmitting(false);
+    }
+  };
+
+  // Filtered attendance sheet
+  const filteredAttendanceList = useMemo(() => {
+    if (!attendanceSheetData?.sheet) return [];
+    return attendanceSheetData.sheet.filter(item => {
+      if (attendanceDeptFilter !== 'All' && item.department !== attendanceDeptFilter) return false;
+      if (attendanceStatusFilter !== 'All') {
+        if (attendanceStatusFilter === 'Working' && !item.isCurrentlyPunchedIn) return false;
+        if (attendanceStatusFilter === 'Completed' && item.attendanceStatus !== 'Shift Completed' && !item.punchOut) return false;
+        if (attendanceStatusFilter === 'Late' && !item.attendanceStatus?.includes('Late')) return false;
+        if (attendanceStatusFilter === 'Not Marked' && item.attendanceStatus !== 'Not Punched In') return false;
+        if (attendanceStatusFilter === 'On Leave' && item.attendanceStatus !== 'On Leave') return false;
+      }
+      if (attendanceSearchQuery.trim()) {
+        const q = attendanceSearchQuery.toLowerCase();
+        const matchesName = item.name?.toLowerCase().includes(q);
+        const matchesId = item.employeeId?.toLowerCase().includes(q);
+        const matchesDept = item.department?.toLowerCase().includes(q);
+        const matchesRole = item.role?.toLowerCase().includes(q);
+        const matchesSlug = item.schoolSlug?.toLowerCase().includes(q);
+        return matchesName || matchesId || matchesDept || matchesRole || matchesSlug;
+      }
+      return true;
+    });
+  }, [attendanceSheetData, attendanceDeptFilter, attendanceStatusFilter, attendanceSearchQuery]);
+
+  // Export filtered attendance records as CSV
+  const handleDownloadAttendanceCSV = () => {
+    const list = filteredAttendanceList || [];
+    if (list.length === 0) {
+      alert('No attendance records available to export for the selected date and filters.');
+      return;
+    }
+
+    const headers = [
+      'Employee ID',
+      'Staff Name',
+      'Branch Campus',
+      'Department',
+      'Role',
+      'Attendance Date',
+      'First Punch In',
+      'Last Punch Out',
+      'Total Duration',
+      'Status',
+      'GPS Verified',
+      'Administrative Notes'
+    ];
+
+    const rows = list.map(item => {
+      const assignedSchool = (schoolsList || []).find(s => s.slug === item.schoolSlug || s._id === item.schoolId) ||
+                             (schools || []).find(s => s.slug === item.schoolSlug || s._id === item.schoolId);
+      const campusName = assignedSchool?.name || item.schoolSlug || 'Main Campus';
+      const punchInFormatted = item.punchIn ? new Date(item.punchIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not Punched In';
+      const punchOutFormatted = item.punchOut ? new Date(item.punchOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : (item.isCurrentlyPunchedIn ? 'Active Shift' : 'None');
+      const gpsStatus = item.punches?.some(p => p.isWithinGeofence) ? 'GPS Verified' : (item.punches?.length > 0 ? 'Web Stamp' : 'N/A');
+
+      return [
+        `"${item.employeeId || 'N/A'}"`,
+        `"${item.name || ''}"`,
+        `"${campusName}"`,
+        `"${item.department || 'General'}"`,
+        `"${item.role || 'Staff'}"`,
+        `"${attendanceDate}"`,
+        `"${punchInFormatted}"`,
+        `"${punchOutFormatted}"`,
+        `"${item.durationFormatted || '0h 0m'}"`,
+        `"${item.attendanceStatus || 'Not Punched In'}"`,
+        `"${gpsStatus}"`,
+        `"${(item.notes || '').replace(/"/g, '""')}"`
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Staff_Attendance_Report_${attendanceDate}_${attendanceSchoolFilter || 'all'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintReport = () => {
+    window.print();
+  };
 
   // Fetch real database financial & faculty intelligence analytics
   const fetchFinanceAndAttendanceAnalytics = async (scope = financeScope) => {
@@ -324,7 +517,7 @@ const SuperAdminDashboard = () => {
     const tabParam = params.get('tab');
     if (!tabParam || tabParam === 'overview' || tabParam === 'hub') {
       setActiveTab('overview');
-    } else if (['schools', 'assignments', 'health', 'config', 'rbac', 'security', 'transport', 'library'].includes(tabParam)) {
+    } else if (['schools', 'assignments', 'attendance', 'health', 'config', 'rbac', 'security', 'transport', 'library'].includes(tabParam)) {
       setActiveTab(tabParam);
     }
   }, [location.search]);
@@ -503,6 +696,16 @@ const SuperAdminDashboard = () => {
     return '₹' + Math.abs(Number(val)).toLocaleString('en-IN');
   };
 
+  const formatPunchTime = (isoString) => {
+    if (!isoString) return '—';
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+      return isoString;
+    }
+  };
+
   // Teacher Attendance Real Database Aggregated Analytics
   const teacherStats = useMemo(() => {
     if (attendanceAnalytics) {
@@ -603,10 +806,10 @@ const SuperAdminDashboard = () => {
       {activeTab === 'overview' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
 
-        {/* ─── UNIFIED EXECUTIVE TELEMETRY STRIP (5 HIGH-IMPACT METRICS) ─── */}
+        {/* ─── UNIFIED EXECUTIVE TELEMETRY STRIP (4 HIGH-IMPACT METRICS) ─── */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
           gap: '16px'
         }}>
           {/* Metric 1: Active Campuses */}
@@ -679,42 +882,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
 
-          {/* Metric 3: Operating Surplus */}
-          <div className="card" style={{
-            background: 'var(--color-surface, white)',
-            borderRadius: '16px',
-            padding: '18px 20px',
-            border: '1px solid var(--color-border, #e2e8f0)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--color-text-muted, #64748b)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Operating Surplus
-              </span>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '10px',
-                background: 'rgba(2, 132, 199, 0.08)',
-                color: '#0284c7',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <TrendingUp size={18} />
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800, color: (financeAnalytics?.availableBalance ?? financeStats.availableBalance) >= 0 ? '#059669' : '#e11d48', lineHeight: 1 }}>
-                {formatCurrency(financeAnalytics?.availableBalance ?? financeStats.availableBalance)}
-              </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)', fontWeight: 600, marginTop: '6px' }}>
-                Expenses: {formatCurrency(financeAnalytics?.totalExpenses ?? financeStats.totalExpenses)}
-              </div>
-            </div>
-          </div>
-
-          {/* Metric 4: Faculty & Staff */}
+          {/* Metric 3: Faculty & Staff */}
           <div className="card" style={{
             background: 'var(--color-surface, white)',
             borderRadius: '16px',
@@ -749,7 +917,7 @@ const SuperAdminDashboard = () => {
             </div>
           </div>
 
-          {/* Metric 5: Daily Attendance & Leadership */}
+          {/* Metric 4: Daily Attendance & Leadership */}
           <div className="card" style={{
             background: 'var(--color-surface, white)',
             borderRadius: '16px',
@@ -1109,13 +1277,27 @@ const SuperAdminDashboard = () => {
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid var(--color-border, #f1f5f9)', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
-                  Daily Rate: <strong style={{ color: '#0284c7' }}>{teacherStats.rate}%</strong>
+                  Daily Rate: <strong style={{ color: '#0284c7' }}>{teacherStats.rate}%</strong> • Active Coverage: <strong style={{ color: '#10b981' }}>{teacherStats.present}/{teacherStats.total} Faculty</strong>
                 </span>
-                <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
-                  Active Coverage: <strong style={{ color: '#10b981' }}>{teacherStats.present}/{teacherStats.total} Faculty</strong>
-                </span>
+                <button
+                  type="button"
+                  onClick={() => handleTabChange('attendance')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.74rem',
+                    color: '#0284c7',
+                    background: 'none',
+                    border: 'none',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  View Full Attendance Sheet <ArrowRight size={12} />
+                </button>
               </div>
             </div>
           </div>
@@ -1700,6 +1882,30 @@ const SuperAdminDashboard = () => {
 
                         {/* Top Action Buttons for this School */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          {/* Create Staff in this Branch Button */}
+                          <button
+                            type="button"
+                            onClick={() => setTargetSchoolForStaff(sch)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 14px',
+                              borderRadius: '9px',
+                              background: '#eff6ff',
+                              border: '1.5px solid #bfdbfe',
+                              color: '#1d4ed8',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                            }}
+                            title="Add a new staff member directly to this branch"
+                          >
+                            <UserPlus size={13} color="#1d4ed8" /> + Add Staff
+                          </button>
+
                           {/* Calibrate GPS Button */}
                           <button
                             type="button"
@@ -2049,6 +2255,26 @@ const SuperAdminDashboard = () => {
                                     {member.role} • {member.department}
                                   </div>
                                 </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setTargetStaffForRoleEdit(member)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    background: '#ede9fe',
+                                    border: '1px solid #ddd6fe',
+                                    color: '#6d28d9',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Grant or Limit Role & Permissions"
+                                >
+                                  <ShieldCheck size={11} color="#6d28d9" /> Role
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -2084,6 +2310,29 @@ const SuperAdminDashboard = () => {
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTargetSchoolForStaff(schoolsList[0] || null);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 16px',
+                    borderRadius: '10px',
+                    background: '#4F46E5',
+                    color: 'white',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 3px 10px rgba(79, 70, 229, 0.25)'
+                  }}
+                >
+                  <UserPlus size={14} /> + Create Staff Member (Branch-Wise)
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -2277,6 +2526,24 @@ const SuperAdminDashboard = () => {
                           <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px' }}>
                             {member.department}
                           </div>
+                          <div style={{ marginTop: '5px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                            <span style={{
+                              fontSize: '0.66rem',
+                              fontWeight: 800,
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: member.accessStatus === 'Suspended' ? '#fee2e2' : member.accessStatus === 'Limited' ? '#fef3c7' : '#dcfce7',
+                              color: member.accessStatus === 'Suspended' ? '#b91c1c' : member.accessStatus === 'Limited' ? '#b45309' : '#15803d',
+                              border: `1px solid ${member.accessStatus === 'Suspended' ? '#fca5a5' : member.accessStatus === 'Limited' ? '#fde68a' : '#86efac'}`
+                            }}>
+                              {member.accessStatus === 'Suspended' ? '⛔ Suspended' : member.accessStatus === 'Limited' ? '⚠️ Limited' : '✓ Granted'}
+                            </span>
+                            {Array.isArray(member.permissions) && member.permissions.length > 0 && (
+                              <span style={{ fontSize: '0.66rem', color: '#6366f1', fontWeight: 700, background: '#eef2ff', padding: '1px 5px', borderRadius: '4px' }}>
+                                {member.permissions.length}/8 modules
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Assigned School Branch */}
@@ -2323,6 +2590,30 @@ const SuperAdminDashboard = () => {
                         {/* Actions */}
                         <td style={{ padding: '14px 20px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                            {/* Grant or Limit Role and Modules */}
+                            <button
+                              type="button"
+                              onClick={() => setTargetStaffForRoleEdit(member)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                padding: '5px 11px',
+                                borderRadius: '7px',
+                                background: '#ede9fe',
+                                border: '1px solid #c4b5fd',
+                                color: '#6d28d9',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                transition: 'all 0.15s'
+                              }}
+                              title="Grant or limit role, branch assignment, and module access permissions"
+                            >
+                              <ShieldCheck size={13} color="#6d28d9" /> Grant / Limit Role
+                            </button>
+
                             {member.role === 'Teacher' && (
                               <button
                                 type="button"
@@ -2379,7 +2670,601 @@ const SuperAdminDashboard = () => {
         </div>
       )}
 
-      {/* ─── TAB 3: SYSTEM HEALTH & INFRASTRUCTURE ─── */}
+      {/* ─── TAB: MULTI-CAMPUS STAFF ATTENDANCE & TIME CLOCK HUB ─── */}
+      {activeTab === 'attendance' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+          
+          {/* Header & Filter Control Bar */}
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '24px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(14, 165, 233, 0.2) 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0284c7'
+                }}>
+                  <CalendarCheck size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', margin: 0 }}>
+                    Organization-Wide Staff Attendance & Time Clock Telemetry
+                  </h3>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                    Real-time consolidated faculty presence, GPS geofence compliance, and live shift logs across all campuses.
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAttendanceReportModalOpen(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #4F46E5, #4338ca)',
+                    color: 'white',
+                    border: 'none',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Generate executive staff attendance report and audit sheet"
+                >
+                  <FileText size={15} />
+                  Generate Attendance Report
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadAttendanceCSV}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    color: '#334155',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                  title="Export filtered records directly as CSV spreadsheet"
+                >
+                  <Download size={14} />
+                  Export CSV
+                </button>
+
+                <button
+                  type="button"
+                  onClick={fetchStaffAttendanceSheet}
+                  disabled={isAttendanceLoading}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    color: '#334155',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <RefreshCw size={14} className={isAttendanceLoading ? 'spin' : ''} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Controls Row */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              flexWrap: 'wrap',
+              background: '#f8fafc',
+              padding: '14px 18px',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0'
+            }}>
+              {/* Campus Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Campus:</span>
+                <select
+                  value={attendanceSchoolFilter}
+                  onChange={e => setAttendanceSchoolFilter(e.target.value)}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.8rem',
+                    color: '#1e293b',
+                    background: 'white',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="all">🌐 All Campuses (Consolidated)</option>
+                  {schoolsList.map(s => (
+                    <option key={s.slug} value={s.slug}>
+                      {s.name} {s.isBranch ? '(Branch)' : '(Main)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Date:</span>
+                <input
+                  type="date"
+                  value={attendanceDate}
+                  onChange={e => setAttendanceDate(e.target.value)}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.8rem',
+                    color: '#1e293b',
+                    background: 'white',
+                    fontWeight: 600
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAttendanceDate(getTodayDateStr())}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    background: attendanceDate === getTodayDateStr() ? '#e0f2fe' : '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    color: attendanceDate === getTodayDateStr() ? '#0284c7' : '#64748b',
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Today
+                </button>
+              </div>
+
+              {/* Department Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Dept:</span>
+                <select
+                  value={attendanceDeptFilter}
+                  onChange={e => setAttendanceDeptFilter(e.target.value)}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.8rem',
+                    color: '#1e293b',
+                    background: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="All">All Departments</option>
+                  <option value="Science">Science</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Languages">Languages</option>
+                  <option value="Social Studies">Social Studies</option>
+                  <option value="Commerce">Commerce</option>
+                  <option value="Administration">Administration</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Library">Library</option>
+                  <option value="Transport & Facilities">Transport & Facilities</option>
+                  <option value="General">General</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569' }}>Status:</span>
+                <select
+                  value={attendanceStatusFilter}
+                  onChange={e => setAttendanceStatusFilter(e.target.value)}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.8rem',
+                    color: '#1e293b',
+                    background: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Working">🟢 Currently Working</option>
+                  <option value="Completed">🔵 Shift Completed</option>
+                  <option value="Late">🟠 Late Arrivals</option>
+                  <option value="Not Marked">⚪ Not Punched In</option>
+                  <option value="On Leave">🟣 On Leave</option>
+                </select>
+              </div>
+
+              {/* Search */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '220px', background: 'white', padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <Search size={15} color="#94a3b8" />
+                <input
+                  type="text"
+                  placeholder="Filter by staff name, ID, department..."
+                  value={attendanceSearchQuery}
+                  onChange={e => setAttendanceSearchQuery(e.target.value)}
+                  style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '0.8rem', width: '100%' }}
+                />
+                {attendanceSearchQuery && (
+                  <button onClick={() => setAttendanceSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 6 KPI Metric Cards Row */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: '14px'
+          }}>
+            {/* KPI 1: Total Staff */}
+            <div style={{ background: 'white', borderRadius: '16px', padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Total Staff Tracked
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#1e293b', marginTop: '4px' }}>
+                {attendanceSheetData?.totalStaff || 0}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                {attendanceSchoolFilter === 'all' ? 'Across all campus branches' : 'This branch'}
+              </div>
+            </div>
+
+            {/* KPI 2: Currently Working */}
+            <div style={{ background: '#f0fdf4', borderRadius: '16px', padding: '18px', border: '1px solid #bbf7d0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Currently On Duty
+                </span>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#15803d', marginTop: '4px' }}>
+                {attendanceSheetData?.currentlyWorking || 0}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#166534', marginTop: '2px' }}>
+                Active on campus right now
+              </div>
+            </div>
+
+            {/* KPI 3: Shifts Completed */}
+            <div style={{ background: '#eff6ff', borderRadius: '16px', padding: '18px', border: '1px solid #bfdbfe', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Shift Completed
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#1d4ed8', marginTop: '4px' }}>
+                {attendanceSheetData?.completedShift || 0}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#1e40af', marginTop: '2px' }}>
+                Punched out for the day
+              </div>
+            </div>
+
+            {/* KPI 4: Late Arrivals */}
+            <div style={{ background: '#fefce8', borderRadius: '16px', padding: '18px', border: '1px solid #fde68a', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#854d0e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Late Arrivals
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#b45309', marginTop: '4px' }}>
+                {attendanceSheetData?.lateArrivals || 0}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#854d0e', marginTop: '2px' }}>
+                Punched in after scheduled duty
+              </div>
+            </div>
+
+            {/* KPI 5: Not Marked */}
+            <div style={{ background: '#f8fafc', borderRadius: '16px', padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Not Punched In
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#334155', marginTop: '4px' }}>
+                {attendanceSheetData?.notMarked || 0}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                Unpunched on {attendanceDate}
+              </div>
+            </div>
+
+            {/* KPI 6: Avg Work Duration */}
+            <div style={{ background: '#f0fdfa', borderRadius: '16px', padding: '18px', border: '1px solid #ccfbf1', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Avg Shift Duration
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: '#0f766e', marginTop: '4px' }}>
+                {attendanceSheetData?.avgWorkMinutes ? `${Math.floor(attendanceSheetData.avgWorkMinutes / 60)}h ${attendanceSheetData.avgWorkMinutes % 60}m` : '0h 0m'}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#0f766e', marginTop: '2px' }}>
+                Across active duty staff
+              </div>
+            </div>
+          </div>
+
+          {/* Daily Attendance Sheet Table */}
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={16} color="#4F46E5" />
+                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#1e293b' }}>
+                  Daily Staff Punch Sheet • {attendanceDate}
+                </h4>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '10px' }}>
+                  {filteredAttendanceList.length} staff records
+                </span>
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>Staff Member</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>Branch Campus</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>Role & Dept</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>First Punch In</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>Last Punch Out</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>Duration</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569' }}>Status</th>
+                    <th style={{ padding: '14px 20px', fontWeight: 800, color: '#475569', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {isAttendanceLoading ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '50px 20px', textAlign: 'center', color: '#64748b' }}>
+                        <RefreshCw size={22} className="spin" style={{ margin: '0 auto 8px auto', display: 'block' }} />
+                        Loading multi-campus attendance records...
+                      </td>
+                    </tr>
+                  ) : filteredAttendanceList.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '50px 20px', textAlign: 'center', color: '#94a3b8' }}>
+                        <Clock size={36} color="#cbd5e1" style={{ margin: '0 auto 8px auto', display: 'block' }} />
+                        No staff attendance records match the selected filters for {attendanceDate}.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAttendanceList.map((item) => {
+                      const assignedSchool = schoolsList.find(s => s.slug === item.schoolSlug);
+                      const isWorking = item.isCurrentlyPunchedIn;
+                      const isCompleted = item.attendanceStatus === 'Shift Completed' || (item.punchIn && item.punchOut);
+                      const isLate = item.attendanceStatus?.includes('Late');
+                      const isOnLeave = item.attendanceStatus === 'On Leave' || item.status === 'On Leave';
+
+                      const hours = Math.floor((item.workDurationMinutes || 0) / 60);
+                      const mins = (item.workDurationMinutes || 0) % 60;
+
+                      return (
+                        <tr
+                          key={item.staffId}
+                          style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
+                          onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseOut={e => e.currentTarget.style.background = 'white'}
+                        >
+                          {/* Staff Name & ID */}
+                          <td style={{ padding: '14px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{
+                                width: '36px', height: '36px', borderRadius: '50%',
+                                background: isWorking ? '#dcfce7' : '#e0e7ff',
+                                color: isWorking ? '#15803d' : '#4338ca',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontWeight: 800, fontSize: '0.85rem', flexShrink: 0
+                              }}>
+                                {item.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 800, color: '#1e293b' }}>{item.name}</div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                  ID: {item.employeeId || 'EMP-101'}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Branch Campus */}
+                          <td style={{ padding: '14px 20px' }}>
+                            {item.schoolSlug ? (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                border: '1px solid #bfdbfe'
+                              }}>
+                                <Building2 size={11} /> {assignedSchool?.name || item.schoolSlug}
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>Central School</span>
+                            )}
+                          </td>
+
+                          {/* Role & Dept */}
+                          <td style={{ padding: '14px 20px' }}>
+                            <span style={{
+                              padding: '2px 7px',
+                              borderRadius: '5px',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              background: '#f1f5f9',
+                              color: '#334155'
+                            }}>
+                              {item.role}
+                            </span>
+                            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                              {item.department}
+                            </div>
+                          </td>
+
+                          {/* First Punch In */}
+                          <td style={{ padding: '14px 20px' }}>
+                            {item.punchIn ? (
+                              <div>
+                                <div style={{ fontWeight: 800, color: '#1e293b' }}>
+                                  {formatPunchTime(item.punchIn)}
+                                </div>
+                                <div style={{ fontSize: '0.67rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                  <CheckCircle2 size={10} /> Campus Geofence
+                                </div>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>—</span>
+                            )}
+                          </td>
+
+                          {/* Last Punch Out */}
+                          <td style={{ padding: '14px 20px' }}>
+                            {item.punchOut ? (
+                              <div style={{ fontWeight: 800, color: '#1e293b' }}>
+                                {formatPunchTime(item.punchOut)}
+                              </div>
+                            ) : isWorking ? (
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#15803d', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                                Active On Duty
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>—</span>
+                            )}
+                          </td>
+
+                          {/* Duration */}
+                          <td style={{ padding: '14px 20px' }}>
+                            {item.workDurationMinutes > 0 ? (
+                              <span style={{ fontWeight: 800, color: '#0f766e', background: '#f0fdfa', padding: '2px 7px', borderRadius: '5px' }}>
+                                {hours}h {mins}m
+                              </span>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>0h 0m</span>
+                            )}
+                          </td>
+
+                          {/* Attendance Status */}
+                          <td style={{ padding: '14px 20px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.72rem',
+                              fontWeight: 800,
+                              background: isWorking ? '#dcfce7' : isCompleted ? '#eff6ff' : isLate ? '#fef3c7' : isOnLeave ? '#f3e8ff' : '#f1f5f9',
+                              color: isWorking ? '#15803d' : isCompleted ? '#1d4ed8' : isLate ? '#b45309' : isOnLeave ? '#7e22ce' : '#64748b',
+                              border: `1px solid ${isWorking ? '#86efac' : isCompleted ? '#bfdbfe' : isLate ? '#fde68a' : isOnLeave ? '#e9d5ff' : '#e2e8f0'}`
+                            }}>
+                              {isWorking ? '🟢 Working (On Duty)' : isCompleted ? '✓ Shift Completed' : isLate ? '⚠️ Late Arrival' : isOnLeave ? '🟣 On Leave' : '⚪ Not Punched'}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStaffPunches({
+                                  staffName: item.name,
+                                  employeeId: item.employeeId,
+                                  punches: item.punches || [],
+                                  date: attendanceDate,
+                                  schoolName: assignedSchool?.name || item.schoolSlug || 'Main Campus'
+                                })}
+                                style={{
+                                  padding: '5px 9px',
+                                  borderRadius: '6px',
+                                  background: '#f8fafc',
+                                  border: '1px solid #cbd5e1',
+                                  color: '#334155',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                                title="View punch timeline and GPS geofence details"
+                              >
+                                📋 Punches ({item.punchesCount || item.punches?.length || 0})
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setManualPunchStaff(item);
+                                  setManualPunchForm({
+                                    punchInTime: item.punchIn ? new Date(item.punchIn).toTimeString().substring(0, 5) : '09:00',
+                                    punchOutTime: item.punchOut ? new Date(item.punchOut).toTimeString().substring(0, 5) : '17:00',
+                                    status: item.attendanceStatus?.includes('Late') ? 'Late' : 'Present',
+                                    notes: item.notes || ''
+                                  });
+                                }}
+                                style={{
+                                  padding: '5px 9px',
+                                  borderRadius: '6px',
+                                  background: '#eff6ff',
+                                  border: '1px solid #bfdbfe',
+                                  color: '#1d4ed8',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                                title="Manual punch entry and administrative adjustment"
+                              >
+                                ✏️ Adjust
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
       {activeTab === 'health' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           {/* Pragati License Card */}
@@ -2976,6 +3861,18 @@ const SuperAdminDashboard = () => {
         }}
       />
 
+      {/* Super Admin Staff Role & Permissions Controller */}
+      <ManageStaffRoleModal
+        isOpen={!!targetStaffForRoleEdit}
+        onClose={() => setTargetStaffForRoleEdit(null)}
+        staffMember={targetStaffForRoleEdit}
+        schoolsList={schoolsList}
+        onStaffUpdated={() => {
+          fetchSchools();
+          fetchAllStaff();
+        }}
+      />
+
       <DeleteSchoolModal
         isOpen={!!targetSchoolForDelete}
         onClose={() => setTargetSchoolForDelete(null)}
@@ -2996,6 +3893,1163 @@ const SuperAdminDashboard = () => {
           fetchSchoolConfig();
         }}
       />
+
+      {/* ─── PUNCHES LOG MODAL (SUPER ADMIN TELEMETRY) ─── */}
+      {selectedStaffPunches && createPortal(
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999999,
+          padding: '20px',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '560px',
+            maxHeight: '90vh',
+            boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #f1f5f9',
+              background: 'linear-gradient(to right, #eff6ff, #ffffff)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 800,
+                  fontSize: '1.2rem',
+                  boxShadow: '0 8px 16px -4px rgba(37, 99, 235, 0.4)'
+                }}>
+                  {selectedStaffPunches.staffName?.charAt(0)?.toUpperCase() || 'S'}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      color: '#2563eb',
+                      background: '#dbeafe',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase'
+                    }}>
+                      Live Punch Telemetry
+                    </span>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      color: '#15803d',
+                      background: '#dcfce7',
+                      padding: '2px 8px',
+                      borderRadius: '6px'
+                    }}>
+                      {selectedStaffPunches.punches.length} {selectedStaffPunches.punches.length === 1 ? 'Record' : 'Records'}
+                    </span>
+                  </div>
+                  <h3 style={{ fontSize: '1.18rem', fontWeight: 800, color: '#0f172a', margin: '4px 0 0 0' }}>
+                    {selectedStaffPunches.staffName}
+                  </h3>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Building2 size={13} color="#64748b" />
+                    <span>{selectedStaffPunches.schoolName}</span>
+                    <span>•</span>
+                    <CalendarDays size={13} color="#64748b" />
+                    <span>{selectedStaffPunches.date}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedStaffPunches(null)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                  padding: '8px',
+                  cursor: 'pointer',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onMouseOver={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+                onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Punches List */}
+            <div style={{ padding: '20px 24px', maxHeight: '420px', overflowY: 'auto' }}>
+              {selectedStaffPunches.punches.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '36px 12px', color: '#94a3b8' }}>
+                  <Clock size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>No punch timestamps recorded</div>
+                  <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>No punches recorded for this staff member on {selectedStaffPunches.date}.</div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {selectedStaffPunches.punches.map((p, idx) => (
+                    <div
+                      key={p._id || idx}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '14px',
+                        background: p.type === 'IN' ? '#f0fdf4' : '#fff1f2',
+                        border: `1px solid ${p.type === 'IN' ? '#bbf7d0' : '#fecdd3'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '8px',
+                          fontSize: '0.74rem',
+                          fontWeight: 800,
+                          background: p.type === 'IN' ? '#16a34a' : '#e11d48',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <Clock size={12} />
+                          {p.type === 'IN' ? 'PUNCH IN' : 'PUNCH OUT'}
+                        </span>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#1e293b' }}>
+                            {formatPunchTime(p.time)}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <MapPin size={12} color="#64748b" />
+                            <span>Location: {p.location || 'Campus Portal'} {p.distanceMeters !== undefined && p.distanceMeters !== null ? `(${p.distanceMeters}m from center)` : ''}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          background: p.isWithinGeofence !== false ? '#dcfce7' : '#fef3c7',
+                          color: p.isWithinGeofence !== false ? '#15803d' : '#b45309',
+                          padding: '3px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          {p.isWithinGeofence !== false ? 'GPS Verified' : 'Standard Web'}
+                        </span>
+                        {p.note && (
+                          <div style={{ fontSize: '0.72rem', color: '#475569', fontStyle: 'italic', marginTop: '3px' }}>
+                            "{p.note}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '14px 24px', background: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedStaffPunches(null)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '10px',
+                  background: '#1e293b',
+                  color: 'white',
+                  border: 'none',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Close Log
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ─── MANUAL PUNCH ADJUSTMENT MODAL (SUPER ADMIN AUTHORITY) ─── */}
+      {manualPunchStaff && (() => {
+        const manualStaffCampus = (schoolsList || []).find(s => s.slug === manualPunchStaff?.schoolSlug || s._id === manualPunchStaff?.schoolId) ||
+                                  (schools || []).find(s => s.slug === manualPunchStaff?.schoolSlug || s._id === manualPunchStaff?.schoolId);
+        const manualStaffCampusName = manualStaffCampus?.name || manualPunchStaff?.schoolSlug || 'Main Campus';
+        const staffInitial = manualPunchStaff?.name?.charAt(0)?.toUpperCase() || 'S';
+        const formattedDate = new Date(attendanceDate + 'T00:00:00').toLocaleDateString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+
+        return createPortal(
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.7)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999999,
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '24px',
+              width: '100%',
+              maxWidth: '540px',
+              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '92vh'
+            }}>
+              {/* Header */}
+              <div style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #f1f5f9',
+                background: 'linear-gradient(to right, #faf5ff, #ffffff)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '14px',
+                    background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 800,
+                    fontSize: '1.2rem',
+                    boxShadow: '0 8px 16px -4px rgba(79, 70, 229, 0.4)'
+                  }}>
+                    {staffInitial}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        color: '#4F46E5',
+                        background: '#e0e7ff',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase'
+                      }}>
+                        Super Admin Override
+                      </span>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        color: '#475569',
+                        background: '#f1f5f9',
+                        padding: '2px 8px',
+                        borderRadius: '6px'
+                      }}>
+                        {manualPunchStaff.employeeId || 'EMP-STAFF'}
+                      </span>
+                    </div>
+                    <h3 style={{ fontSize: '1.18rem', fontWeight: 800, color: '#0f172a', margin: '4px 0 0 0' }}>
+                      {manualPunchStaff.name}
+                    </h3>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{manualPunchStaff.role || 'Staff Member'}</span>
+                      <span>•</span>
+                      <span>{manualPunchStaff.department || 'General'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setManualPunchStaff(null)}
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Form Body */}
+              <form onSubmit={handleManualPunchSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
+                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  {/* Context Bar */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '10px 14px',
+                    gap: '10px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <CalendarDays size={16} color="#4F46E5" />
+                      <span style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 700 }}>
+                        {formattedDate}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
+                      <Building2 size={14} color="#059669" />
+                      <span>{manualStaffCampusName}</span>
+                    </div>
+                  </div>
+
+                  {/* Shift Timing Presets */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                        Shift Timing Presets
+                      </label>
+                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Quick Auto-Fill</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setManualPunchForm(p => ({ ...p, punchInTime: '09:00', punchOutTime: '17:00', status: 'Present' }))}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          background: (manualPunchForm.punchInTime === '09:00' && manualPunchForm.punchOutTime === '17:00' && manualPunchForm.status === 'Present') ? '#e0e7ff' : '#f1f5f9',
+                          color: (manualPunchForm.punchInTime === '09:00' && manualPunchForm.punchOutTime === '17:00' && manualPunchForm.status === 'Present') ? '#4338ca' : '#475569',
+                          border: '1px solid',
+                          borderColor: (manualPunchForm.punchInTime === '09:00' && manualPunchForm.punchOutTime === '17:00' && manualPunchForm.status === 'Present') ? '#c7d2fe' : '#e2e8f0',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Full Shift (09:00 - 17:00)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setManualPunchForm(p => ({ ...p, punchInTime: '09:00', punchOutTime: '13:30', status: 'Half Day' }))}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          background: (manualPunchForm.punchInTime === '09:00' && manualPunchForm.punchOutTime === '13:30' && manualPunchForm.status === 'Half Day') ? '#e0e7ff' : '#f1f5f9',
+                          color: (manualPunchForm.punchInTime === '09:00' && manualPunchForm.punchOutTime === '13:30' && manualPunchForm.status === 'Half Day') ? '#4338ca' : '#475569',
+                          border: '1px solid',
+                          borderColor: (manualPunchForm.punchInTime === '09:00' && manualPunchForm.punchOutTime === '13:30' && manualPunchForm.status === 'Half Day') ? '#c7d2fe' : '#e2e8f0',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Morning Half (09:00 - 13:30)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setManualPunchForm(p => ({ ...p, punchInTime: '13:00', punchOutTime: '17:00', status: 'Half Day' }))}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          background: (manualPunchForm.punchInTime === '13:00' && manualPunchForm.punchOutTime === '17:00' && manualPunchForm.status === 'Half Day') ? '#e0e7ff' : '#f1f5f9',
+                          color: (manualPunchForm.punchInTime === '13:00' && manualPunchForm.punchOutTime === '17:00' && manualPunchForm.status === 'Half Day') ? '#4338ca' : '#475569',
+                          border: '1px solid',
+                          borderColor: (manualPunchForm.punchInTime === '13:00' && manualPunchForm.punchOutTime === '17:00' && manualPunchForm.status === 'Half Day') ? '#c7d2fe' : '#e2e8f0',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Afternoon Half (13:00 - 17:00)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setManualPunchForm(p => ({ ...p, punchInTime: '09:00', punchOutTime: '17:00', status: 'On Duty', notes: p.notes || 'Official On Duty assignment' }))}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          background: manualPunchForm.status === 'On Duty' ? '#ccfbf1' : '#f1f5f9',
+                          color: manualPunchForm.status === 'On Duty' ? '#0f766e' : '#475569',
+                          border: '1px solid',
+                          borderColor: manualPunchForm.status === 'On Duty' ? '#99f6e4' : '#e2e8f0',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        On Duty (OD)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setManualPunchForm(p => ({ ...p, punchOutTime: '' }))}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          background: '#f8fafc',
+                          color: '#64748b',
+                          border: '1px solid #e2e8f0',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Clear Punch Out
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          <Clock size={14} color="#16a34a" />
+                          <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#16a34a' }}>
+                            PUNCH IN TIME
+                          </label>
+                        </div>
+                        <input
+                          type="time"
+                          value={manualPunchForm.punchInTime}
+                          onChange={e => setManualPunchForm(p => ({ ...p, punchInTime: e.target.value }))}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: '#1e293b',
+                            background: 'white'
+                          }}
+                        />
+                        <span style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                          Initial shift clock-in mark
+                        </span>
+                      </div>
+
+                      <div style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          <Clock size={14} color="#dc2626" />
+                          <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#dc2626' }}>
+                            PUNCH OUT TIME (OPTIONAL)
+                          </label>
+                        </div>
+                        <input
+                          type="time"
+                          value={manualPunchForm.punchOutTime}
+                          onChange={e => setManualPunchForm(p => ({ ...p, punchOutTime: e.target.value }))}
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.9rem',
+                            fontWeight: 700,
+                            color: '#1e293b',
+                            background: 'white'
+                          }}
+                        />
+                        <span style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                          Leave empty if shift still active
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Attendance Classification */}
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                      Attendance Classification
+                    </label>
+                    <select
+                      value={manualPunchForm.status}
+                      onChange={e => setManualPunchForm(p => ({ ...p, status: e.target.value }))}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        border: '1.5px solid #cbd5e1',
+                        fontSize: '0.86rem',
+                        fontWeight: 700,
+                        background: 'white',
+                        color: '#1e293b',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="Present">🟢 Present (Full Working Day)</option>
+                      <option value="Half Day">🟡 Half Day (Single Session)</option>
+                      <option value="Late">🟠 Late Arrival (Grace Window Passed)</option>
+                      <option value="Overtime">🟣 Overtime (Extended Shift Hours)</option>
+                      <option value="On Duty">🔵 On Duty (OD / Field & Official Assignment)</option>
+                      <option value="Absent">🔴 Absent (Unexcused Non-Attendance)</option>
+                    </select>
+                  </div>
+
+                  {/* Administrative Reason & Notes */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                        Administrative Reason & Justification
+                      </label>
+                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Audit Log</span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                      {[
+                        'Biometric sync failure',
+                        'Principal authorized adjustment',
+                        'Official campus duty (OD)',
+                        'Emergency medical leave'
+                      ].map(chip => (
+                        <button
+                          key={chip}
+                          type="button"
+                          onClick={() => setManualPunchForm(p => ({ ...p, notes: chip }))}
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: manualPunchForm.notes === chip ? '#ede9fe' : '#f8fafc',
+                            color: manualPunchForm.notes === chip ? '#6d28d9' : '#475569',
+                            border: '1px solid',
+                            borderColor: manualPunchForm.notes === chip ? '#ddd6fe' : '#e2e8f0',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          + {chip}
+                        </button>
+                      ))}
+                    </div>
+
+                    <textarea
+                      rows={2}
+                      value={manualPunchForm.notes}
+                      onChange={e => setManualPunchForm(p => ({ ...p, notes: e.target.value }))}
+                      placeholder="e.g. Biometric sync adjustment, offsite exam duty approved by Super Admin..."
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: '1.5px solid #cbd5e1',
+                        fontSize: '0.84rem',
+                        color: '#1e293b',
+                        resize: 'none',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Audit Notice */}
+                  <div style={{
+                    padding: '10px 14px',
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    fontSize: '0.72rem',
+                    color: '#166534',
+                    fontWeight: 600
+                  }}>
+                    <ShieldCheck size={16} color="#16a34a" />
+                    <span>This override is executed with Super Admin executive authority and instantly updates the daily attendance summary.</span>
+                  </div>
+
+                </div>
+
+                {/* Footer */}
+                <div style={{
+                  padding: '16px 24px',
+                  background: '#f8fafc',
+                  borderTop: '1px solid #f1f5f9',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  alignItems: 'center',
+                  gap: '12px'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setManualPunchStaff(null)}
+                    style={{
+                      padding: '9px 18px',
+                      borderRadius: '10px',
+                      background: 'white',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isManualPunchSubmitting}
+                    style={{
+                      padding: '9px 22px',
+                      borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #4F46E5, #4338ca)',
+                      color: 'white',
+                      border: 'none',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: isManualPunchSubmitting ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                    }}
+                  >
+                    {isManualPunchSubmitting ? (
+                      <>
+                        <RefreshCw size={14} className="animate-spin" />
+                        Saving Override...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={15} />
+                        Save Punch Override
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* ─── EXECUTIVE ATTENDANCE REPORT MODAL ─── */}
+      {isAttendanceReportModalOpen && createPortal(
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999999,
+          padding: '20px',
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div
+            id="attendance-report-modal"
+            style={{
+              background: 'white',
+              borderRadius: '24px',
+              width: '100%',
+              maxWidth: '960px',
+              height: '90vh',
+              maxHeight: '90vh',
+              boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.4), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <style>{`
+              #attendance-report-modal *::-webkit-scrollbar {
+                width: 6px;
+                height: 6px;
+              }
+              #attendance-report-modal *::-webkit-scrollbar-track {
+                background: #f1f5f9;
+                border-radius: 4px;
+              }
+              #attendance-report-modal *::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 4px;
+              }
+              #attendance-report-modal *::-webkit-scrollbar-thumb:hover {
+                background: #94a3b8;
+              }
+              @media print {
+                body * {
+                  visibility: hidden !important;
+                }
+                #attendance-report-modal, #attendance-report-modal * {
+                  visibility: visible !important;
+                }
+                #attendance-report-modal {
+                  position: fixed !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  height: auto !important;
+                  max-height: none !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  border-radius: 0 !important;
+                }
+                .no-print {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 28px',
+              borderBottom: '1px solid #e2e8f0',
+              background: 'linear-gradient(to right, #f8fafc, #ffffff)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexShrink: 0
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #4F46E5, #3730A3)',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 6px 16px rgba(79, 70, 229, 0.3)'
+                }}>
+                  <FileText size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      color: '#4F46E5',
+                      background: '#e0e7ff',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}>
+                      Official Executive Audit
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                      Generated {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '4px 0 0 0', fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+                    Staff Attendance & Punch Report
+                  </h3>
+                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Building2 size={13} color="#64748b" />
+                    <span>
+                      {attendanceSchoolFilter === 'all'
+                        ? 'All Campuses (Consolidated Multi-Branch Scope)'
+                        : (schoolsList.find(s => s.slug === attendanceSchoolFilter)?.name || attendanceSchoolFilter)}
+                    </span>
+                    <span>•</span>
+                    <CalendarDays size={13} color="#64748b" />
+                    <span>Target Date: {attendanceDate}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAttendanceReportModalOpen(false)}
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    padding: '8px',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.color = '#64748b'; }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div style={{
+              padding: '20px 28px',
+              overflowY: 'auto',
+              flex: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              
+              {/* Executive Summary Metrics Strip */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '12px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '16px',
+                padding: '16px',
+                flexShrink: 0
+              }}>
+                <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '10px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Headcount</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e293b', marginTop: '2px' }}>
+                    {attendanceSheetData?.totalStaff || 0}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Staff Tracked</div>
+                </div>
+
+                <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '10px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' }}>Currently On Duty</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#16a34a', marginTop: '2px' }}>
+                    {attendanceSheetData?.currentlyWorking || 0}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#16a34a' }}>Active on campus</div>
+                </div>
+
+                <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '10px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase' }}>Shift Completed</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0284c7', marginTop: '2px' }}>
+                    {attendanceSheetData?.completedShift || 0}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Punched out</div>
+                </div>
+
+                <div style={{ borderRight: '1px solid #e2e8f0', paddingRight: '10px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#d97706', textTransform: 'uppercase' }}>Late Arrivals</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#d97706', marginTop: '2px' }}>
+                    {attendanceSheetData?.lateArrivals || 0}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Beyond grace time</div>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#dc2626', textTransform: 'uppercase' }}>Unpunched / Absent</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#dc2626', marginTop: '2px' }}>
+                    {attendanceSheetData?.notMarked || 0}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>No stamp logged</div>
+                </div>
+              </div>
+
+              {/* Scope & Applied Filters Info Bar */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '10px',
+                fontSize: '0.78rem',
+                color: '#475569',
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span>Scope Filter: <strong>{attendanceDeptFilter === 'All' ? 'All Departments' : attendanceDeptFilter}</strong></span>
+                  <span>•</span>
+                  <span>Status Filter: <strong>{attendanceStatusFilter === 'All' ? 'All Statuses' : attendanceStatusFilter}</strong></span>
+                  {attendanceSearchQuery && (
+                    <>
+                      <span>•</span>
+                      <span>Query: "<strong>{attendanceSearchQuery}</strong>"</span>
+                    </>
+                  )}
+                </div>
+                <div>
+                  Showing <strong>{filteredAttendanceList.length}</strong> of <strong>{attendanceSheetData?.totalStaff || 0}</strong> personnel
+                </div>
+              </div>
+
+              {/* Detailed Report Table with Scrollable Body & Sticky Header */}
+              <div style={{
+                border: '1px solid #e2e8f0',
+                borderRadius: '14px',
+                overflowY: 'auto',
+                overflowX: 'auto',
+                maxHeight: '360px',
+                minHeight: '160px',
+                background: 'white',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+              }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.78rem' }}>
+                  <thead style={{ position: 'sticky', top: 0, zIndex: 5, background: '#f8fafc' }}>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Staff Member</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Branch Campus</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Role & Dept</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Punch In</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Punch Out</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Active Duration</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Status</th>
+                      <th style={{ padding: '12px 16px', background: '#f8fafc' }}>Verification</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAttendanceList.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ padding: '36px', textAlign: 'center', color: '#94a3b8' }}>
+                          No staff attendance records found matching this report scope.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAttendanceList.map((item, idx) => {
+                        const assignedSchool = (schoolsList || []).find(s => s.slug === item.schoolSlug || s._id === item.schoolId) ||
+                                               (schools || []).find(s => s.slug === item.schoolSlug || s._id === item.schoolId);
+                        const campusName = assignedSchool?.name || item.schoolSlug || 'Main Campus';
+                        const isEven = idx % 2 === 0;
+
+                        return (
+                          <tr
+                            key={item.staffId || item._id || idx}
+                            style={{
+                              borderBottom: '1px solid #f1f5f9',
+                              background: isEven ? '#ffffff' : '#fcfcfd'
+                            }}
+                          >
+                            <td style={{ padding: '12px 16px' }}>
+                              <div style={{ fontWeight: 800, color: '#1e293b' }}>{item.name}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.employeeId || 'STAFF'}</div>
+                            </td>
+                            <td style={{ padding: '12px 16px', color: '#334155', fontWeight: 600 }}>
+                              {campusName}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <div style={{ color: '#1e293b', fontWeight: 600 }}>{item.role || 'Staff'}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.department || 'General'}</div>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ fontWeight: item.punchIn ? 700 : 400, color: item.punchIn ? '#16a34a' : '#94a3b8' }}>
+                                {item.punchIn ? formatPunchTime(item.punchIn) : '—'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ fontWeight: item.punchOut ? 700 : 400, color: item.punchOut ? '#e11d48' : '#94a3b8' }}>
+                                {item.punchOut ? formatPunchTime(item.punchOut) : (item.isCurrentlyPunchedIn ? 'On Shift' : '—')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#1e293b' }}>
+                              {item.durationFormatted || '0h 0m'}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                background: item.isCurrentlyPunchedIn
+                                  ? '#dcfce7'
+                                  : item.attendanceStatus === 'Shift Completed'
+                                    ? '#dbeafe'
+                                    : item.attendanceStatus?.includes('Late')
+                                      ? '#fef3c7'
+                                      : item.attendanceStatus === 'On Duty'
+                                        ? '#ccfbf1'
+                                        : item.attendanceStatus === 'Half Day'
+                                          ? '#fef9c3'
+                                          : '#f1f5f9',
+                                color: item.isCurrentlyPunchedIn
+                                  ? '#15803d'
+                                  : item.attendanceStatus === 'Shift Completed'
+                                    ? '#1d4ed8'
+                                    : item.attendanceStatus?.includes('Late')
+                                      ? '#b45309'
+                                      : item.attendanceStatus === 'On Duty'
+                                        ? '#0f766e'
+                                        : item.attendanceStatus === 'Half Day'
+                                          ? '#a16207'
+                                          : '#64748b'
+                              }}>
+                                {item.attendanceStatus || 'Not Punched In'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                color: item.punches?.some(p => p.isWithinGeofence) ? '#16a34a' : '#64748b'
+                              }}>
+                                {item.punches?.some(p => p.isWithinGeofence) ? '✓ GPS Geofenced' : (item.punches?.length > 0 ? 'Web Stamp' : 'No Stamps')}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Compliance & Audit Footer Note */}
+              <div style={{
+                padding: '12px 16px',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.72rem',
+                color: '#64748b',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <ShieldCheck size={14} color="#16a34a" />
+                  <span>Report generated under Super Admin compliance authority with multi-campus synchronization.</span>
+                </div>
+                <div>
+                  Pragati School Management ERP • Confidential Personnel Record
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="no-print" style={{
+              padding: '16px 28px',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              flexShrink: 0
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                Ready to print, download CSV, or archive report snapshot.
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsAttendanceReportModalOpen(false)}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    background: 'white',
+                    color: '#475569',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Close
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadAttendanceCSV}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    background: 'white',
+                    color: '#059669',
+                    border: '1.5px solid #a7f3d0',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Download size={15} />
+                  Download CSV
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrintReport}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '9px 20px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #4F46E5, #4338ca)',
+                    color: 'white',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+                  }}
+                >
+                  <Printer size={15} />
+                  Print / Save as PDF
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>,
+        document.body
+      )}
 
     </div>
   );

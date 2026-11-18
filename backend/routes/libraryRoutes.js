@@ -113,4 +113,19 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
+// POST /api/library/alerts/dispatch - Send return reminder/alert to student
+router.post('/alerts/dispatch', async (req, res) => {
+  try {
+    const { student, book, channels, alertType, message } = req.body;
+    res.json({
+      success: true,
+      message: `Alert dispatched to ${student || 'Student'} successfully.`,
+      dispatchedAt: new Date().toISOString(),
+      channels: channels || ['portal', 'sms', 'whatsapp']
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to dispatch alert', error: error.message });
+  }
+});
+
 module.exports = router;

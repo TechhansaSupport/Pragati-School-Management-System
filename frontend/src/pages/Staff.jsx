@@ -19,6 +19,7 @@ const Staff = () => {
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
+  const isSuperAdmin = userRole === 'superadmin' || userInfo.isSuperAdmin || (sessionStorage.getItem('userRole') || '').toLowerCase() === 'superadmin';
   const tenantSlug = urlTenantSlug || sessionStorage.getItem('tenantSlug') || userInfo.slug || userInfo.tenantSlug || '';
 
   const isAdmin = ['admin', 'superadmin', 'principal', 'frontdesk'].includes(userRole);
@@ -51,6 +52,7 @@ const Staff = () => {
 
   // Top-level Navigation Tab: 'directory' | 'punch-sheet' | 'clock'
   const [activeMainTab, setActiveMainTab] = useState('directory');
+  const effectiveMainTab = isSuperAdmin ? 'directory' : activeMainTab;
 
   // Daily Punch Sheet States
   const [punchSheetDate, setPunchSheetDate] = useState(() => {
@@ -850,89 +852,91 @@ const Staff = () => {
         ))}
       </div>
 
-      {/* Module Navigation Tabs */}
-      <div className="staff-tabs-wrapper">
-        <div className="staff-tabs-bar">
-          {/* TAB 1: ALL STAFF DIRECTORY */}
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('directory')}
-            className={`staff-nav-tab ${activeMainTab === 'directory' ? 'active tab-directory' : ''}`}
-          >
-            <Users size={17} className="tab-icon" style={{ color: activeMainTab === 'directory' ? '#ffffff' : '#2563eb' }} />
-            <span>Staff Directory</span>
-            <span 
-              className="tab-badge"
-              style={{
-                background: activeMainTab === 'directory' ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
-                color: activeMainTab === 'directory' ? '#ffffff' : '#64748b',
-                border: activeMainTab === 'directory' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
-              }}
+      {/* Module Navigation Tabs (Hidden for Super Admin) */}
+      {!isSuperAdmin && (
+        <div className="staff-tabs-wrapper">
+          <div className="staff-tabs-bar">
+            {/* TAB 1: ALL STAFF DIRECTORY */}
+            <button
+              type="button"
+              onClick={() => setActiveMainTab('directory')}
+              className={`staff-nav-tab ${activeMainTab === 'directory' ? 'active tab-directory' : ''}`}
             >
-              {staffList.length}
-            </span>
-          </button>
-
-          {/* TAB 2: DAILY PUNCH SHEET & ATTENDANCE */}
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('punch-sheet')}
-            className={`staff-nav-tab ${activeMainTab === 'punch-sheet' ? 'active tab-punch-sheet' : ''}`}
-          >
-            <Clock size={17} className="tab-icon" style={{ color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#059669' }} />
-            <span>Daily Attendance Sheet</span>
-            {punchSheetData?.currentlyWorking > 0 ? (
+              <Users size={17} className="tab-icon" style={{ color: activeMainTab === 'directory' ? '#ffffff' : '#2563eb' }} />
+              <span>Staff Directory</span>
               <span 
                 className="tab-badge"
                 style={{
-                  background: activeMainTab === 'punch-sheet' ? 'rgba(255, 255, 255, 0.22)' : '#dcfce7',
-                  color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#15803d',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px'
+                  background: activeMainTab === 'directory' ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
+                  color: activeMainTab === 'directory' ? '#ffffff' : '#64748b',
+                  border: activeMainTab === 'directory' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
                 }}
               >
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: activeMainTab === 'punch-sheet' ? '#ffffff' : '#16a34a', display: 'inline-block' }} />
-                {punchSheetData.currentlyWorking} on duty
+                {staffList.length}
               </span>
-            ) : (
+            </button>
+
+            {/* TAB 2: DAILY PUNCH SHEET & ATTENDANCE */}
+            <button
+              type="button"
+              onClick={() => setActiveMainTab('punch-sheet')}
+              className={`staff-nav-tab ${activeMainTab === 'punch-sheet' ? 'active tab-punch-sheet' : ''}`}
+            >
+              <Clock size={17} className="tab-icon" style={{ color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#059669' }} />
+              <span>Daily Attendance Sheet</span>
+              {punchSheetData?.currentlyWorking > 0 ? (
+                <span 
+                  className="tab-badge"
+                  style={{
+                    background: activeMainTab === 'punch-sheet' ? 'rgba(255, 255, 255, 0.22)' : '#dcfce7',
+                    color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#15803d',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: activeMainTab === 'punch-sheet' ? '#ffffff' : '#16a34a', display: 'inline-block' }} />
+                  {punchSheetData.currentlyWorking} on duty
+                </span>
+              ) : (
+                <span 
+                  className="tab-badge"
+                  style={{
+                    background: activeMainTab === 'punch-sheet' ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
+                    color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#64748b',
+                    border: activeMainTab === 'punch-sheet' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
+                  }}
+                >
+                  Shift Roster
+                </span>
+              )}
+            </button>
+
+            {/* TAB 3: PERSONAL PUNCH CLOCK */}
+            <button
+              type="button"
+              onClick={() => setActiveMainTab('clock')}
+              className={`staff-nav-tab ${activeMainTab === 'clock' ? 'active tab-clock' : ''}`}
+            >
+              <LogIn size={17} className="tab-icon" style={{ color: activeMainTab === 'clock' ? '#ffffff' : '#4f46e5' }} />
+              <span>My Time Clock</span>
               <span 
                 className="tab-badge"
                 style={{
-                  background: activeMainTab === 'punch-sheet' ? 'rgba(255, 255, 255, 0.22)' : '#f1f5f9',
-                  color: activeMainTab === 'punch-sheet' ? '#ffffff' : '#64748b',
-                  border: activeMainTab === 'punch-sheet' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e2e8f0'
+                  background: activeMainTab === 'clock' ? 'rgba(255, 255, 255, 0.22)' : '#e0e7ff',
+                  color: activeMainTab === 'clock' ? '#ffffff' : '#4338ca',
+                  border: activeMainTab === 'clock' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #c7d2fe'
                 }}
               >
-                Shift Roster
+                Live Shift
               </span>
-            )}
-          </button>
-
-          {/* TAB 3: PERSONAL PUNCH CLOCK */}
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('clock')}
-            className={`staff-nav-tab ${activeMainTab === 'clock' ? 'active tab-clock' : ''}`}
-          >
-            <LogIn size={17} className="tab-icon" style={{ color: activeMainTab === 'clock' ? '#ffffff' : '#4f46e5' }} />
-            <span>My Time Clock</span>
-            <span 
-              className="tab-badge"
-              style={{
-                background: activeMainTab === 'clock' ? 'rgba(255, 255, 255, 0.22)' : '#e0e7ff',
-                color: activeMainTab === 'clock' ? '#ffffff' : '#4338ca',
-                border: activeMainTab === 'clock' ? '1px solid rgba(255,255,255,0.2)' : '1px solid #c7d2fe'
-              }}
-            >
-              Live Shift
-            </span>
-          </button>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Staff Directory Card */}
-      {activeMainTab === 'directory' && (
+      {effectiveMainTab === 'directory' && (
       <div className="card staff-tab-content" style={{ display: 'flex', flexDirection: 'column', padding: '24px', borderRadius: '20px', border: '1px solid #e2e8f0', background: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
         
         {/* Controls Bar: Search, Filters, Refresh */}
@@ -1216,7 +1220,7 @@ const Staff = () => {
       )}
 
       {/* TAB 2: DAILY PUNCH SHEET & ATTENDANCE */}
-      {activeMainTab === 'punch-sheet' && (
+      {!isSuperAdmin && effectiveMainTab === 'punch-sheet' && (
         <div className="staff-tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* Controls Bar for Punch Sheet */}
@@ -1507,7 +1511,7 @@ const Staff = () => {
       )}
 
       {/* TAB 3: PERSONAL PUNCH CLOCK */}
-      {activeMainTab === 'clock' && (
+      {!isSuperAdmin && effectiveMainTab === 'clock' && (
         <div className="staff-tab-content" style={{ maxWidth: '680px', margin: '0 auto', width: '100%' }}>
           <StaffPunchClock onPunchSuccess={() => fetchPunchSheet()} />
         </div>

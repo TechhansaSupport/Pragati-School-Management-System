@@ -566,7 +566,7 @@ const SupportStaffDashboard = () => {
 
   return (
     <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', color: 'var(--color-text-main)', boxSizing: 'border-box' }}>
-      {/* 1. Modern Command Center Header Card - Clean White Surface */}
+      {/* 1. Modern Command Center Header Card - Clean White Surface (TOP OF DASHBOARD) */}
       <div className="no-print" style={{
         background: 'var(--color-surface, white)',
         borderRadius: '16px',
@@ -743,6 +743,11 @@ const SupportStaffDashboard = () => {
             EMP-108 • Front Desk
           </div>
         </div>
+      </div>
+
+      {/* ─── STAFF ATTENDANCE MODULE ─── */}
+      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0, marginBottom: '20px' }}>
+        <StaffPunchClock onPunchSuccess={() => fetchAllData()} />
       </div>
 
       {/* Back to Overview button when on a sub-tab */}
@@ -1239,9 +1244,6 @@ const SupportStaffDashboard = () => {
 
           {/* RIGHT UTILITY COLUMN */}
           <div className="right-column">
-            {/* Real-time Front Desk Staff Punch In / Punch Out Time Clock */}
-            <StaffPunchClock onPunchSuccess={() => fetchAllData()} />
-
             {/* Front Desk Protocols & Safety Checklist */}
             <div style={{
               background: 'var(--color-surface, #ffffff)',

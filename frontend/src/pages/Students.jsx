@@ -9,6 +9,7 @@ import {
   Shield, Printer, Download, Sparkles, BookMarked, Star, Key, Copy, Eye, EyeOff
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import StudentPromotionModal from '../components/StudentPromotionModal';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -72,6 +73,7 @@ const Students = () => {
   const [editingStudent, setEditingStudent] = useState(null);
   const [studentToDelete, setStudentToDelete] = useState(null);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
 
   // Form State
   const initialForm = {
@@ -1259,6 +1261,24 @@ const Students = () => {
               </button>
             )}
 
+            {/* Annual Student Promotion Button */}
+            {isLeader && (
+              <button
+                onClick={() => setIsPromotionModalOpen(true)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                  color: 'white', border: 'none', padding: '9px 16px',
+                  borderRadius: '10px', fontSize: '0.86rem', fontWeight: 700,
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                  transition: 'transform 0.15s ease'
+                }}
+                title="Promote students to next class / Session rollover"
+              >
+                <GraduationCap size={16} /> Annual Student Promotion
+              </button>
+            )}
+
             {/* Add Student Button */}
             {isAdmin && (
               <button
@@ -2036,6 +2056,17 @@ const Students = () => {
         </div>,
         document.body
       )}
+      {/* Annual Student Promotion & Session Rollover Modal */}
+      <StudentPromotionModal
+        isOpen={isPromotionModalOpen}
+        onClose={() => setIsPromotionModalOpen(false)}
+        onSuccess={() => {
+          fetchStudents();
+          fetchMetadata();
+        }}
+        tenantSlug={tenantSlug}
+        token={token}
+      />
     </div>
   );
 };

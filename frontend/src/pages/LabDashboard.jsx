@@ -9,7 +9,6 @@ import {
   Activity, BookOpen, Layers, Flame, AlertOctagon, HelpCircle,
   Eye, Droplets, Info, CheckSquare, Square, CalendarPlus, Trash2, Edit3
 } from 'lucide-react';
-import StaffPunchClock from '../components/StaffPunchClock';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -487,142 +486,6 @@ const LabDashboard = () => {
           <span>{toast.message}</span>
         </div>
       )}
-
-      {/* TOP SCIENTIFIC COMMAND HEADER - Clean White Surface */}
-      <div className="no-print" style={{
-        background: 'var(--color-surface, white)',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        border: '1px solid var(--color-border, #e2e8f0)',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px'
-      }}>
-        <div style={{ maxWidth: '750px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              background: '#e0e7ff',
-              color: '#4338ca',
-              padding: '3px 10px',
-              borderRadius: '8px',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}>
-              <Microscope size={13} color="#4338ca" /> Science Laboratories & Apparatus
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
-              All 4 Science Labs Active
-            </span>
-          </div>
-
-          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
-            Good Afternoon, {stats.assistantName}! 🔬
-          </h1>
-
-          {/* Quick Action Pills */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => handleOpenScheduleModal()}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <CalendarPlus size={14} color="#059669" /> Schedule Practical Class
-            </button>
-            <button
-              onClick={() => handleOpenAddModal('equipment')}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <Plus size={14} color="#4F46E5" /> Add Equipment
-            </button>
-            <button
-              onClick={() => handleOpenAddModal('chemical')}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <TestTube size={14} color="#0d9488" /> Log Chemical
-            </button>
-          </div>
-        </div>
-
-        {/* Right side session card */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          background: 'var(--color-bg, #f8fafc)',
-          padding: '12px 18px',
-          borderRadius: '12px',
-          border: '1px solid var(--color-border, #e2e8f0)',
-          minWidth: '190px'
-        }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Live Science Campus
-          </div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
-          <div style={{
-            fontSize: '0.72rem',
-            color: '#1e3a8a',
-            fontWeight: 800,
-            background: '#e0e7ff',
-            padding: '2px 8px',
-            borderRadius: '6px',
-            marginTop: '4px'
-          }}>
-            EMP-107 • Lab Assistant
-          </div>
-        </div>
-      </div>
 
       {/* 4 TELEMETRY SCIENTIFIC KPIS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
@@ -1554,10 +1417,6 @@ const LabDashboard = () => {
 
         {/* RIGHT UTILITY COLUMN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          
-          {/* Live Staff Punch Clock with Geofence */}
-          <StaffPunchClock onPunchSuccess={(data) => showToast(data.message)} />
-
           {/* Quick Class Lab Timeline */}
           <div className="card" style={{ background: 'white', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>

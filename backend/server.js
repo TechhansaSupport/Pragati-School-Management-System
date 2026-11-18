@@ -7,6 +7,15 @@ const connectDB = require('./config/db');
 // Load environment variables
 dotenv.config();
 
+// Global crash protection
+process.on('uncaughtException', (err) => {
+  console.error('CRITICAL: Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('CRITICAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 // Connect to Local Application Database
 connectDB();
 

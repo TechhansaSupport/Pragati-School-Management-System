@@ -92,8 +92,7 @@ const PrincipalDashboard = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', width: '100%' }}>
-      
-      {/* ─── PRINCIPAL EXECUTIVE HEADER BAR ─── */}
+      {/* ─── PRINCIPAL EXECUTIVE HEADER BAR (TOP OF DASHBOARD) ─── */}
       <div className="card" style={{
         background: 'var(--color-surface, white)',
         borderRadius: '16px',
@@ -179,6 +178,8 @@ const PrincipalDashboard = () => {
           </div>
         </div>
       </div>
+
+      
 
       {/* 5-PILLAR SCHOOL HEALTH SCORECARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>

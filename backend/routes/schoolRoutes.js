@@ -1258,6 +1258,75 @@ router.put('/staff/:id/reassign', protect, authorize('superadmin', 'admin'), asy
   }
 });
 
+// @desc    Superadmin grant or limit staff role, branch, and module permissions
+// @route   PUT /api/school/staff/:id/role-permissions
+// @access  Protected (Superadmin / Admin)
+router.put('/staff/:id/role-permissions', protect, authorize('superadmin', 'admin'), async (req, res) => {
+  try {
+    const { role, department, schoolSlug, permissions, accessStatus, status, portalPassword } = req.body;
+
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    if (role) staff.role = role;
+    if (department) staff.department = department;
+    if (schoolSlug !== undefined) staff.schoolSlug = schoolSlug ? schoolSlug.trim() : '';
+    if (permissions !== undefined) staff.permissions = permissions;
+    if (accessStatus !== undefined) staff.accessStatus = accessStatus;
+    if (status !== undefined) staff.status = status;
+
+    await staff.save();
+
+    // Map role to user login role
+    const roleMap = {
+      'Principal': 'principal',
+      'Administrator': 'admin',
+      'Teacher': 'teacher',
+      'Accountant': 'accountant',
+      'Librarian': 'librarian',
+      'Transport Incharge': 'transport',
+      'Lab Assistant': 'lab_assistant',
+      'Frontdesk': 'frontdesk',
+      'Support Staff': 'support_staff'
+    };
+
+    const targetUserRole = roleMap[staff.role] || 'teacher';
+
+    // Update linked user login accounts
+    const userUpdates = {
+      role: targetUserRole,
+      status: accessStatus === 'Suspended' ? 'suspended' : 'active'
+    };
+    if (schoolSlug !== undefined) userUpdates.schoolSlug = schoolSlug ? schoolSlug.trim() : '';
+    
+    if (portalPassword && portalPassword.trim()) {
+      const bcrypt = require('bcryptjs');
+      const salt = await bcrypt.genSalt(10);
+      userUpdates.password = await bcrypt.hash(portalPassword.trim(), salt);
+    }
+
+    const userFilter = {
+      $or: [
+        { referenceId: staff._id },
+        ...(staff.portalUsername ? [{ uniqueId: staff.portalUsername }] : [])
+      ]
+    };
+
+    await User.updateMany(userFilter, { $set: userUpdates }).catch(() => null);
+
+    return res.json({
+      success: true,
+      message: `Staff role and permissions for ${staff.name} successfully updated!`,
+      staff
+    });
+  } catch (error) {
+    console.error('Error updating staff role & permissions:', error);
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
 // @desc    Get the default active licensed school for login fallback routing
 // @route   GET /api/school/public-default
 // @access  Public

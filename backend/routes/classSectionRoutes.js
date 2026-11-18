@@ -408,6 +408,8 @@ router.post('/', async (req, res) => {
       capacity,
       academicSession,
       subjects,
+      activityClasses,
+      curriculum,
       schedule,
       status,
       schoolSlug,
@@ -479,6 +481,12 @@ router.post('/', async (req, res) => {
         ? subjects.split(',').map(s => s.trim()).filter(Boolean)
         : ['Mathematics', 'Science', 'English', 'Social Studies'];
 
+    const parsedActivities = Array.isArray(activityClasses)
+      ? activityClasses
+      : (typeof activityClasses === 'string' && activityClasses.trim())
+        ? activityClasses.split(',').map(s => s.trim()).filter(Boolean)
+        : ['Physical Education', 'Art & Craft', 'Library & Reading'];
+
     const newClassSection = new ClassSection({
       className: cleanClassName,
       section: cleanSection,
@@ -488,6 +496,8 @@ router.post('/', async (req, res) => {
       capacity: capacity ? Number(capacity) : 40,
       academicSession: academicSession ? academicSession.trim() : '2026-2027',
       subjects: parsedSubjects,
+      activityClasses: parsedActivities,
+      curriculum: Array.isArray(curriculum) ? curriculum : [],
       schedule: schedule ? schedule.trim() : 'Mon - Fri | 08:30 AM - 02:30 PM',
       status: status || 'Active',
       entityId: targetEntityId,
@@ -523,6 +533,8 @@ router.put('/:id', async (req, res) => {
       capacity,
       academicSession,
       subjects,
+      activityClasses,
+      curriculum,
       schedule,
       status,
     } = req.body;
@@ -542,6 +554,18 @@ router.put('/:id', async (req, res) => {
         : (typeof subjects === 'string')
           ? subjects.split(',').map(s => s.trim()).filter(Boolean)
           : [];
+    }
+
+    if (activityClasses !== undefined) {
+      updateData.activityClasses = Array.isArray(activityClasses)
+        ? activityClasses
+        : (typeof activityClasses === 'string')
+          ? activityClasses.split(',').map(s => s.trim()).filter(Boolean)
+          : [];
+    }
+
+    if (curriculum !== undefined && Array.isArray(curriculum)) {
+      updateData.curriculum = curriculum;
     }
 
     if (classTeacher !== undefined) {

@@ -86,112 +86,239 @@ const normalizeScheduleRecessAndPeriods = (schedule) => {
   return { schedule, modified };
 };
 
-// Helper to generate a default schedule populated with actual school teachers
-const generateDefaultSchedule = (className = 'Class 10', section = 'A', teachers = []) => {
-  const teacherList = teachers.length > 0 
-    ? teachers.map(t => t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim()) 
-    : ['Mr. Ramesh Singh', 'Dr. Vikram Malhotra', 'Ms. Sunita Sharma', 'Mr. Rajesh Verma', 'Mrs. Priya Sen', 'Coach R. Yadav'];
+// Helper to resolve standard default subjects & activity classes based on class grade level
+const getDefaultSubjectsForClass = (className = '') => {
+  const cn = String(className).toLowerCase();
+  if (cn.includes('nursery') || cn.includes('lkg') || cn.includes('ukg') || cn.includes('kindergarten')) {
+    return {
+      subjects: ['English Rhymes & Phonics', 'Number Magic & Math', 'Storytelling & EVS'],
+      activityClasses: ['Art & Coloring', 'Music & Rhymes', 'Playground Games', 'Yoga & Motor Skills']
+    };
+  }
+  if (cn.includes('class 1') || cn.includes('class 2') || cn.includes('class 3') || cn.includes('class 4') || cn.includes('class 5')) {
+    return {
+      subjects: ['English Language', 'Mathematics', 'Environmental Studies (EVS)', 'Hindi', 'General Science'],
+      activityClasses: ['Art & Craft', 'Physical Education / Sports', 'Library & Reading', 'Music', 'Moral Science']
+    };
+  }
+  if (cn.includes('class 11') || cn.includes('class 12')) {
+    if (cn.includes('sci') || cn.includes('science')) {
+      return {
+        subjects: ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'English Core', 'Computer Science'],
+        activityClasses: ['Physical Education', 'Library & Research', 'STEM Lab & Experiments']
+      };
+    }
+    if (cn.includes('comm') || cn.includes('commerce')) {
+      return {
+        subjects: ['Accountancy', 'Business Studies', 'Economics', 'English Core', 'Mathematics / Applied Math'],
+        activityClasses: ['Physical Education', 'Library & Research', 'Debate & Case Studies']
+      };
+    }
+    if (cn.includes('art') || cn.includes('humanities')) {
+      return {
+        subjects: ['History', 'Political Science', 'Geography', 'Economics', 'English Core', 'Psychology'],
+        activityClasses: ['Art & Design', 'Library & Research', 'Debate & MUN', 'Physical Education']
+      };
+    }
+    return {
+      subjects: ['Physics', 'Chemistry', 'Mathematics', 'English Core', 'Computer Science'],
+      activityClasses: ['Physical Education', 'Library & Research', 'Co-Curricular Activities']
+    };
+  }
+  // Secondary: Class 6 to 10
+  return {
+    subjects: ['Mathematics', 'General Science', 'English Literature', 'Social Studies', 'Hindi', 'Computer Science'],
+    activityClasses: ['Physical Education / Sports', 'Art & Craft', 'Library & Reading', 'Music & Performing Arts', 'Yoga & Wellness']
+  };
+};
 
-  const getTeacher = (index) => teacherList[index % teacherList.length];
+// Core AI Matrix Timetable Generator strictly restricted to class-listed subjects & activity classes
+const generateScheduleFromClassCurriculum = ({
+  className = 'Class 10',
+  section = 'A',
+  staffList = [],
+  academicSubjects = [],
+  activityClasses = [],
+  curriculumList = [],
+  templateSchedule = null,
+  offDays = ['Sunday']
+}) => {
+  let cleanAcademic = Array.isArray(academicSubjects)
+    ? academicSubjects.map(s => String(s).trim()).filter(Boolean)
+    : [];
+  let cleanActivities = Array.isArray(activityClasses)
+    ? activityClasses.map(s => String(s).trim()).filter(Boolean)
+    : [];
 
-  const subjectsByDay = {
-    Monday: [
-      { subject: 'Mathematics', teacher: getTeacher(0), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Physics Lab', teacher: getTeacher(1), room: 'Physics Lab 1', type: 'Lab' },
-      { subject: 'English Literature', teacher: getTeacher(2), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Chemistry', teacher: getTeacher(1), room: 'Chemistry Lab', type: 'Lab' },
-      { subject: 'Social Studies', teacher: getTeacher(3), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Computer Science', teacher: getTeacher(4), room: 'IT Lab 2', type: 'Lab' },
-      { subject: 'Hindi', teacher: getTeacher(2), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Physical Education', teacher: getTeacher(5), room: 'Sports Ground', type: 'Activity' },
-    ],
-    Tuesday: [
-      { subject: 'Physics', teacher: getTeacher(1), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Mathematics', teacher: getTeacher(0), room: 'Room 201', type: 'Lecture' },
-      { subject: 'General Science', teacher: getTeacher(1), room: 'Room 201', type: 'Lecture' },
-      { subject: 'English', teacher: getTeacher(2), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Physical Education', teacher: getTeacher(5), room: 'Sports Ground', type: 'Activity' },
-      { subject: 'Mathematics Problem Solving', teacher: getTeacher(0), room: 'Room 201', type: 'Tutorial' },
-      { subject: 'Social Studies', teacher: getTeacher(3), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Library & Reading', teacher: 'Librarian Incharge', room: 'Central Library', type: 'Self Study' },
-    ],
-    Wednesday: [
-      { subject: 'Chemistry Lab', teacher: getTeacher(1), room: 'Chemistry Lab', type: 'Lab' },
-      { subject: 'Social Studies', teacher: getTeacher(3), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Mathematics', teacher: getTeacher(0), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Hindi / Regional Lang', teacher: getTeacher(2), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Physics', teacher: getTeacher(1), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Library & Reading', teacher: 'Librarian Incharge', room: 'Central Library', type: 'Self Study' },
-      { subject: 'Biology', teacher: getTeacher(1), room: 'Bio Lab', type: 'Lab' },
-      { subject: 'Art & Craft', teacher: getTeacher(5), room: 'Art Studio', type: 'Activity' },
-    ],
-    Thursday: [
-      { subject: 'Mathematics', teacher: getTeacher(0), room: 'Room 201', type: 'Lecture' },
-      { subject: 'English Grammar', teacher: getTeacher(2), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Biology Lab', teacher: getTeacher(1), room: 'Bio Lab', type: 'Lab' },
-      { subject: 'Social Studies', teacher: getTeacher(3), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Computer Applications', teacher: getTeacher(4), room: 'IT Lab 2', type: 'Lab' },
-      { subject: 'Art & Design', teacher: getTeacher(5), room: 'Art Studio', type: 'Activity' },
-      { subject: 'Chemistry Revision', teacher: getTeacher(1), room: 'Room 201', type: 'Tutorial' },
-      { subject: 'Sports & Games', teacher: getTeacher(5), room: 'Sports Ground', type: 'Activity' },
-    ],
-    Friday: [
-      { subject: 'Physics', teacher: getTeacher(1), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Chemistry', teacher: getTeacher(1), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Mathematics Revision', teacher: getTeacher(0), room: 'Room 201', type: 'Tutorial' },
-      { subject: 'English Speaking / Debate', teacher: getTeacher(2), room: 'Room 201', type: 'Activity' },
-      { subject: 'Value Education', teacher: 'Principal Office', room: 'Main Auditorium', type: 'Lecture' },
-      { subject: 'Weekly Assessment / Remedial', teacher: getTeacher(0), room: 'Room 201', type: 'Assessment' },
-      { subject: 'Computer Science Practical', teacher: getTeacher(4), room: 'IT Lab 2', type: 'Lab' },
-      { subject: 'General Knowledge & Club', teacher: getTeacher(3), room: 'Room 201', type: 'Activity' },
-    ],
-    Saturday: [
-      { subject: 'Mathematics Revision', teacher: getTeacher(0), room: 'Room 201', type: 'Tutorial' },
-      { subject: 'Science Practical / Lab', teacher: getTeacher(1), room: 'Science Lab', type: 'Lab' },
-      { subject: 'English Communication & Debate', teacher: getTeacher(2), room: 'Room 201', type: 'Activity' },
-      { subject: 'Social Studies & Current Affairs', teacher: getTeacher(3), room: 'Room 201', type: 'Lecture' },
-      { subject: 'Computer Applications & Coding', teacher: getTeacher(4), room: 'IT Lab 2', type: 'Lab' },
-      { subject: 'Co-Curricular & Club Activities', teacher: getTeacher(5), room: 'Activity Hall', type: 'Activity' },
-      { subject: 'Library & Self Study', teacher: 'Librarian Incharge', room: 'Central Library', type: 'Self Study' },
-      { subject: 'Physical Education & Sports', teacher: getTeacher(5), room: 'Sports Ground', type: 'Activity' },
-    ]
+  // Fallback only if both lists are completely blank
+  if (cleanAcademic.length === 0 && cleanActivities.length === 0) {
+    const defaults = getDefaultSubjectsForClass(className);
+    cleanAcademic = defaults.subjects;
+    cleanActivities = defaults.activityClasses;
+  }
+  if (cleanAcademic.length === 0) {
+    cleanAcademic = ['Mathematics', 'Science', 'English', 'Social Studies'];
+  }
+
+  // Lookup map for customized teacher and room assignments
+  const currMap = {};
+  if (Array.isArray(curriculumList)) {
+    curriculumList.forEach(item => {
+      if (item && item.name) {
+        currMap[item.name.toLowerCase().trim()] = item;
+      }
+    });
+  }
+
+  const teacherNames = staffList
+    .map(t => t.name || `${t.firstName || ''} ${t.lastName || ''}`.trim())
+    .filter(Boolean);
+
+  const getTeacherForSubject = (subjName, fallbackIdx = 0) => {
+    const key = subjName.toLowerCase().trim();
+    if (currMap[key]?.teacher) return currMap[key].teacher;
+    const matched = staffList.find(s => {
+      const dept = (s.department || '').toLowerCase();
+      const spec = (s.subject || s.specialization || '').toLowerCase();
+      return (dept && key.includes(dept)) || (spec && key.includes(spec));
+    });
+    if (matched) return matched.name || `${matched.firstName || ''} ${matched.lastName || ''}`.trim();
+    if (teacherNames.length > 0) return teacherNames[fallbackIdx % teacherNames.length];
+    return 'Duty Faculty';
   };
 
-  const schedule = {};
-  for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) {
-    const list = subjectsByDay[day] || [];
-    let subjectIdx = 0;
-    schedule[day] = DEFAULT_PERIODS.map(dp => {
-      if (dp.isRecess) {
+  const getRoomForSubject = (subjName, defaultRoom = 'Room 101') => {
+    const key = subjName.toLowerCase().trim();
+    if (currMap[key]?.room) return currMap[key].room;
+    if (key.includes('physic') && key.includes('lab')) return 'Physics Lab';
+    if (key.includes('chemist') && key.includes('lab')) return 'Chemistry Lab';
+    if (key.includes('bio') && key.includes('lab')) return 'Bio Lab';
+    if (key.includes('lab') || key.includes('comput') || key.includes('robot')) return 'IT Lab / STEM Room';
+    if (key.includes('sport') || key.includes('pe') || key.includes('phys') || key.includes('game') || key.includes('skat')) return 'Sports Ground';
+    if (key.includes('art') || key.includes('craft') || key.includes('draw')) return 'Art Studio';
+    if (key.includes('music') || key.includes('dance')) return 'Music Room';
+    if (key.includes('lib') || key.includes('read')) return 'Central Library';
+    if (key.includes('yoga') || key.includes('fitness')) return 'Yoga & Activity Hall';
+    return defaultRoom;
+  };
+
+  const isSaturdayOff = offDays.includes('Saturday');
+  const workingDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  if (!isSaturdayOff) workingDays.push('Saturday');
+
+  const newSchedule = {};
+  let academicRotator = 0;
+  let activityRotator = 0;
+
+  for (const day of ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']) {
+    if (offDays.includes(day) || !workingDays.includes(day)) {
+      newSchedule[day] = [];
+      continue;
+    }
+
+    let dayTemplate = (templateSchedule && templateSchedule[day]?.length > 0)
+      ? templateSchedule[day]
+      : (templateSchedule && templateSchedule['Monday']?.length > 0)
+        ? templateSchedule['Monday']
+        : DEFAULT_PERIODS;
+
+    const nonRecessSlots = dayTemplate.filter(p => !p.isRecess && p.type !== 'Recess' && p.type !== 'Break' && !String(p.periodName).toLowerCase().includes('recess'));
+    const totalSlots = nonRecessSlots.length;
+
+    // Allocate 1 or 2 slots per day for listed activity classes (if configured)
+    const activitySlotsCount = cleanActivities.length > 0 ? (totalSlots >= 7 ? 2 : 1) : 0;
+    const academicSlotsCount = Math.max(1, totalSlots - activitySlotsCount);
+
+    const assignedSlots = [];
+
+    // Core Academic subjects for primary morning slots (STRICTLY FROM LISTED SUBJECTS ONLY)
+    for (let i = 0; i < academicSlotsCount; i++) {
+      const subj = cleanAcademic[academicRotator % cleanAcademic.length];
+      academicRotator++;
+      assignedSlots.push({
+        subject: subj,
+        type: currMap[subj.toLowerCase()]?.type || (subj.toLowerCase().includes('lab') ? 'Lab' : 'Lecture'),
+        teacher: getTeacherForSubject(subj, academicRotator),
+        room: getRoomForSubject(subj, 'Room 101'),
+        isRecess: false
+      });
+    }
+
+    // Activity classes for afternoon/activity slots (STRICTLY FROM LISTED ACTIVITIES ONLY)
+    for (let i = 0; i < activitySlotsCount; i++) {
+      const act = cleanActivities[activityRotator % cleanActivities.length];
+      activityRotator++;
+      assignedSlots.push({
+        subject: act,
+        type: 'Activity',
+        teacher: getTeacherForSubject(act, activityRotator + 10),
+        room: getRoomForSubject(act, 'Activity Hall'),
+        isRecess: false
+      });
+    }
+
+    // Map into the day template, strictly keeping Recess
+    let assignIdx = 0;
+    newSchedule[day] = dayTemplate.map((p, idx) => {
+      const isRecess = Boolean(
+        p.isRecess ||
+        p.type === 'Recess' ||
+        p.type === 'Break' ||
+        (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
+        (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
+      );
+
+      if (isRecess) {
         return {
-          periodNumber: dp.periodNumber,
+          periodNumber: p.periodNumber || idx + 1,
           periodName: 'Recess',
-          startTime: dp.startTime,
-          endTime: dp.endTime,
+          startTime: p.startTime || '11:50',
+          endTime: p.endTime || '12:10',
           subject: 'Recess / Break',
           teacher: 'Duty Staff',
           room: 'Campus / Cafeteria',
           type: 'Recess',
-          isRecess: true,
+          isRecess: true
         };
       }
-      const item = list[subjectIdx % list.length];
-      subjectIdx++;
+
+      const assigned = assignedSlots[assignIdx % assignedSlots.length] || {
+        subject: cleanAcademic[0] || 'General Study',
+        type: 'Lecture',
+        teacher: 'Duty Faculty',
+        room: 'Room 101',
+        isRecess: false
+      };
+      assignIdx++;
+
       return {
-        periodNumber: dp.periodNumber,
-        periodName: dp.periodName,
-        startTime: dp.startTime,
-        endTime: dp.endTime,
-        subject: item?.subject || 'General Study',
-        teacher: item?.teacher || 'Duty Faculty',
-        room: item?.room || 'Room 201',
-        type: item?.type || 'Lecture',
-        isRecess: false,
+        periodNumber: p.periodNumber || idx + 1,
+        periodName: p.periodName || `P${idx + 1}`,
+        startTime: p.startTime || '08:30',
+        endTime: p.endTime || '09:20',
+        subject: assigned.subject,
+        teacher: assigned.teacher,
+        room: assigned.room,
+        type: assigned.type,
+        isRecess: false
       };
     });
   }
 
-  return schedule;
+  normalizeScheduleRecessAndPeriods(newSchedule);
+  return newSchedule;
+};
+
+// Helper for backward compatibility
+const generateDefaultSchedule = (className = 'Class 10', section = 'A', teachers = [], subjects = [], activities = []) => {
+  return generateScheduleFromClassCurriculum({
+    className,
+    section,
+    staffList: teachers,
+    academicSubjects: subjects,
+    activityClasses: activities,
+    offDays: ['Sunday']
+  });
 };
 
 // Helper to resolve effective target school slug
@@ -732,10 +859,24 @@ router.post('/structure-all', checkTimetableSetupAuthority, async (req, res) => 
           }
 
           if (applyMode === 'auto') {
-            const classSubjects = cls.subjects && cls.subjects.length > 0
+            const classSubs = (Array.isArray(cls.subjects) && cls.subjects.length > 0)
               ? cls.subjects
-              : ['Mathematics', 'Science', 'English', 'Social Studies', 'Hindi', 'Computer'];
-            const sub = classSubjects[(template.periodNumber - 1) % classSubjects.length];
+              : (Array.isArray(timetable?.subjects) && timetable.subjects.length > 0)
+                ? timetable.subjects
+                : getDefaultSubjectsForClass(cleanClass).subjects;
+
+            const classActs = (Array.isArray(cls.activityClasses) && cls.activityClasses.length > 0)
+              ? cls.activityClasses
+              : (Array.isArray(timetable?.activityClasses) && timetable.activityClasses.length > 0)
+                ? timetable.activityClasses
+                : getDefaultSubjectsForClass(cleanClass).activityClasses;
+
+            // If it's one of the last periods, prioritize activity classes if available
+            const isActivityPeriod = classActs.length > 0 && template.periodNumber >= (totalPeriods - 1);
+            const sub = isActivityPeriod
+              ? classActs[(template.periodNumber - 1) % classActs.length]
+              : classSubs[(template.periodNumber - 1) % classSubs.length];
+
             const teacherObj = availableTeachers.length > 0
               ? availableTeachers[(template.periodNumber - 1) % availableTeachers.length]
               : null;
@@ -748,8 +889,8 @@ router.post('/structure-all', checkTimetableSetupAuthority, async (req, res) => 
               endTime: template.endTime,
               subject: sub,
               teacher: tName,
-              room: cls.roomNumber || 'Room 101',
-              type: 'Lecture',
+              room: isActivityPeriod ? 'Activity Hall' : (cls.roomNumber || 'Room 101'),
+              type: isActivityPeriod ? 'Activity' : 'Lecture',
               isRecess: false
             };
           }
@@ -1369,10 +1510,139 @@ router.put('/bell-schedule', checkTimetableSetupAuthority, async (req, res) => {
   }
 });
 
-// POST /api/timetable/auto-generate — Generate conflict-free timetable (Super Admin, Branch Admin, Principal)
+// GET /api/timetable/class-curriculum — Retrieve class-wise academic subjects and activity classes
+router.get('/class-curriculum', async (req, res) => {
+  try {
+    const { className, section } = req.query;
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!className || !section) {
+      return res.status(400).json({ message: 'className and section are required' });
+    }
+
+    const cleanClass = className.trim();
+    const cleanSection = section.trim().toUpperCase();
+
+    const query = { className: cleanClass, section: cleanSection, entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const staffQuery = { entityId: req.entityId, status: 'Active' };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      staffQuery.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const [classSection, timetable, staffList] = await Promise.all([
+      ClassSection.findOne(query),
+      Timetable.findOne(query),
+      Staff.find(staffQuery).select('_id name firstName lastName role department')
+    ]);
+
+    let subjects = (classSection?.subjects && classSection.subjects.length > 0)
+      ? classSection.subjects
+      : (timetable?.subjects && timetable.subjects.length > 0)
+        ? timetable.subjects
+        : [];
+
+    let activityClasses = (classSection?.activityClasses && classSection.activityClasses.length > 0)
+      ? classSection.activityClasses
+      : (timetable?.activityClasses && timetable.activityClasses.length > 0)
+        ? timetable.activityClasses
+        : [];
+
+    let curriculum = (classSection?.curriculum && classSection.curriculum.length > 0)
+      ? classSection.curriculum
+      : (timetable?.curriculum && timetable.curriculum.length > 0)
+        ? timetable.curriculum
+        : [];
+
+    // Fall back to intelligent grade-appropriate defaults if completely unconfigured
+    if (subjects.length === 0 && activityClasses.length === 0) {
+      const defaults = getDefaultSubjectsForClass(cleanClass);
+      subjects = defaults.subjects;
+      activityClasses = defaults.activityClasses;
+    }
+
+    res.json({
+      success: true,
+      className: cleanClass,
+      section: cleanSection,
+      subjects,
+      activityClasses,
+      curriculum,
+      staffList: staffList || []
+    });
+  } catch (error) {
+    console.error('Error fetching class curriculum:', error);
+    res.status(500).json({ message: 'Error retrieving class curriculum', error: error.message });
+  }
+});
+
+// POST /api/timetable/class-curriculum — Save class-wise subjects & activity classes
+router.post('/class-curriculum', checkTimetableSetupAuthority, async (req, res) => {
+  try {
+    const { className, section, subjects = [], activityClasses = [], curriculum = [] } = req.body;
+    const schoolSlug = resolveSchoolSlug(req);
+
+    if (!className || !section) {
+      return res.status(400).json({ message: 'className and section are required' });
+    }
+
+    const cleanClass = className.trim();
+    const cleanSection = section.trim().toUpperCase();
+
+    const cleanSubjects = Array.from(new Set(
+      (Array.isArray(subjects) ? subjects : [])
+        .map(s => String(s).trim())
+        .filter(Boolean)
+    ));
+
+    const cleanActivities = Array.from(new Set(
+      (Array.isArray(activityClasses) ? activityClasses : [])
+        .map(a => String(a).trim())
+        .filter(Boolean)
+    ));
+
+    const cleanCurriculum = Array.isArray(curriculum) ? curriculum.filter(c => c && c.name) : [];
+
+    const query = { className: cleanClass, section: cleanSection, entityId: req.entityId };
+    if (schoolSlug && schoolSlug !== 'central' && schoolSlug !== 'all') {
+      query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
+    }
+
+    const updateDoc = {
+      className: cleanClass,
+      section: cleanSection,
+      subjects: cleanSubjects,
+      activityClasses: cleanActivities,
+      curriculum: cleanCurriculum,
+      entityId: req.entityId,
+      schoolSlug: schoolSlug || req.schoolSlug || ''
+    };
+
+    await Promise.all([
+      ClassSection.findOneAndUpdate(query, { $set: updateDoc }, { upsert: true, new: true }),
+      Timetable.findOneAndUpdate(query, { $set: updateDoc }, { upsert: true, new: true })
+    ]);
+
+    res.json({
+      success: true,
+      message: `Curriculum updated: ${cleanSubjects.length} subjects & ${cleanActivities.length} activity classes saved for ${cleanClass} - ${cleanSection}`,
+      subjects: cleanSubjects,
+      activityClasses: cleanActivities,
+      curriculum: cleanCurriculum
+    });
+  } catch (error) {
+    console.error('Error saving class curriculum:', error);
+    res.status(500).json({ message: 'Error saving class curriculum', error: error.message });
+  }
+});
+
+// POST /api/timetable/auto-generate — Generate conflict-free timetable strictly restricted to listed class subjects & activities
 router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => {
   try {
-    const { className, section } = req.body;
+    const { className, section, subjects, activityClasses, curriculum } = req.body;
     const schoolSlug = resolveSchoolSlug(req);
 
     if (!className || !section) {
@@ -1394,88 +1664,78 @@ router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => 
       query.$or = [{ schoolSlug }, { schoolSlug: { $exists: false } }, { schoolSlug: '' }];
     }
 
-    let existingTimetable = await Timetable.findOne(query);
-    let newSchedule = {};
+    let [existingTimetable, classSection] = await Promise.all([
+      Timetable.findOne(query),
+      ClassSection.findOne(query)
+    ]);
+
+    // Resolve class-wise subjects & activities:
+    // 1. Explicit body payload (if passed directly from UI)
+    // 2. ClassSection database configuration
+    // 3. Timetable database configuration
+    // 4. Fallback defaults for this grade
+    let targetSubjects = Array.isArray(subjects) && subjects.length > 0
+      ? subjects
+      : (Array.isArray(classSection?.subjects) && classSection.subjects.length > 0)
+        ? classSection.subjects
+        : (Array.isArray(existingTimetable?.subjects) && existingTimetable.subjects.length > 0)
+          ? existingTimetable.subjects
+          : [];
+
+    let targetActivities = Array.isArray(activityClasses) && activityClasses.length > 0
+      ? activityClasses
+      : (Array.isArray(classSection?.activityClasses) && classSection.activityClasses.length > 0)
+        ? classSection.activityClasses
+        : (Array.isArray(existingTimetable?.activityClasses) && existingTimetable.activityClasses.length > 0)
+          ? existingTimetable.activityClasses
+          : [];
+
+    let targetCurriculum = Array.isArray(curriculum) && curriculum.length > 0
+      ? curriculum
+      : (Array.isArray(classSection?.curriculum) && classSection.curriculum.length > 0)
+        ? classSection.curriculum
+        : (Array.isArray(existingTimetable?.curriculum) && existingTimetable.curriculum.length > 0)
+          ? existingTimetable.curriculum
+          : [];
+
+    if (targetSubjects.length === 0 && targetActivities.length === 0) {
+      const defaults = getDefaultSubjectsForClass(cleanClass);
+      targetSubjects = defaults.subjects;
+      targetActivities = defaults.activityClasses;
+    }
 
     const effectiveOffDays = Array.isArray(req.body.offDays)
       ? req.body.offDays
       : (Array.isArray(existingTimetable?.offDays) ? existingTimetable.offDays : ['Sunday']);
 
-    const isSaturdayOff = effectiveOffDays.includes('Saturday');
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    if (!isSaturdayOff) {
-      days.push('Saturday');
-    }
+    // Generate schedule strictly using ONLY the class's listed subjects and activity classes!
+    const newSchedule = generateScheduleFromClassCurriculum({
+      className: cleanClass,
+      section: cleanSection,
+      staffList,
+      academicSubjects: targetSubjects,
+      activityClasses: targetActivities,
+      curriculumList: targetCurriculum,
+      templateSchedule: existingTimetable?.schedule || null,
+      offDays: effectiveOffDays
+    });
 
-    if (existingTimetable && existingTimetable.schedule && Object.keys(existingTimetable.schedule).some(d => existingTimetable.schedule[d]?.length > 0)) {
-      // Preserve existing bell schedule and recess slots 100% intact! Appoint recess as recess only!
-      newSchedule = JSON.parse(JSON.stringify(existingTimetable.schedule));
-      const defaultSched = generateDefaultSchedule(cleanClass, cleanSection, staffList);
-
-      // If Saturday is an active working day and has no periods yet, clone the periods structure from Monday
-      const mondayPeriods = newSchedule['Monday'] || [];
-      if (!isSaturdayOff && (!newSchedule['Saturday'] || newSchedule['Saturday'].length === 0) && mondayPeriods.length > 0) {
-        newSchedule['Saturday'] = mondayPeriods.map((p, idx) => ({
-          periodNumber: p.periodNumber || idx + 1,
-          periodName: p.periodName || `P${idx + 1}`,
-          startTime: p.startTime || '08:30',
-          endTime: p.endTime || '09:20',
-          subject: p.isRecess ? (p.subject || 'Recess / Break') : '',
-          teacher: p.isRecess ? 'Duty Staff' : '',
-          room: p.room || 'Room 101',
-          type: p.isRecess ? 'Recess' : (p.type || 'Lecture'),
-          isRecess: Boolean(p.isRecess)
-        }));
-      }
-
-      for (const d of days) {
-        const dayPeriods = newSchedule[d] || [];
-        const sourceDayPeriods = (defaultSched[d] || []).filter(p => !p.isRecess && p.type !== 'Recess' && p.type !== 'Break');
-        let srcIdx = 0;
-
-        dayPeriods.forEach(p => {
-          const isRecess = Boolean(
-            p.isRecess || 
-            p.type === 'Recess' || 
-            p.type === 'Break' || 
-            (p.periodName && p.periodName.toLowerCase().trim() === 'recess') ||
-            (p.subject && p.subject.toLowerCase().trim().startsWith('recess'))
-          );
-
-          if (isRecess) {
-            // Strictly preserve recess as Recess only! Do not replace with any period or subject!
-            p.isRecess = true;
-            p.type = p.type === 'Break' ? 'Break' : 'Recess';
-            p.periodName = 'Recess';
-            p.subject = 'Recess / Break';
-            p.teacher = 'Duty Staff';
-            p.room = p.room || 'Campus / Cafeteria';
-          } else {
-            // Allocate curriculum subject to academic period
-            if (sourceDayPeriods.length > 0) {
-              const srcItem = sourceDayPeriods[srcIdx % sourceDayPeriods.length];
-              p.subject = srcItem.subject;
-              p.teacher = srcItem.teacher;
-              p.room = srcItem.room || p.room || 'Room 101';
-              p.type = srcItem.type || 'Lecture';
-              p.isRecess = false;
-              srcIdx++;
-            }
-          }
-        });
-      }
-
-      if (isSaturdayOff) {
-        newSchedule['Saturday'] = [];
-      }
-    } else {
-      newSchedule = generateDefaultSchedule(cleanClass, cleanSection, staffList);
-      if (isSaturdayOff) {
-        newSchedule['Saturday'] = [];
-      }
-    }
-
-    normalizeScheduleRecessAndPeriods(newSchedule);
+    // Save and sync subjects and curriculum to both ClassSection & Timetable
+    await ClassSection.findOneAndUpdate(
+      query,
+      {
+        $set: {
+          className: cleanClass,
+          section: cleanSection,
+          subjects: targetSubjects,
+          activityClasses: targetActivities,
+          curriculum: targetCurriculum,
+          entityId: req.entityId,
+          schoolSlug: schoolSlug || req.schoolSlug || ''
+        }
+      },
+      { upsert: true }
+    );
 
     const timetable = await Timetable.findOneAndUpdate(
       query,
@@ -1485,9 +1745,12 @@ router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => 
           section: cleanSection,
           schedule: newSchedule,
           offDays: effectiveOffDays,
+          subjects: targetSubjects,
+          activityClasses: targetActivities,
+          curriculum: targetCurriculum,
           status: 'Active',
           entityId: req.entityId,
-          schoolSlug: schoolSlug || req.schoolSlug || '',
+          schoolSlug: schoolSlug || req.schoolSlug || ''
         }
       },
       { new: true, upsert: true }
@@ -1495,8 +1758,11 @@ router.post('/auto-generate', checkTimetableSetupAuthority, async (req, res) => 
 
     res.json({
       success: true,
-      message: `Smart collision-free timetable generated and saved for ${cleanClass} - ${cleanSection}`,
+      message: `AI Timetable Matrix generated strictly incorporating ${targetSubjects.length} academic subjects and ${targetActivities.length} activity classes for ${cleanClass} - ${cleanSection}`,
       timetable,
+      subjects: targetSubjects,
+      activityClasses: targetActivities,
+      curriculum: targetCurriculum
     });
   } catch (error) {
     console.error('Error generating timetable:', error);
