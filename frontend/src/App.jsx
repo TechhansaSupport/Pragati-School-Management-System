@@ -504,6 +504,10 @@ const AppRoutes = () => {
           element={(isStudent || role === 'principal' || isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <TransportDashboard />} 
         />
         <Route 
+          path="/:tenantSlug/transport" 
+          element={<Navigate to={`/${tenantSlug}/transport-dashboard`} replace />} 
+        />
+        <Route 
           path="/:tenantSlug/routes" 
           element={(isStudent || role === 'principal' || isAccountant || isLabAssistant || isSupportStaff) ? <Navigate to={`/${tenantSlug}/dashboard`} replace /> : <TransportRoutes />} 
         />

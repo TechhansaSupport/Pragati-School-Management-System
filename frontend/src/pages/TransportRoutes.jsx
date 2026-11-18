@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
   Map, MapPin, Search, Plus, Navigation, Users, Clock, AlertCircle, X, 
-  Bus, Phone, User, Building2, Gauge, CheckCircle2, ShieldCheck, ArrowRight, Trash2, UserCheck
+  Bus, Phone, User, Building2, Gauge, CheckCircle2, ShieldCheck, ArrowRight, ArrowLeft, Trash2, UserCheck
 } from 'lucide-react';
 
 const TransportRoutes = () => {
@@ -256,11 +256,10 @@ const TransportRoutes = () => {
   );
 
   return (
-    <div className="dashboard-grid">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', paddingBottom: '40px' }}>
       
       {/* ─── Modern Clean Executive Header Card ─── */}
       <div className="card" style={{
-        gridColumn: '1 / -1',
         background: 'white',
         borderRadius: '16px',
         padding: '18px 24px',
@@ -270,7 +269,8 @@ const TransportRoutes = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '16px',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <div style={{
@@ -301,23 +301,24 @@ const TransportRoutes = () => {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button 
             type="button"
-            onClick={() => navigate(tenantSlug ? `/${tenantSlug}/transport` : '/transport')}
+            onClick={() => navigate(tenantSlug ? `/${tenantSlug}/transport-dashboard` : '/transport-dashboard')}
+            className="hover-lift"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '8px',
               padding: '9px 16px',
               background: '#f8fafc',
               border: '1px solid #cbd5e1',
               borderRadius: '10px',
-              color: '#475569',
+              color: '#334155',
               fontWeight: 700,
-              fontSize: '0.82rem',
+              fontSize: '0.84rem',
               cursor: 'pointer',
               transition: 'all 0.15s ease'
             }}
           >
-            <Bus size={15} /> Transport Hub →
+            <ArrowLeft size={16} /> Back to Transport Hub
           </button>
 
           <button 
@@ -349,9 +350,8 @@ const TransportRoutes = () => {
         </div>
       </div>
 
-      <div className="left-column" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Active Route Metrics */}
-        <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px' }}>
+      {/* Active Route Metrics */}
+      <div className="kpi-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '16px', flexShrink: 0 }}>
           {[
             { label: 'Active Routes', value: `${stats.activeRoutes || routes.length}`, icon: Navigation, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
             { label: 'Total Pick-up Stops', value: `${stats.totalStops || 38}`, icon: MapPin, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)' },
@@ -373,29 +373,47 @@ const TransportRoutes = () => {
         </div>
 
         {/* Routes List */}
-        <div className="card" style={{ flex: 1, padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div className="card-header" style={{ padding: '24px 24px 16px 24px' }}>
-            <div className="card-title">Live Configured Routes ({filteredRoutes.length} records)</div>
-            <div className="table-search" style={{ margin: 0, background: 'rgba(248,250,252,0.8)', border: '1px solid rgba(226,232,240,0.8)', borderRadius: '12px' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#64748B' }} />
+        <div className="card" style={{ 
+          background: 'white', 
+          borderRadius: '16px', 
+          border: '1px solid #e2e8f0', 
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+          padding: 0, 
+          overflow: 'hidden',
+          flexShrink: 0
+        }}>
+          <div style={{ 
+            padding: '20px 24px', 
+            borderBottom: '1px solid #e2e8f0',
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            flexWrap: 'wrap', 
+            gap: '12px' 
+          }}>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>
+              Live Configured Routes ({filteredRoutes.length} records)
+            </div>
+            <div className="table-search" style={{ margin: 0, background: 'rgba(248,250,252,0.8)', border: '1px solid rgba(226,232,240,0.8)', borderRadius: '12px', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748B' }} />
               <input 
                 type="text" 
                 placeholder="Search route name, ID, bus, driver..." 
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                style={{ outline: 'none', width: '220px', padding: '10px 10px 10px 36px', background: 'transparent', border: 'none', fontSize: '0.9rem' }}
+                style={{ outline: 'none', width: '280px', padding: '9px 12px 9px 36px', background: 'transparent', border: 'none', fontSize: '0.88rem' }}
               />
             </div>
           </div>
           
-          <div style={{ overflowX: 'auto', flex: 1 }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Route Info</th>
-                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Path Details & Stops</th>
-                  <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Logistics</th>
-                  <th style={{ padding: '12px 24px', textAlign: 'right', fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status & Action</th>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '14px 24px', textAlign: 'left', fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Route Info</th>
+                  <th style={{ padding: '14px 24px', textAlign: 'left', fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Path Details & Stops</th>
+                  <th style={{ padding: '14px 24px', textAlign: 'left', fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Logistics</th>
+                  <th style={{ padding: '14px 24px', textAlign: 'right', fontSize: '0.74rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status & Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -521,37 +539,6 @@ const TransportRoutes = () => {
             </table>
           </div>
         </div>
-      </div>
-      
-      {/* RIGHT COLUMN - MAP VISUALIZATION */}
-      <div className="right-column">
-        <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
-          <div className="card-header" style={{ padding: '24px 24px 16px 24px', borderBottom: '1px solid var(--color-border)' }}>
-            <div className="card-title">Live Map Vector</div>
-            <div className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10B981' }}>Active Fleet Tracking</div>
-          </div>
-          <div style={{ flex: 1, background: '#f1f5f9', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.5, backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-            
-            <div style={{ position: 'relative', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)' }}>
-                <Map size={32} color="#059669" />
-              </div>
-              <div style={{ fontWeight: 600, color: '#334155' }}>Live GPS Fleet View</div>
-              <div style={{ fontSize: '0.85rem', color: '#64748b', textAlign: 'center', maxWidth: '250px' }}>
-                All {routes.length} vehicle paths coordinated with live student pick-up points.
-              </div>
-            </div>
-
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-              <path d="M 50 150 Q 150 50 250 150 T 400 150" fill="none" stroke="#10B981" strokeWidth="4" strokeDasharray="8 8" opacity="0.4" />
-              <circle cx="50" cy="150" r="6" fill="#10B981" />
-              <circle cx="250" cy="150" r="6" fill="#10B981" />
-              <circle cx="400" cy="150" r="8" fill="#EF4444" />
-            </svg>
-          </div>
-        </div>
-      </div>
 
       {/* ─── PORTAL-RENDERED MODAL (NEVER CLIPPED OR COVERED BY TOPBAR) ─── */}
       {isAddModalOpen && createPortal(
