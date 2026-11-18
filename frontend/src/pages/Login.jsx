@@ -589,7 +589,7 @@ const Login = () => {
                   </div>
                 )}
 
-                <form onSubmit={handleLogin} style={{ width: '100%' }}>
+                <form onSubmit={handleLogin} autoComplete="off" style={{ width: '100%' }}>
                   <div 
                     className="stagger-3"
                     style={{ 
@@ -606,6 +606,8 @@ const Login = () => {
                   >
                     <input
                       type="text"
+                      name="school_login_username"
+                      autoComplete="off"
                       required
                       value={userId}
                       onChange={(e) => setUserId(e.target.value)}
@@ -645,6 +647,8 @@ const Login = () => {
                   >
                     <input
                       type={showPassword ? "text" : "password"}
+                      name="school_login_password"
+                      autoComplete="new-password"
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}

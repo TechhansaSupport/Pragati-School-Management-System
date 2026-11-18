@@ -25,10 +25,28 @@ require('./models/controlPlane');
 const app = express();
 
 // Middleware
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser tools (e.g. curl, postman, mobile apps)
+    if (!origin) return callback(null, true);
+    
+    // Allow any localhost or 127.0.0.1 on ANY port (5173, 5174, 5175, 3000, etc.)
+    const isLocalhost = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    const isPragatiDomain = /\.thpragati\.com$/.test(origin) || origin === 'https://thpragati.com' || origin === 'http://thpragati.com';
+    
+    if (isLocalhost || isPragatiDomain || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Blocked by CORS policy'));
+  },
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant-slug', 'x-school-slug', 'x-user-role', 'x-entity-id', 'x-auth-token']
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('dev'));
