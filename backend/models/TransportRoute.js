@@ -25,6 +25,14 @@ const transportRouteSchema = new mongoose.Schema({
     type: Number,
     default: 5,
   },
+  stopNames: {
+    type: [String],
+    default: [],
+  },
+  stopsList: [{
+    stopName: { type: String, trim: true },
+    pickupTime: { type: String, trim: true },
+  }],
   busNumber: {
     type: String,
     required: true,

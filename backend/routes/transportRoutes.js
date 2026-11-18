@@ -9,16 +9,105 @@ const Student = require('../models/Student');
 const seedInitialTransportIfEmpty = async (entityId) => {
   if (!entityId) return;
 
+  const sampleRoutes = [
+    { 
+      routeId: 'RT-01', 
+      name: 'Andheri West Express', 
+      start: 'Lokhandwala Complex', 
+      end: 'School Campus', 
+      stops: 8, 
+      stopNames: ['Lokhandwala Circle', 'Infinity Mall', 'Four Bungalows', 'DN Nagar Metro', 'Bhavans College', 'Versova Junction', 'Juhu Circle', 'School Campus'],
+      busNumber: 'MH-04-1234', 
+      driverName: 'Ramesh Singh', 
+      driverContact: '+91 98200 44551', 
+      timing: '06:45 AM - 07:30 AM', 
+      studentsAssigned: 42, 
+      capacity: 45, 
+      distance: '12 km', 
+      status: 'On Time', 
+      entityId 
+    },
+    { 
+      routeId: 'RT-02', 
+      name: 'Bandra East Route', 
+      start: 'BKC Business Hub', 
+      end: 'School Campus', 
+      stops: 6, 
+      stopNames: ['BKC Business Hub', 'Kalanagar Junction', 'Bandra Station East', 'Kherwadi Signal', 'SVT College Road', 'School Campus'],
+      busNumber: 'MH-04-5678', 
+      driverName: 'Suresh Kumar', 
+      driverContact: '+91 98200 44552', 
+      timing: '06:30 AM - 07:30 AM', 
+      studentsAssigned: 38, 
+      capacity: 40, 
+      distance: '15 km', 
+      status: 'Delayed', 
+      entityId 
+    },
+    { 
+      routeId: 'RT-03', 
+      name: 'Borivali North Line', 
+      start: 'IC Colony Metro', 
+      end: 'School Campus', 
+      stops: 6, 
+      stopNames: ['IC Colony Metro', 'Borivali Station West', 'Eksar Road', 'Shimpoli Signal', 'Kandivali Link Rd', 'School Campus'],
+      busNumber: 'MH-04-9012', 
+      driverName: 'Kishore Mathur', 
+      driverContact: '+91 98200 44553', 
+      timing: '06:15 AM - 07:30 AM', 
+      studentsAssigned: 45, 
+      capacity: 45, 
+      distance: '18 km', 
+      status: 'On Time', 
+      entityId 
+    },
+    { 
+      routeId: 'RT-04', 
+      name: 'Goregaon Central', 
+      start: 'Goregaon Station Road', 
+      end: 'School Campus', 
+      stops: 5, 
+      stopNames: ['Goregaon Station Road', 'Inorbit Mall Signal', 'Bangur Nagar', 'Oshiwara Bridge', 'School Campus'],
+      busNumber: 'MH-04-3456', 
+      driverName: 'Vinod Patil', 
+      driverContact: '+91 98200 44554', 
+      timing: '06:50 AM - 07:25 AM', 
+      studentsAssigned: 28, 
+      capacity: 30, 
+      distance: '8 km', 
+      status: 'Completed', 
+      entityId 
+    },
+    { 
+      routeId: 'RT-05', 
+      name: 'Juhu Circle Bus', 
+      start: 'Juhu Beach Road', 
+      end: 'School Campus', 
+      stops: 5, 
+      stopNames: ['Juhu Beach Road', 'JVPD Scheme', 'Mithibai College', 'Gulmohar Cross Road', 'School Campus'],
+      busNumber: 'MH-04-7777', 
+      driverName: 'Rajesh Sharma', 
+      driverContact: '+91 98200 44555', 
+      timing: '06:40 AM - 07:20 AM', 
+      studentsAssigned: 35, 
+      capacity: 40, 
+      distance: '10 km', 
+      status: 'On Time', 
+      entityId 
+    },
+  ];
+
   const routeCount = await TransportRoute.countDocuments({ entityId });
   if (routeCount === 0) {
-    const sampleRoutes = [
-      { routeId: 'RT-01', name: 'Andheri West Express', start: 'Lokhandwala Complex', end: 'School Campus', stops: 8, busNumber: 'MH-04-1234', driverName: 'Ramesh Singh', driverContact: '+91 98200 44551', timing: '06:45 AM - 07:30 AM', studentsAssigned: 42, capacity: 45, distance: '12 km', status: 'On Time', entityId },
-      { routeId: 'RT-02', name: 'Bandra East Route', start: 'BKC Business Hub', end: 'School Campus', stops: 6, busNumber: 'MH-04-5678', driverName: 'Suresh Kumar', driverContact: '+91 98200 44552', timing: '06:30 AM - 07:30 AM', studentsAssigned: 38, capacity: 40, distance: '15 km', status: 'Delayed', entityId },
-      { routeId: 'RT-03', name: 'Borivali North Line', start: 'IC Colony Metro', end: 'School Campus', stops: 12, busNumber: 'MH-04-9012', driverName: 'Kishore Mathur', driverContact: '+91 98200 44553', timing: '06:15 AM - 07:30 AM', studentsAssigned: 45, capacity: 45, distance: '18 km', status: 'On Time', entityId },
-      { routeId: 'RT-04', name: 'Goregaon Central', start: 'Goregaon Station Road', end: 'School Campus', stops: 5, busNumber: 'MH-04-3456', driverName: 'Vinod Patil', driverContact: '+91 98200 44554', timing: '06:50 AM - 07:25 AM', studentsAssigned: 28, capacity: 30, distance: '8 km', status: 'Completed', entityId },
-      { routeId: 'RT-05', name: 'Juhu Circle Bus', start: 'Juhu Beach Road', end: 'School Campus', stops: 7, busNumber: 'MH-04-7777', driverName: 'Rajesh Sharma', driverContact: '+91 98200 44555', timing: '06:40 AM - 07:20 AM', studentsAssigned: 35, capacity: 40, distance: '10 km', status: 'On Time', entityId },
-    ];
     await TransportRoute.insertMany(sampleRoutes).catch(() => {});
+  } else {
+    // Backfill stopNames for existing routes if empty
+    for (const sr of sampleRoutes) {
+      await TransportRoute.updateOne(
+        { entityId, routeId: sr.routeId, $or: [{ stopNames: { $exists: false } }, { stopNames: { $size: 0 } }] },
+        { $set: { stopNames: sr.stopNames, stopsList: sr.stopNames.map(s => ({ stopName: s, pickupTime: '' })) } }
+      ).catch(() => {});
+    }
   }
 
   const vehicleCount = await Vehicle.countDocuments({ entityId });
@@ -77,10 +166,37 @@ router.get('/routes', async (req, res) => {
 router.post('/routes', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
-    const { name, start, end = 'School Campus', stops = 5, busNumber, driverName, driverContact, timing, capacity = 40, distance = '10 km' } = req.body;
+    const { 
+      name, 
+      start, 
+      end = 'School Campus', 
+      stops = 5, 
+      stopNames = [],
+      stopsList = [],
+      busNumber, 
+      driverName, 
+      driverContact, 
+      timing, 
+      capacity = 40, 
+      distance = '10 km' 
+    } = req.body;
+
     if (!name || !start || !busNumber || !driverName) {
       return res.status(400).json({ message: 'Route name, start, bus number, and driver name are required' });
     }
+
+    let formattedStopNames = [];
+    if (Array.isArray(stopNames)) {
+      formattedStopNames = stopNames.map(s => (typeof s === 'string' ? s.trim() : (s?.stopName || ''))).filter(Boolean);
+    } else if (typeof stopNames === 'string' && stopNames.trim()) {
+      formattedStopNames = stopNames.split(',').map(s => s.trim()).filter(Boolean);
+    }
+
+    const calculatedStops = formattedStopNames.length > 0 ? formattedStopNames.length : (Number(stops) || 5);
+
+    const formattedStopsList = Array.isArray(stopsList) && stopsList.length > 0
+      ? stopsList
+      : formattedStopNames.map(s => ({ stopName: s, pickupTime: '' }));
 
     const count = await TransportRoute.countDocuments({ entityId });
     const routeId = `RT-0${count + 1}`;
@@ -90,7 +206,9 @@ router.post('/routes', async (req, res) => {
       name: name.trim(),
       start: start.trim(),
       end: end.trim(),
-      stops: Number(stops) || 5,
+      stops: calculatedStops,
+      stopNames: formattedStopNames,
+      stopsList: formattedStopsList,
       busNumber: busNumber.trim(),
       driverName: driverName.trim(),
       driverContact: driverContact ? driverContact.trim() : '',
@@ -106,6 +224,20 @@ router.post('/routes', async (req, res) => {
     res.status(201).json(route);
   } catch (error) {
     res.status(500).json({ message: 'Failed to create route', error: error.message });
+  }
+});
+
+// DELETE /api/transport/routes/:id
+router.delete('/routes/:id', async (req, res) => {
+  try {
+    const entityId = req.entityId || 'default';
+    const deleted = await TransportRoute.findOneAndDelete({ _id: req.params.id, entityId });
+    if (!deleted) {
+      return res.status(404).json({ message: 'Route not found' });
+    }
+    res.json({ message: 'Route deleted successfully', route: deleted });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to delete route', error: error.message });
   }
 });
 
