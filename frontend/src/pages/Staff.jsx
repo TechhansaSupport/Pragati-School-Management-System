@@ -657,7 +657,6 @@ const Staff = () => {
             }}>
               <ShieldCheck size={14} color="#93c5fd" /> Admin Authority Enforced
             </span>
-            <span style={{ fontSize: '0.8rem', color: '#bfdbfe' }}>• Workspace: {tenantSlug}</span>
           </div>
           <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             School Staff & Faculty Management
@@ -765,41 +764,12 @@ const Staff = () => {
               }}>
                 🏫 {currentSchool?.name || sessionStorage.getItem('schoolName') || 'Current Campus'} • Leadership
               </span>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Dedicated Principal Appointed for this Campus
-              </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '4px' }}>
               <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#1e3a8a' }}>
                 {currentSchool?.principal?.name ? currentSchool.principal.name : 'No Principal Appointed Yet'}
               </h2>
-              {currentSchool?.principal?.qualification && (
-                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
-                  ({currentSchool.principal.qualification})
-                </span>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '6px', fontSize: '0.8rem', color: '#475569', flexWrap: 'wrap' }}>
-              {currentSchool?.principal?.email && (
-                <span>✉ {currentSchool.principal.email}</span>
-              )}
-              {currentSchool?.principal?.portalUsername && (
-                <span style={{
-                  background: '#e0e7ff',
-                  color: '#4338ca',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  fontSize: '0.75rem'
-                }}>
-                  🔑 Portal Username: {currentSchool.principal.portalUsername}
-                </span>
-              )}
-              <span style={{ color: '#0f766e', fontWeight: 600, background: '#ccfbf1', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem' }}>
-                ● Isolated Campus Staff Roster ({tenantSlug})
-              </span>
             </div>
           </div>
         </div>

@@ -19,45 +19,6 @@ import AppointAdminModal from '../components/AppointAdminModal';
 import DeleteSchoolModal from '../components/DeleteSchoolModal';
 import StaffPunchClock from '../components/StaffPunchClock';
 
-const initialAuditLogs = [
-  { id: 1, action: 'User Role Updated', user: 'Admin (Admin Account)', target: 'TCH045', time: '10 mins ago', status: 'Success', color: '#16A34A' },
-  { id: 2, action: 'Failed Login Attempt', user: 'Unknown IP', target: 'PRIN001', time: '25 mins ago', status: 'Warning', color: '#F59E0B' },
-  { id: 3, action: 'System Backup Completed', user: 'System Automated', target: 'Database', time: '2 hours ago', status: 'Success', color: '#16A34A' },
-  { id: 4, action: 'API Key Rotated', user: 'Admin (Admin Account)', target: 'Payment Gateway', time: '5 hours ago', status: 'Success', color: '#16A34A' },
-  { id: 5, action: 'Multiple Failed Logins', user: 'IP 192.168.1.45', target: 'Security Firewall', time: '1 day ago', status: 'Blocked', color: '#0F766E' },
-];
-
-const systemUsageData = [
-  { time: '08:00', cpu: 20, memory: 45 },
-  { time: '10:00', cpu: 65, memory: 55 },
-  { time: '12:00', cpu: 85, memory: 70 },
-  { time: '14:00', cpu: 50, memory: 60 },
-  { time: '16:00', cpu: 30, memory: 50 },
-  { time: '18:00', cpu: 15, memory: 40 },
-];
-
-const userRoleDistribution = [
-  { name: 'Students', value: 3452, color: '#4F46E5' },
-  { name: 'Parents', value: 2890, color: '#60A5FA' },
-  { name: 'Teachers', value: 145, color: '#0F766E' },
-  { name: 'Admin/Staff', value: 32, color: '#F59E0B' },
-];
-
-const defaultRevenueData = [
-  { name: 'Apr', rev: 9000, cost: 7500, net: 8500 },
-  { name: 'May', rev: 10200, cost: 8000, net: 9500 },
-  { name: 'Jun', rev: 9500, cost: 9200, net: 7500 },
-  { name: 'Jul', rev: 11177, cost: 8200, net: 9850 },
-  { name: 'Aug', rev: 10500, cost: 8900, net: 10200 },
-];
-
-const initialPendingFees = [
-  { id: 1, student: 'Rahul Sharma', date: '08/17/23', contact: '9876543210', value: 2700, status: 'Collected', icon: User, color: '#0F172A', cls: '10th - A' },
-  { id: 2, student: 'Priya Singh', date: '08/17/23', contact: '9876543211', value: 1100, status: 'Overdue', icon: User, color: '#0F766E', cls: '8th - B' },
-  { id: 3, student: 'Amit Kumar', date: '08/16/23', contact: '9876543212', value: 1500, status: 'Due this month', icon: User, color: '#4F46E5', cls: '12th - Sci' },
-  { id: 4, student: 'Neha Gupta', date: '08/16/23', contact: '9876543213', value: 1030, status: 'Overdue', icon: User, color: '#0F766E', cls: '5th - C' },
-];
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -149,16 +110,17 @@ const Dashboard = () => {
     totalStudents: 0,
     totalStaff: 0,
     totalTeachers: 0,
-    avgAttendance: 96.5,
+    avgAttendance: 0,
     seatUtilization: 0,
-    totalCapacity: 240,
+    totalCapacity: 0,
     totalCollected: 0,
     pendingFeesCount: 0,
     activeClassesCount: 0,
     totalFleetCount: 0,
     totalBooksCount: 0,
-    revenueData: defaultRevenueData,
-    roleDistribution: userRoleDistribution,
+    revenueData: [],
+    roleDistribution: [],
+    recentActivities: [],
   });
 
   const [studentsList, setStudentsList] = useState([]);
@@ -166,7 +128,7 @@ const Dashboard = () => {
   const [pendingFeesList, setPendingFeesList] = useState([]);
   const [feeStats, setFeeStats] = useState({ collected: 0, dueThisMonth: 0, overdue: 0 });
   const [facilitiesStats, setFacilitiesStats] = useState({
-    library: { totalTitles: 0, totalCopies: 0, issuedCopies: 0, finesCollected: 4500 },
+    library: { totalTitles: 0, totalCopies: 0, issuedCopies: 0, overdueCopies: 0, finesCollected: 0 },
     transport: { totalFleet: 0, mappedStudents: 0 }
   });
   const [announcementsList, setAnnouncementsList] = useState([]);
@@ -183,12 +145,7 @@ const Dashboard = () => {
 
   // Overview Interactive Feature States
   const [revenuePeriod, setRevenuePeriod] = useState('Last 6 Months');
-  const [eventsList, setEventsList] = useState([
-    { id: 1, d: '15', m: 'OCT', t: 'Annual Sports Meet', l: 'Main Ground' },
-    { id: 2, d: '22', m: 'OCT', t: 'Parent-Teacher Meeting', l: 'Classrooms' },
-    { id: 3, d: '05', m: 'NOV', t: 'Science Exhibition', l: 'Auditorium' },
-    { id: 4, d: '14', m: 'NOV', t: "Children's Day Cultural Fest", l: 'Campus Amphitheatre' },
-  ]);
+  const [eventsList, setEventsList] = useState([]);
   const [isAddEventOpen, setIsAddEventOpen] = useState(false);
   const [isViewAllEventsOpen, setIsViewAllEventsOpen] = useState(false);
   const [newEvent, setNewEvent] = useState({ t: '', d: '10', m: 'NOV', l: 'Main Campus' });
@@ -211,7 +168,7 @@ const Dashboard = () => {
 
   // Academics Tab Class Creation & Exam Schedule State
   const [isAddClassOpen, setIsAddClassOpen] = useState(false);
-  const [newClass, setNewClass] = useState({ className: 'Class 11', section: 'A', roomNumber: 'Room 301', capacity: 40 });
+  const [newClass, setNewClass] = useState({ className: '', section: '', roomNumber: '', capacity: 40 });
   const [isAssessmentModalOpen, setIsAssessmentModalOpen] = useState(false);
   const [academicsActionToast, setAcademicsActionToast] = useState('');
 
@@ -219,16 +176,11 @@ const Dashboard = () => {
   const [feeSearch, setFeeSearch] = useState('');
   const [feeStatusFilter, setFeeStatusFilter] = useState('ALL');
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = useState(false);
-  const [paymentForm, setPaymentForm] = useState({ studentName: '', classSection: 'Class 10 - A', amount: 5000, type: 'Tuition Fee' });
+  const [paymentForm, setPaymentForm] = useState({ studentName: '', classSection: '', amount: '', type: 'Tuition Fee' });
   const [financeActionToast, setFinanceActionToast] = useState('');
 
   // Communication Grievance Tickets State
-  const [ticketsList, setTicketsList] = useState([
-    { id: 1, t: 'Bus route #3 delayed in morning', user: 'Parent of Aman (Class 8)', status: 'Open', color: '#EF4444' },
-    { id: 2, t: 'ID Card replacement request', user: 'Student: Neha (Class 10)', status: 'In Progress', color: '#F59E0B' },
-    { id: 3, t: 'Library fine discrepancy check', user: 'Student: Rahul (Class 12)', status: 'Resolved', color: '#10B981' },
-    { id: 4, t: 'Uniform store replenishment inquiry', user: 'Staff: Anita Sharma', status: 'Open', color: '#EF4444' }
-  ]);
+  const [ticketsList, setTicketsList] = useState([]);
   const [isAddTicketOpen, setIsAddTicketOpen] = useState(false);
   const [newTicket, setNewTicket] = useState({ t: '', user: '', status: 'Open' });
   const [isAddAnnouncementOpen, setIsAddAnnouncementOpen] = useState(false);
@@ -239,7 +191,8 @@ const Dashboard = () => {
   const [diagnosticResult, setDiagnosticResult] = useState(null);
   const [isPinging, setIsPinging] = useState(false);
   const [backupToast, setBackupToast] = useState('');
-  const [auditLogsList, setAuditLogsList] = useState(initialAuditLogs);
+  const [auditLogsList, setAuditLogsList] = useState([]);
+  const [systemUsageData, setSystemUsageData] = useState([]);
   const [auditFilter, setAuditFilter] = useState('ALL');
 
   // RBAC State
@@ -344,6 +297,53 @@ const Dashboard = () => {
           if (data.school.currency) setCurrency(data.school.currency);
           if (data.school.timezone) setTimezone(data.school.timezone);
           if (typeof data.school.maintenanceMode === 'boolean') setMaintenanceMode(data.school.maintenanceMode);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch Real Calendar Events
+    fetch('http://localhost:5000/api/calendar/events', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.events) {
+          const mapped = data.events.map(ev => {
+            const dObj = new Date(ev.startDate);
+            return {
+              id: ev._id,
+              d: isNaN(dObj.getDate()) ? '01' : String(dObj.getDate()).padStart(2, '0'),
+              m: isNaN(dObj.getMonth()) ? 'EVT' : dObj.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+              t: ev.title,
+              l: ev.location || 'Campus'
+            };
+          });
+          setEventsList(mapped);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch Live Grievances & Tickets
+    fetch('http://localhost:5000/api/communication/grievances', { headers })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (Array.isArray(data)) {
+          const mapped = data.map(g => ({
+            id: g.id,
+            t: g.title,
+            user: `${g.raisedBy || 'Concerned User'}${g.student ? ` (${g.student})` : ''}`,
+            status: g.status || 'Open',
+            color: g.status === 'Resolved' ? '#10B981' : g.status === 'In Progress' ? '#F59E0B' : '#EF4444'
+          }));
+          setTicketsList(mapped);
+        }
+      })
+      .catch(() => {});
+
+    // Fetch Live Server Telemetry
+    fetch('http://localhost:5000/api/dashboard/system-usage', { headers })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.usageData) {
+          setSystemUsageData(data.usageData);
         }
       })
       .catch(() => {});
@@ -647,19 +647,92 @@ const Dashboard = () => {
   };
 
   // Create Grievance Ticket Handler
-  const handleCreateTicket = (e) => {
+  const handleCreateTicket = async (e) => {
     e.preventDefault();
     if (!newTicket.t.trim()) return;
-    const item = {
-      id: Date.now(),
-      t: newTicket.t.trim(),
-      user: newTicket.user.trim() || 'Parent / Student',
-      status: 'Open',
-      color: '#EF4444'
-    };
-    setTicketsList(prev => [item, ...prev]);
-    setIsAddTicketOpen(false);
-    setNewTicket({ t: '', user: '', status: 'Open' });
+    try {
+      const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+      const token = userInfo.token || sessionStorage.getItem('token') || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+      const res = await fetch('http://localhost:5000/api/communication/grievances', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          title: newTicket.t.trim(),
+          raisedBy: newTicket.user.trim() || 'Parent / Student',
+          category: 'General'
+        })
+      });
+
+      if (res.ok) {
+        const ticket = await res.json();
+        const item = {
+          id: ticket.id,
+          t: ticket.title,
+          user: ticket.raisedBy,
+          status: ticket.status || 'Open',
+          color: '#EF4444'
+        };
+        setTicketsList(prev => [item, ...prev]);
+        setIsAddTicketOpen(false);
+        setNewTicket({ t: '', user: '', status: 'Open' });
+      }
+    } catch (err) {
+      console.error('Failed to create ticket:', err);
+    }
+  };
+
+  // Add Calendar Event Handler
+  const handleAddEvent = async (e) => {
+    e.preventDefault();
+    if (!newEvent.t.trim()) return;
+    try {
+      const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+      const token = userInfo.token || sessionStorage.getItem('token') || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+      const currentYear = new Date().getFullYear();
+      const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const mIdx = monthNames.indexOf(newEvent.m?.toUpperCase());
+      const monthNumber = mIdx !== -1 ? mIdx + 1 : (new Date().getMonth() + 1);
+      const dayNumber = parseInt(newEvent.d, 10) || 1;
+      const dateStr = `${currentYear}-${String(monthNumber).padStart(2, '0')}-${String(dayNumber).padStart(2, '0')}`;
+
+      const res = await fetch('http://localhost:5000/api/calendar/events', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          title: newEvent.t.trim(),
+          startDate: dateStr,
+          endDate: dateStr,
+          location: newEvent.l.trim() || 'Main Campus',
+          category: 'Event'
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const createdEv = data.event || {};
+        const dObj = new Date(createdEv.startDate || dateStr);
+        const mapped = {
+          id: createdEv._id || Date.now(),
+          d: isNaN(dObj.getDate()) ? newEvent.d : String(dObj.getDate()).padStart(2, '0'),
+          m: isNaN(dObj.getMonth()) ? newEvent.m : dObj.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+          t: createdEv.title || newEvent.t,
+          l: createdEv.location || newEvent.l || 'Main Campus'
+        };
+        setEventsList(prev => [mapped, ...prev]);
+        setIsAddEventOpen(false);
+        setNewEvent({ t: '', d: '10', m: 'NOV', l: 'Main Campus' });
+      }
+    } catch (err) {
+      console.error('Failed to create calendar event:', err);
+    }
   };
 
   // Generic Report CSV Exporter
@@ -689,15 +762,29 @@ const Dashboard = () => {
   };
 
   // Toggle Ticket Status
-  const handleToggleTicketStatus = (ticketId) => {
-    setTicketsList(prev => prev.map(t => {
-      if (t.id === ticketId) {
-        const nextStatus = t.status === 'Open' ? 'In Progress' : t.status === 'In Progress' ? 'Resolved' : 'Open';
-        const nextColor = nextStatus === 'Open' ? '#EF4444' : nextStatus === 'In Progress' ? '#F59E0B' : '#10B981';
-        return { ...t, status: nextStatus, color: nextColor };
-      }
-      return t;
-    }));
+  const handleToggleTicketStatus = async (ticketId) => {
+    const t = ticketsList.find(item => item.id === ticketId);
+    if (!t) return;
+    const nextStatus = t.status === 'Open' ? 'In Progress' : t.status === 'In Progress' ? 'Resolved' : 'Open';
+    const nextColor = nextStatus === 'Open' ? '#EF4444' : nextStatus === 'In Progress' ? '#F59E0B' : '#10B981';
+
+    setTicketsList(prev => prev.map(item => item.id === ticketId ? { ...item, status: nextStatus, color: nextColor } : item));
+
+    try {
+      const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+      const token = userInfo.token || sessionStorage.getItem('token') || '';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
+
+      await fetch(`http://localhost:5000/api/communication/grievances/${ticketId}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ status: nextStatus })
+      });
+    } catch (err) {
+      console.error('Failed to update ticket status:', err);
+    }
   };
 
   // Toggle RBAC Permission
@@ -1262,8 +1349,8 @@ const Dashboard = () => {
       },
       {
         label: 'Avg Attendance',
-        value: `${dashboardOverview.avgAttendance}%`,
-        sub: `Across ${classesList.length || dashboardOverview.activeClassesCount || 6} active classes`,
+        value: `${dashboardOverview.avgAttendance || 0}%`,
+        sub: `Across ${classesList.length || dashboardOverview.activeClassesCount || 0} active classes`,
         icon: Clock,
         color: '#F59E0B',
         bg: 'rgba(245, 158, 11, 0.08)',
@@ -1295,8 +1382,8 @@ const Dashboard = () => {
       },
       {
         label: 'Fleet & Transport',
-        value: `${facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount || 5} Routes`,
-        sub: '100% active route tracking',
+        value: `${facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount || 0} Routes`,
+        sub: facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount ? '100% active route tracking' : 'No routes registered',
         icon: Bus,
         color: '#7C3AED',
         bg: 'rgba(124, 58, 237, 0.08)',
@@ -1432,7 +1519,7 @@ const Dashboard = () => {
 
               <div style={{ flex: 1, minHeight: '260px', width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dashboardOverview.revenueData || defaultRevenueData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <AreaChart data={dashboardOverview.revenueData || []} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorRevDash" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.35}/>
@@ -1459,13 +1546,13 @@ const Dashboard = () => {
               {/* Bottom Financial Metric Badges */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--color-border, #f1f5f9)', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
-                  Total Inflow: <strong style={{ color: '#059669' }}>₹{(dashboardOverview.totalCollected || 15000).toLocaleString()}</strong>
+                  Total Inflow: <strong style={{ color: '#059669' }}>₹{(dashboardOverview.totalCollected || 0).toLocaleString()}</strong>
                 </span>
                 <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
                   Operating Margin: <strong style={{ color: '#4F46E5' }}>100% Positive</strong>
                 </span>
                 <span style={{ fontSize: '0.74rem', color: 'var(--color-text-muted, #64748b)' }}>
-                  Active Batches: <strong style={{ color: '#1e293b' }}>{classesList.length || 1} Enrolled</strong>
+                  Active Batches: <strong style={{ color: '#1e293b' }}>{classesList.length} Enrolled</strong>
                 </span>
               </div>
             </div>
@@ -1507,7 +1594,7 @@ const Dashboard = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {eventsList.slice(0, 3).map((ev, i) => (
+                {eventsList.length > 0 ? eventsList.slice(0, 3).map((ev, i) => (
                   <div key={ev.id || i} style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 12px', background: 'var(--color-bg, #f8fafc)', borderRadius: '10px', border: '1px solid var(--color-border, #f1f5f9)', transition: 'background 0.15s' }}>
                     <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '5px 8px', textAlign: 'center', minWidth: '46px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
                       <div style={{ color: '#EF4444', fontSize: '0.66rem', fontWeight: 800 }}>{ev.m}</div>
@@ -1520,7 +1607,11 @@ const Dashboard = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div style={{ padding: '24px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem', background: 'var(--color-bg, #f8fafc)', borderRadius: '10px', border: '1px dashed var(--color-border, #e2e8f0)' }}>
+                    No upcoming campus events scheduled.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1571,22 +1662,26 @@ const Dashboard = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {[
-                  { cat: 'ACADEMIC', i: UserCheck, c: '#10B981', text: 'Teacher leave schedule approved by Principal', time: '10 min ago' },
-                  { cat: 'FINANCIAL', i: CreditCard, c: '#4F46E5', text: 'Tuition fee payment of ₹15,000 received via UPI', time: '1 hour ago' },
-                  { cat: 'ACADEMIC', i: BookOpen, c: '#F59E0B', text: 'Class 10 Assessment grades synced with live DB', time: '3 hours ago' },
-                  { cat: 'SYSTEM', i: Shield, c: '#EF4444', text: 'Multi-campus tenant boundary verified', time: 'Yesterday' }
-                ].filter(a => activityCategoryFilter === 'ALL' || a.cat === activityCategoryFilter).map((act, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: act.c + '18', color: act.c, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <act.i size={15} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 600, lineHeight: 1.3 }}>{act.text}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>{act.time}</div>
-                    </div>
+                {(dashboardOverview.recentActivities || []).filter(a => activityCategoryFilter === 'ALL' || a.cat === activityCategoryFilter).length > 0 ? (
+                  (dashboardOverview.recentActivities || []).filter(a => activityCategoryFilter === 'ALL' || a.cat === activityCategoryFilter).map((act, i) => {
+                    const ActIcon = act.cat === 'FINANCIAL' ? CreditCard : act.cat === 'ACADEMIC' ? BookOpen : Shield;
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: (act.c || '#4F46E5') + '18', color: act.c || '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <ActIcon size={15} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 600, lineHeight: 1.3 }}>{act.text}</div>
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>{act.time}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div style={{ padding: '24px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem', background: 'var(--color-bg, #f8fafc)', borderRadius: '10px', border: '1px dashed var(--color-border, #e2e8f0)' }}>
+                    No recent activity logs recorded yet.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -1699,18 +1794,24 @@ const Dashboard = () => {
               <div className="card-title" style={{ color: 'white' }}>Digital Student ID Hub</div>
               <QrCode size={20} color="rgba(255,255,255,0.8)" />
             </div>
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: 'white', padding: '4px' }}>
-                <div style={{ width: '100%', height: '100%', borderRadius: '8px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4F46E5', fontWeight: 800, fontSize: '1.4rem' }}>
-                  {studentsList[0]?.name ? studentsList[0].name.charAt(0) : 'S'}
+            {studentsList.length > 0 ? (
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: 'white', padding: '4px' }}>
+                  <div style={{ width: '100%', height: '100%', borderRadius: '8px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4F46E5', fontWeight: 800, fontSize: '1.4rem' }}>
+                    {studentsList[0].name ? studentsList[0].name.charAt(0) : 'S'}
+                  </div>
+                </div>
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem' }}>{studentsList[0].name}</h3>
+                  <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>ID: {studentsList[0].rollNumber || 'STU-001'}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>Class: {studentsList[0].grade} - {studentsList[0].section}</div>
                 </div>
               </div>
-              <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem' }}>{studentsList[0]?.name || 'Rahul Sharma'}</h3>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)', marginBottom: '2px' }}>ID: {studentsList[0]?.rollNumber || 'STU-1001'}</div>
-                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>Class: {studentsList[0] ? `${studentsList[0].grade} - ${studentsList[0].section}` : '10th - A'}</div>
+            ) : (
+              <div style={{ padding: '16px 0', color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
+                No student profiles registered yet in this campus.
               </div>
-            </div>
+            )}
             <button 
               onClick={() => setIsBatchIdCardOpen(true)}
               style={{ width: '100%', padding: '12px', background: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(10px)', color: 'white', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '8px', marginTop: '24px', fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s' }}
@@ -1721,21 +1822,42 @@ const Dashboard = () => {
 
           {/* Attendance Summary */}
           <div className="card">
-            <div className="card-header"><div className="card-title">Today's Attendance</div></div>
+            <div className="card-header"><div className="card-title">Campus Attendance</div></div>
             <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
               <PieChart width={200} height={200}>
-                <Pie data={[{name: 'Present', value: 95}, {name: 'Absent', value: 3}, {name: 'Late', value: 2}]} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                  <Cell fill="#10B981" />
-                  <Cell fill="#EF4444" />
-                  <Cell fill="#F59E0B" />
+                <Pie 
+                  data={dashboardOverview.avgAttendance > 0 ? [
+                    { name: 'Present', value: dashboardOverview.avgAttendance },
+                    { name: 'Absent', value: Math.max(0, 100 - dashboardOverview.avgAttendance) }
+                  ] : [
+                    { name: 'No Data', value: 100 }
+                  ]}
+                  innerRadius={60} 
+                  outerRadius={80} 
+                  paddingAngle={dashboardOverview.avgAttendance > 0 ? 5 : 0} 
+                  dataKey="value"
+                >
+                  {dashboardOverview.avgAttendance > 0 ? (
+                    <>
+                      <Cell fill="#10B981" />
+                      <Cell fill="#EF4444" />
+                    </>
+                  ) : (
+                    <Cell fill="#E2E8F0" />
+                  )}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', marginTop: '16px', fontSize: '0.85rem', fontWeight: 600 }}>
-              <span style={{ color: '#10B981' }}>95% Present</span>
-              <span style={{ color: '#EF4444' }}>3% Absent</span>
-              <span style={{ color: '#F59E0B' }}>2% Late</span>
+              {dashboardOverview.avgAttendance > 0 ? (
+                <>
+                  <span style={{ color: '#10B981' }}>{dashboardOverview.avgAttendance}% Present</span>
+                  <span style={{ color: '#EF4444' }}>{Math.max(0, 100 - dashboardOverview.avgAttendance)}% Absent</span>
+                </>
+              ) : (
+                <span style={{ color: '#64748B' }}>No Attendance Marked Today</span>
+              )}
             </div>
           </div>
         </div>
@@ -1870,21 +1992,27 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px', marginTop: '20px' }}>
-            {classesList.map((c, i) => (
-              <div key={c._id || i} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <div style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '1.05rem' }}>{c.className} - {c.section}</div>
-                  <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>Active</span>
+          {classesList.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px', marginTop: '20px' }}>
+              {classesList.map((c, i) => (
+                <div key={c._id || i} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#f8fafc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '1.05rem' }}>{c.className} - {c.section}</div>
+                    <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>Active</span>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span>Class Teacher: <strong style={{ color: '#334155' }}>{c.classTeacherName || c.teacherName || 'Assigned Faculty'}</strong></span>
+                    <span>Room: <strong style={{ color: '#334155' }}>{c.roomNumber || 'Unassigned'}</strong></span>
+                    <span>Capacity: <strong style={{ color: '#334155' }}>{c.capacity ? `${c.capacity} seats` : 'Not configured'}</strong></span>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span>Class Teacher: <strong style={{ color: '#334155' }}>{c.classTeacherName || c.teacherName || 'Assigned Faculty'}</strong></span>
-                  <span>Room: <strong style={{ color: '#334155' }}>{c.roomNumber || 'Room 101'}</strong></span>
-                  <span>Capacity: <strong style={{ color: '#334155' }}>{c.capacity || 40} seats</strong></span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '32px 16px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1', marginTop: '20px' }}>
+              No class sections configured yet. Click "Add Class Section" to register a grade and section.
+            </div>
+          )}
         </div>
       </div>
 
@@ -2012,24 +2140,32 @@ const Dashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {(filteredFees.length > 0 ? filteredFees : initialPendingFees).map((fee, idx) => (
-                <tr key={fee._id || fee.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '16px 8px', fontWeight: 600, color: '#4F46E5' }}>RCP-{1000 + (idx + 1)}</td>
-                  <td style={{ padding: '16px 8px', fontWeight: 500, color: '#1e3a8a' }}>{fee.studentName || fee.student}</td>
-                  <td style={{ padding: '16px 8px', color: '#64748b' }}>{fee.classSection || fee.cls}</td>
-                  <td style={{ padding: '16px 8px', fontWeight: 700, color: '#334155' }}>₹{(fee.amount || fee.value || 0).toLocaleString()}</td>
-                  <td style={{ padding: '16px 8px', color: '#64748b' }}>{fee.dueDate ? new Date(fee.dueDate).toLocaleDateString() : (fee.date || 'Recent')}</td>
-                  <td style={{ padding: '16px 8px' }}>
-                    <span style={{ 
-                      background: fee.status === 'Collected' ? '#dcfce7' : fee.status === 'Overdue' ? '#fee2e2' : '#fef3c7', 
-                      color: fee.status === 'Collected' ? '#16a34a' : fee.status === 'Overdue' ? '#ef4444' : '#d97706', 
-                      padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600 
-                    }}>
-                      {fee.status}
-                    </span>
+              {filteredFees.length > 0 ? (
+                filteredFees.map((fee, idx) => (
+                  <tr key={fee._id || fee.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '16px 8px', fontWeight: 600, color: '#4F46E5' }}>RCP-{1000 + (idx + 1)}</td>
+                    <td style={{ padding: '16px 8px', fontWeight: 500, color: '#1e3a8a' }}>{fee.studentName}</td>
+                    <td style={{ padding: '16px 8px', color: '#64748b' }}>{fee.classSection}</td>
+                    <td style={{ padding: '16px 8px', fontWeight: 700, color: '#334155' }}>₹{(fee.amount || 0).toLocaleString()}</td>
+                    <td style={{ padding: '16px 8px', color: '#64748b' }}>{fee.dueDate ? new Date(fee.dueDate).toLocaleDateString() : 'Recent'}</td>
+                    <td style={{ padding: '16px 8px' }}>
+                      <span style={{ 
+                        background: fee.status === 'Collected' ? '#dcfce7' : fee.status === 'Overdue' ? '#fee2e2' : '#fef3c7', 
+                        color: fee.status === 'Collected' ? '#16a34a' : fee.status === 'Overdue' ? '#ef4444' : '#d97706', 
+                        padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 600 
+                      }}>
+                        {fee.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} style={{ padding: '36px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                    No fee records or pending dues found.
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
@@ -2051,10 +2187,10 @@ const Dashboard = () => {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginTop: '20px' }}>
           {[
-            { l: 'Total Books', v: facilitiesStats.library.totalCopies || dashboardOverview.totalBooksCount || 120 },
-            { l: 'Issued Books', v: facilitiesStats.library.issuedCopies || 18 },
-            { l: 'Overdue Returns', v: facilitiesStats.library.overdueCopies || 2 },
-            { l: 'Fines Collected', v: `₹${(facilitiesStats.library.finesCollected || 4500).toLocaleString()}` }
+            { l: 'Total Books', v: facilitiesStats.library.totalCopies || dashboardOverview.totalBooksCount || 0 },
+            { l: 'Issued Books', v: facilitiesStats.library.issuedCopies || 0 },
+            { l: 'Overdue Returns', v: facilitiesStats.library.overdueCopies || 0 },
+            { l: 'Fines Collected', v: `₹${(facilitiesStats.library.finesCollected || 0).toLocaleString()}` }
           ].map((item, i) => (
             <div key={i} style={{ padding: '20px', background: '#f8fafc', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e3a8a' }}>{item.v}</div>
@@ -2078,14 +2214,14 @@ const Dashboard = () => {
           <div style={{ flex: 1, padding: '20px', background: '#eff6ff', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '48px', height: '48px', background: '#bfdbfe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e40af' }}><Bus size={24} /></div>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a' }}>{facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount || 5}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a' }}>{facilitiesStats.transport.totalFleet || dashboardOverview.totalFleetCount || 0}</div>
               <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Active Routes / Fleet</div>
             </div>
           </div>
           <div style={{ flex: 1, padding: '20px', background: '#f0fdf4', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '48px', height: '48px', background: '#bbf7d0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#166534' }}><Users size={24} /></div>
             <div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a' }}>{facilitiesStats.transport.mappedStudents || 188}</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e3a8a' }}>{facilitiesStats.transport.mappedStudents || 0}</div>
               <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Assigned Passengers</div>
             </div>
           </div>
@@ -2122,24 +2258,27 @@ const Dashboard = () => {
             </div>
           </div>
           <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {(announcementsList.length > 0 ? announcementsList : [
-              { title: 'Diwali Holidays Notice', date: 'Oct 09, 2026', content: 'School will remain closed from Oct 20th to Oct 25th on account of Diwali.', targetAudience: 'All Students & Parents', priority: 'Important' },
-              { title: 'Emergency Alert: Weather Advisory', date: 'Oct 05, 2026', content: 'Heavy rain warnings issued for the district. Transport routes running early.', targetAudience: 'All', priority: 'Urgent' }
-            ]).map((ann, idx) => (
-              <div key={ann._id || idx} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', borderLeft: `4px solid ${ann.priority === 'Urgent' ? '#EF4444' : '#F59E0B'}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {ann.priority === 'Urgent' && <AlertTriangle size={16} color="#EF4444"/>}
-                    {ann.title}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{ann.date ? new Date(ann.date).toLocaleDateString() : 'Recent'}</span>
+            {announcementsList.length > 0 ? (
+              announcementsList.map((ann, idx) => (
+                <div key={ann._id || idx} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', borderLeft: `4px solid ${ann.priority === 'Urgent' ? '#EF4444' : '#F59E0B'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span style={{ fontWeight: 700, color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {ann.priority === 'Urgent' && <AlertTriangle size={16} color="#EF4444"/>}
+                      {ann.title}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>{ann.date ? new Date(ann.date).toLocaleDateString() : 'Recent'}</span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: 1.5 }}>{ann.content}</p>
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                    <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', color: '#64748b' }}>To: {ann.targetAudience}</span>
+                  </div>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: 1.5 }}>{ann.content}</p>
-                <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-                  <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', color: '#64748b' }}>To: {ann.targetAudience}</span>
-                </div>
+              ))
+            ) : (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #e2e8f0' }}>
+                No active announcements published yet. Click "Post Announcement" to issue a campus notice.
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -2185,21 +2324,27 @@ const Dashboard = () => {
             </button>
           </div>
           <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {ticketsList.map((t) => (
-              <div key={t.id} style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '0.92rem', marginBottom: '2px' }}>{t.t}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{t.user}</div>
+            {ticketsList.length > 0 ? (
+              ticketsList.map((t) => (
+                <div key={t.id} style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: '#1e3a8a', fontSize: '0.92rem', marginBottom: '2px' }}>{t.t}</div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>{t.user}</div>
+                  </div>
+                  <button
+                    onClick={() => handleToggleTicketStatus(t.id)}
+                    style={{ background: t.color + '1A', color: t.color, border: 'none', padding: '5px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                    title="Click to toggle status"
+                  >
+                    {t.status} ↻
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleToggleTicketStatus(t.id)}
-                  style={{ background: t.color + '1A', color: t.color, border: 'none', padding: '5px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
-                  title="Click to toggle status"
-                >
-                  {t.status} ↻
-                </button>
+              ))
+            ) : (
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: '#94a3b8', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #e2e8f0' }}>
+                No grievance or support tickets logged yet. Click "New Ticket" to record an issue.
               </div>
-            ))}
+            )}
           </div>
           <button 
             onClick={() => navigate(tenantSlug ? `/${tenantSlug}/communication` : '/communication')}
@@ -2273,17 +2418,6 @@ const Dashboard = () => {
               Assign Official School Name & Address
             </label>
           </div>
-          <span style={{
-            fontSize: '0.75rem',
-            padding: '5px 12px',
-            borderRadius: '12px',
-            background: 'white',
-            border: '1px solid #cbd5e1',
-            color: '#0F766E',
-            fontWeight: 700
-          }}>
-            Workspace: {tenantSlug}
-          </span>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
@@ -2544,8 +2678,17 @@ const Dashboard = () => {
           <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={userRoleDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
-                  {userRoleDistribution.map((entry, index) => (
+                <Pie 
+                  data={(dashboardOverview.roleDistribution && dashboardOverview.roleDistribution.some(r => r.value > 0)) ? dashboardOverview.roleDistribution : [{ name: 'No Users', value: 1, color: '#e2e8f0' }]} 
+                  cx="50%" 
+                  cy="50%" 
+                  innerRadius={60} 
+                  outerRadius={80} 
+                  paddingAngle={5} 
+                  dataKey="value" 
+                  stroke="none"
+                >
+                  {((dashboardOverview.roleDistribution && dashboardOverview.roleDistribution.some(r => r.value > 0)) ? dashboardOverview.roleDistribution : [{ name: 'No Users', value: 1, color: '#e2e8f0' }]).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -2554,7 +2697,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginTop: '16px' }}>
-            {userRoleDistribution.map((item, idx) => (
+            {(dashboardOverview.roleDistribution || []).map((item, idx) => (
               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.color }}></div>
                 <span style={{ fontSize: '0.8rem', color: '#64748B' }}>{item.name}:</span>
@@ -2731,18 +2874,24 @@ const Dashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {filteredAudit.map(log => (
-                <div key={log.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', borderLeft: `3px solid ${log.color}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '0.85rem' }}>{log.action}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{log.time}</div>
+              {filteredAudit.length > 0 ? (
+                filteredAudit.map(log => (
+                  <div key={log.id} style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', borderLeft: `3px solid ${log.color}` }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 700, color: '#1e3a8a', fontSize: '0.85rem' }}>{log.action}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{log.time}</div>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{log.user} • {log.target}</div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: log.color }}>{log.status}</div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{log.user} • {log.target}</div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: log.color }}>{log.status}</div>
-                  </div>
+                ))
+              ) : (
+                <div style={{ padding: '24px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #e2e8f0' }}>
+                  No audit log events recorded for this category.
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -2991,13 +3140,7 @@ const Dashboard = () => {
               </div>
               <button onClick={() => setIsAddEventOpen(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}><X size={16} /></button>
             </div>
-            <form onSubmit={e => {
-              e.preventDefault();
-              if (!newEvent.t) return;
-              setEventsList(prev => [{ id: Date.now(), ...newEvent }, ...prev]);
-              setIsAddEventOpen(false);
-              setNewEvent({ t: '', d: '10', m: 'NOV', l: 'Main Campus' });
-            }} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={handleAddEvent} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>Event Title *</label>
                 <input required type="text" placeholder="e.g. Science Fair, Annual Sports" value={newEvent.t} onChange={e => setNewEvent({ ...newEvent, t: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
@@ -3183,16 +3326,16 @@ const Dashboard = () => {
             <form onSubmit={handleRecordFeePayment} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>Student Full Name *</label>
-                <input required type="text" placeholder="e.g. Rahul Sharma" value={paymentForm.studentName} onChange={e => setPaymentForm({ ...paymentForm, studentName: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
+                <input required type="text" placeholder="Enter student name" value={paymentForm.studentName} onChange={e => setPaymentForm({ ...paymentForm, studentName: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>Class / Section *</label>
-                  <input required type="text" placeholder="Class 10 - A" value={paymentForm.classSection} onChange={e => setPaymentForm({ ...paymentForm, classSection: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
+                  <input required type="text" placeholder="e.g. Class 10 - A" value={paymentForm.classSection} onChange={e => setPaymentForm({ ...paymentForm, classSection: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>Amount (₹) *</label>
-                  <input required type="number" placeholder="5000" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
+                  <input required type="number" placeholder="e.g. 5000" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', outline: 'none', boxSizing: 'border-box' }} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>

@@ -1347,22 +1347,6 @@ const Timetable = () => {
             paddingBottom: '12px'
           }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                <span style={{
-                  background: '#e0e7ff',
-                  color: '#4338ca',
-                  padding: '2px 8px',
-                  borderRadius: '6px',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  letterSpacing: '0.4px'
-                }}>
-                  CONFLICT ENGINE
-                </span>
-                <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>
-                  Real-Time Matrix Allocation & Optimization
-                </span>
-              </div>
               <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#1e3a8a', letterSpacing: '-0.01em' }}>
                 Schedule Matrix & Allocation Controls
               </h2>
@@ -1571,12 +1555,7 @@ const Timetable = () => {
                     </option>
                   ))
                 ) : (
-                  <>
-                    <option value="Class 10 - A">Class 10 - Section A</option>
-                    <option value="Class 9 - B">Class 9 - Section B</option>
-                    <option value="Class 11 - SCIENCE">Class 11 - Section Science</option>
-                    <option value="Class 8 - A">Class 8 - Section A</option>
-                  </>
+                  <option value="">No classes available</option>
                 )}
               </select>
 

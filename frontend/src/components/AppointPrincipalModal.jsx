@@ -121,7 +121,7 @@ const AppointPrincipalModal = ({
     setName('');
     setEmail(`${s}.principal@pragati.edu`);
     setPhone('');
-    setQualification('Ph.D / M.Ed in Educational Leadership');
+    setQualification('');
     setSalary(95000);
     setPortalUsername(`${s}_principal`);
     setPortalPassword('Principal@123');
@@ -135,7 +135,7 @@ const AppointPrincipalModal = ({
     setName(teacher.name || '');
     setEmail(teacher.email || `${s}.principal@pragati.edu`);
     setPhone(teacher.phone || '');
-    setQualification(teacher.qualification || 'M.Ed / B.Ed in Educational Leadership');
+    setQualification(teacher.qualification || '');
     setSalary(Math.max(Number(teacher.salary) || 0, 95000));
     
     // Suggest or retain username

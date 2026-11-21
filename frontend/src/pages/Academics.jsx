@@ -864,7 +864,6 @@ const Academics = () => {
             }}>
               <ShieldCheck size={14} color="#93c5fd" /> Admin Authority Enforced
             </span>
-            <span style={{ fontSize: '0.8rem', color: '#bfdbfe' }}>• Workspace: {tenantSlug}</span>
           </div>
           <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
             School Curriculum & Class Architecture
@@ -1751,12 +1750,6 @@ const Academics = () => {
           {/* Control & Constraint Bar */}
           <div className="chart-card" style={{ padding: '22px 26px', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800 }}>
-                  INTELLIGENT CONFLICT ENGINE
-                </span>
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Live Constraint Validation</span>
-              </div>
               <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#1e3a8a' }}>
                 Smart Timetable Matrix & Constraint Validator
               </h2>
@@ -1775,12 +1768,7 @@ const Academics = () => {
                     </option>
                   ))
                 ) : (
-                  <>
-                    <option value="Class 10 - A">Class 10 - Section A</option>
-                    <option value="Class 9 - B">Class 9 - Section B</option>
-                    <option value="Class 11 - SCIENCE">Class 11 - Section Science</option>
-                    <option value="Class 8 - A">Class 8 - Section A</option>
-                  </>
+                  <option value="">No classes available</option>
                 )}
               </select>
 

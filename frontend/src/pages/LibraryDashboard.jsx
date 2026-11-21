@@ -41,6 +41,8 @@ const LibraryDashboard = () => {
   const tenantSlug = sessionStorage.getItem('tenantSlug') || '';
   const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
   const token = userInfo.token || sessionStorage.getItem('token') || '';
+  const userRole = (sessionStorage.getItem('userRole') || userInfo.role || '').toLowerCase();
+  const isDedicatedLibrarian = userRole === 'librarian';
 
   // Data States
   const [searchQuery, setSearchQuery] = useState('');
@@ -296,173 +298,177 @@ const LibraryDashboard = () => {
         </div>
       )}
 
-      {/* ─── TOP COMMAND HEADER (MODERN WHITE SURFACE) ─── */}
-      <div className="card no-print" style={{
-        background: 'var(--color-surface, white)',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        border: '1px solid var(--color-border, #e2e8f0)',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '16px',
-        flexShrink: 0
-      }}>
-        <div style={{ maxWidth: '750px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              background: '#e0e7ff',
-              color: '#4338ca',
-              padding: '3px 10px',
-              borderRadius: '8px',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}>
-              <BookOpen size={13} color="#4338ca" /> Library & Resource Command
-            </span>
-            <span style={{
-              background: '#dcfce7',
-              color: '#15803d',
-              padding: '3px 10px',
-              borderRadius: '8px',
-              fontSize: '0.74rem',
-              fontWeight: 700,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <CheckCircle2 size={12} color="#15803d" /> Live Catalog Sync
-            </span>
-          </div>
-
-          <h1 style={{ margin: '0 0 12px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
-            Hi, {userInfo.name || 'Mr. Ganesh Kumar'}! 📚
-          </h1>
-
-          {/* Quick Action Pills */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => setIsIssueModalOpen(true)}
-              style={{
-                background: '#4F46E5',
-                border: 'none',
-                color: 'white',
-                padding: '7px 15px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <Plus size={14} /> Issue Book
-            </button>
-
-            <button 
-              onClick={() => setIsAddBookModalOpen(true)}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <Book size={14} color="#059669" /> Add New Title
-            </button>
-
-            <button 
-              onClick={() => navigate(tenantSlug ? `/${tenantSlug}/books` : '/books')}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <Layers size={14} color="#2563EB" /> Catalog Inventory ({booksList.length})
-            </button>
-
-            <button 
-              onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
-              style={{
-                background: overdueList.length > 0 ? '#fff1f2' : '#f8fafc',
-                border: overdueList.length > 0 ? '1px solid #fecdd3' : '1px solid #e2e8f0',
-                color: overdueList.length > 0 ? '#e11d48' : '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <Bell size={14} color={overdueList.length > 0 ? '#e11d48' : '#D97706'} /> Overdue Alerts ({overdueList.length})
-            </button>
-          </div>
-        </div>
-
-        {/* Right Info Box */}
-        <div style={{
-          background: '#f8fafc',
-          borderRadius: '12px',
-          padding: '14px 18px',
-          border: '1px solid #e2e8f0',
+      {/* ─── TOP COMMAND HEADER (MODERN WHITE SURFACE) (Dedicated Library Dashboard Only) ─── */}
+      {isDedicatedLibrarian && (
+        <div className="card no-print" style={{
+          background: 'var(--color-surface, white)',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
           display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          gap: '4px'
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px',
+          flexShrink: 0
         }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-            Library Repository Status
+          <div style={{ maxWidth: '750px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                background: '#e0e7ff',
+                color: '#4338ca',
+                padding: '3px 10px',
+                borderRadius: '8px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <BookOpen size={13} color="#4338ca" /> Library & Resource Command
+              </span>
+              <span style={{
+                background: '#dcfce7',
+                color: '#15803d',
+                padding: '3px 10px',
+                borderRadius: '8px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <CheckCircle2 size={12} color="#15803d" /> Live Catalog Sync
+              </span>
+            </div>
+
+            <h1 style={{ margin: '0 0 12px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+              Hi, {userInfo.name || 'Mr. Ganesh Kumar'}! 📚
+            </h1>
+
+            {/* Quick Action Pills */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => setIsIssueModalOpen(true)}
+                style={{
+                  background: '#4F46E5',
+                  border: 'none',
+                  color: 'white',
+                  padding: '7px 15px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <Plus size={14} /> Issue Book
+              </button>
+
+              <button 
+                onClick={() => setIsAddBookModalOpen(true)}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <Book size={14} color="#059669" /> Add New Title
+              </button>
+
+              <button 
+                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/books` : '/books')}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <Layers size={14} color="#2563EB" /> Catalog Inventory ({booksList.length})
+              </button>
+
+              <button 
+                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
+                style={{
+                  background: overdueList.length > 0 ? '#fff1f2' : '#f8fafc',
+                  border: overdueList.length > 0 ? '1px solid #fecdd3' : '1px solid #e2e8f0',
+                  color: overdueList.length > 0 ? '#e11d48' : '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <Bell size={14} color={overdueList.length > 0 ? '#e11d48' : '#D97706'} /> Overdue Alerts ({overdueList.length})
+              </button>
+            </div>
           </div>
-          <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#1e293b' }}>
-            {booksList.length} Titles • {libraryStats.totalCopies || 0} Total Copies
-          </div>
-          <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
-            {libraryStats.issuedCopies || 0} Books in Circulation
+
+          {/* Right Info Box */}
+          <div style={{
+            background: '#f8fafc',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            border: '1px solid #e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '4px'
+          }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              Library Repository Status
+            </div>
+            <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#1e293b' }}>
+              {booksList.length} Titles • {libraryStats.totalCopies || 0} Total Copies
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
+              {libraryStats.issuedCopies || 0} Books in Circulation
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
-      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
-        <StaffPunchClock />
-      </div>
+      {isDedicatedLibrarian && (
+        <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+          <StaffPunchClock />
+        </div>
+      )}
 
       {/* FULL-WIDTH BALANCED 5-KPI METRIC STRIP */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>

@@ -19,6 +19,7 @@ const Finance = () => {
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
   const isPrincipal = userRole === 'principal';
   const isAdmin = ['admin', 'superadmin', 'accountant', 'accounts'].includes(userRole);
+  const isDedicatedAccounts = ['accountant', 'accounts'].includes(userRole);
 
   // Dynamic time-based greeting
   const currentHour = new Date().getHours();
@@ -485,196 +486,200 @@ const Finance = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', paddingBottom: '32px' }}>
       {renderTransactionDrawer()}
 
-      {/* 1. Modern Accounts Command Center Header Card */}
-      <div className="no-print" style={{
-        background: 'var(--color-surface, white)',
-        borderRadius: '16px',
-        padding: '20px 24px',
-        border: '1px solid var(--color-border, #e2e8f0)',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
-        display: 'flex',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <div style={{ maxWidth: '780px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <span style={{
-              background: '#e0e7ff',
-              color: '#4338ca',
-              padding: '3px 10px',
-              borderRadius: '8px',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              textTransform: 'uppercase',
-              letterSpacing: '0.4px',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px'
-            }}>
-              <Wallet size={13} color="#4338ca" /> Accounts & Finance Command
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
-              Live Ledger Sync
-            </span>
-          </div>
-
-          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
-            {greeting}, {userInfo.name || 'Mr. Hardik Salgaokar'}! 💳
-          </h1>
-
-          {/* Quick Action Pills */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => {
-                setFormError('');
-                setFormData({ ...initialForm, type: 'Fee Collection', category: 'Tuition Fee' });
-                setIsAddModalOpen(true);
-              }}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <CreditCard size={14} color="#059669" /> Record Fee Receipt
-            </button>
-            <button 
-              onClick={() => {
-                setFormError('');
-                setFormData({ ...initialForm, type: 'Expense', category: 'Campus Maintenance' });
-                setIsAddModalOpen(true);
-              }}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <TrendingUp size={14} color="#dc2626" /> Record Campus Expense
-            </button>
-            <button 
-              onClick={() => handleTabChange('pending')}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <AlertCircle size={14} color="#d97706" /> Collect Due Fees {totalPendingFees > 0 ? `(${totalPendingFees})` : ''}
-            </button>
-            <button 
-              onClick={() => handleTabChange('salaries')}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <Users size={14} color="#7c3aed" /> Disburse Payroll {(salariesData.dueCount || 0) > 0 ? `(${salariesData.dueCount})` : ''}
-            </button>
-            <button 
-              onClick={() => window.print()}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
-                borderRadius: '10px',
-                fontSize: '0.82rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              className="hover-lift"
-            >
-              <FileText size={14} color="#2563eb" /> Export Statement
-            </button>
-          </div>
-        </div>
-
-        {/* Right side fiscal status */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'flex-end',
-          background: 'var(--color-bg, #f8fafc)',
-          padding: '12px 18px',
-          borderRadius: '12px',
+      {/* 1. Modern Accounts Command Center Header Card (Dedicated Accounts Dashboard Only) */}
+      {isDedicatedAccounts && (
+        <div className="no-print" style={{
+          background: 'var(--color-surface, white)',
+          borderRadius: '16px',
+          padding: '20px 24px',
           border: '1px solid var(--color-border, #e2e8f0)',
-          minWidth: '200px'
+          boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          width: '100%',
+          boxSizing: 'border-box'
         }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Fiscal Operations Session
+          <div style={{ maxWidth: '780px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <span style={{
+                background: '#e0e7ff',
+                color: '#4338ca',
+                padding: '3px 10px',
+                borderRadius: '8px',
+                fontSize: '0.74rem',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.4px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}>
+                <Wallet size={13} color="#4338ca" /> Accounts & Finance Command
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
+                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                Live Ledger Sync
+              </span>
+            </div>
+
+            <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+              {greeting}, {userInfo.name || 'Mr. Hardik Salgaokar'}! 💳
+            </h1>
+
+            {/* Quick Action Pills */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => {
+                  setFormError('');
+                  setFormData({ ...initialForm, type: 'Fee Collection', category: 'Tuition Fee' });
+                  setIsAddModalOpen(true);
+                }}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <CreditCard size={14} color="#059669" /> Record Fee Receipt
+              </button>
+              <button 
+                onClick={() => {
+                  setFormError('');
+                  setFormData({ ...initialForm, type: 'Expense', category: 'Campus Maintenance' });
+                  setIsAddModalOpen(true);
+                }}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <TrendingUp size={14} color="#dc2626" /> Record Campus Expense
+              </button>
+              <button 
+                onClick={() => handleTabChange('pending')}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <AlertCircle size={14} color="#d97706" /> Collect Due Fees {totalPendingFees > 0 ? `(${totalPendingFees})` : ''}
+              </button>
+              <button 
+                onClick={() => handleTabChange('salaries')}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <Users size={14} color="#7c3aed" /> Disburse Payroll {(salariesData.dueCount || 0) > 0 ? `(${salariesData.dueCount})` : ''}
+              </button>
+              <button 
+                onClick={() => window.print()}
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  color: '#1e293b',
+                  padding: '7px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                className="hover-lift"
+              >
+                <FileText size={14} color="#2563eb" /> Export Statement
+              </button>
+            </div>
           </div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </div>
+
+          {/* Right side fiscal status */}
           <div style={{
-            fontSize: '0.72rem',
-            color: '#1e3a8a',
-            fontWeight: 800,
-            background: '#e0e7ff',
-            padding: '2px 8px',
-            borderRadius: '6px',
-            marginTop: '4px'
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            background: 'var(--color-bg, #f8fafc)',
+            padding: '12px 18px',
+            borderRadius: '12px',
+            border: '1px solid var(--color-border, #e2e8f0)',
+            minWidth: '200px'
           }}>
-            FY 2026-2027 • Q3 Active Ledger
+            <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Fiscal Operations Session
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+              {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div style={{
+              fontSize: '0.72rem',
+              color: '#1e3a8a',
+              fontWeight: 800,
+              background: '#e0e7ff',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              marginTop: '4px'
+            }}>
+              FY 2026-2027 • Q3 Active Ledger
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
-      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
-        <StaffPunchClock onPunchSuccess={() => fetchFinanceData()} />
-      </div>
+      {isDedicatedAccounts && (
+        <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+          <StaffPunchClock onPunchSuccess={() => fetchFinanceData()} />
+        </div>
+      )}
 
       {/* Financial KPI Cards — Collections, Expenses, Due Fees, Due Salaries, Balance */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
