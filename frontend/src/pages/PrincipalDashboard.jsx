@@ -9,6 +9,7 @@ import {
   Briefcase, CheckCircle2, ShieldCheck, Award, ArrowUpRight, 
   Sparkles, AlertCircle, Clock, ChevronRight, BarChart3, Target
 } from 'lucide-react';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -38,11 +39,7 @@ const PrincipalDashboard = () => {
       { grade: 'Class 10', present: 97, absent: 3 },
       { grade: 'Class 11', present: 91, absent: 9 },
     ],
-    riskStudents: [
-      { id: 1, name: 'Rohan Gupta', grade: 'Class 11 - SCIENCE', issue: 'Chronic Absenteeism (89%)', risk: 'Critical', recommendedAction: 'Immediate Guardian Intervention' },
-      { id: 2, name: 'Vihaan Verma', grade: 'Class 9 - B', issue: 'Declining Math Scores', risk: 'High', recommendedAction: 'Assign Peer Study Buddy' },
-      { id: 3, name: 'Arjun Nair', grade: 'Class 10 - A', issue: 'Missed Science Lab Reports', risk: 'Medium', recommendedAction: 'Weekly Progress Check' },
-    ],
+    riskStudents: [],
     teacherWorkloads: [
       { id: '1', name: 'Mr. Ramesh Singh', department: 'Mathematics & Science', periodsPerWeek: 26, maxPeriods: 30, studentCount: 88, pendingEvaluations: 8, status: 'Optimal', statusColor: '#16a34a' },
       { id: '2', name: 'Dr. Vikram Malhotra', department: 'Physics & Chemistry', periodsPerWeek: 29, maxPeriods: 30, studentCount: 110, pendingEvaluations: 14, status: 'Overloaded', statusColor: '#dc2626' },
@@ -78,7 +75,7 @@ const PrincipalDashboard = () => {
             ...data,
             academicTrend: (data.academicTrend && data.academicTrend.length > 0) ? data.academicTrend : prev.academicTrend,
             attendanceData: (data.attendanceData && data.attendanceData.length > 0) ? data.attendanceData : prev.attendanceData,
-            riskStudents: (data.riskStudents && data.riskStudents.length > 0) ? data.riskStudents : prev.riskStudents,
+            riskStudents: Array.isArray(data.riskStudents) ? data.riskStudents : [],
             teacherWorkloads: (data.teacherWorkloads && data.teacherWorkloads.length > 0) ? data.teacherWorkloads : prev.teacherWorkloads,
             healthDashboard: data.healthDashboard || prev.healthDashboard,
           }));
@@ -179,7 +176,10 @@ const PrincipalDashboard = () => {
         </div>
       </div>
 
-      
+      {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
+      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+        <StaffPunchClock />
+      </div>
 
       {/* 5-PILLAR SCHOOL HEALTH SCORECARDS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
@@ -474,8 +474,28 @@ const PrincipalDashboard = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
-            {riskStudents.map((student) => {
+          {riskStudents.length === 0 ? (
+            <div style={{
+              padding: '36px 24px',
+              textAlign: 'center',
+              background: 'linear-gradient(135deg, rgba(236, 253, 245, 0.8) 0%, rgba(209, 250, 229, 0.4) 100%)',
+              border: '1.5px solid #a7f3d0',
+              borderRadius: '16px',
+              color: '#065f46'
+            }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', borderRadius: '50%', background: '#d1fae5', color: '#059669', marginBottom: '12px' }}>
+                <CheckCircle2 size={26} />
+              </div>
+              <h4 style={{ margin: '0 0 6px', fontSize: '1.1rem', fontWeight: 800, color: '#064e3b' }}>
+                Zero Students at Academic or Attendance Risk
+              </h4>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: '#047857' }}>
+                All enrolled students are maintaining exemplary attendance (≥92%) and passing academic marks. No immediate remedial interventions required.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+              {riskStudents.map((student) => {
               const isCrit = student.risk === 'Critical';
               return (
                 <div 
@@ -538,6 +558,7 @@ const PrincipalDashboard = () => {
               );
             })}
           </div>
+        )}
 
         </div>
       )}

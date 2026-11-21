@@ -9,6 +9,7 @@ import {
   Activity, BookOpen, Layers, Flame, AlertOctagon, HelpCircle,
   Eye, Droplets, Info, CheckSquare, Square, CalendarPlus, Trash2, Edit3
 } from 'lucide-react';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -44,14 +45,14 @@ const LabDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalLabs: 4,
-    totalItems: 24,
-    totalEquipments: 14,
-    totalChemicals: 10,
-    operationalCount: 21,
-    lowStockCount: 2,
-    calibrationCount: 1,
-    todayPracticals: 4,
-    todayStudentsCount: 114,
+    totalItems: 0,
+    totalEquipments: 0,
+    totalChemicals: 0,
+    operationalCount: 0,
+    lowStockCount: 0,
+    calibrationCount: 0,
+    todayPracticals: 0,
+    todayStudentsCount: 0,
     safetyComplianceScore: 98,
     assistantName: userInfo.name || 'Mr. Sujal Vishwa',
     assistantEmpId: 'EMP-107',
@@ -202,6 +203,20 @@ const LabDashboard = () => {
         const pracData = await pracRes.json();
         if (Array.isArray(pracData.practicals)) setPracticals(pracData.practicals);
       }
+
+      // Safety Checklist
+      const safetyRes = await fetch(`${API_BASE}/lab/safety`, { headers });
+      if (safetyRes.ok) {
+        const safetyData = await safetyRes.json();
+        if (Array.isArray(safetyData.items)) setSafetyChecklist(safetyData.items);
+      }
+
+      // Duty Tasks
+      const tasksRes = await fetch(`${API_BASE}/lab/tasks`, { headers });
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json();
+        if (Array.isArray(tasksData.tasks)) setLabTasks(tasksData.tasks);
+      }
     } catch (err) {
       console.warn('Error loading lab data:', err);
     } finally {
@@ -348,24 +363,56 @@ const LabDashboard = () => {
     }
   };
 
-  const handleToggleSafetyItem = (id) => {
-    setSafetyChecklist(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
-    showToast('Updated lab safety compliance checklist.');
+  const handleToggleSafetyItem = async (id) => {
+    setSafetyChecklist(prev => prev.map(item => (item._id === id || item.id === id) ? { ...item, checked: !item.checked } : item));
+    try {
+      await fetch(`${API_BASE}/lab/safety/${id}/toggle`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+      showToast('Updated lab safety compliance checklist.');
+    } catch {
+      // optimistic update maintained
+    }
   };
 
-  const handleToggleTask = (id) => {
-    setLabTasks(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t));
+  const handleToggleTask = async (id) => {
+    setLabTasks(prev => prev.map(t => (t._id === id || t.id === id) ? { ...t, done: !t.done } : t));
+    try {
+      await fetch(`${API_BASE}/lab/tasks/${id}/toggle`, {
+        method: 'PUT',
+        headers: getHeaders()
+      });
+    } catch {
+      // optimistic update maintained
+    }
   };
 
-  const handleAddTask = (e) => {
+  const handleAddTask = async (e) => {
     e.preventDefault();
     if (!newTaskInput.trim()) return;
-    setLabTasks(prev => [
-      ...prev,
-      { id: Date.now(), text: newTaskInput.trim(), done: false }
-    ]);
+    const taskText = newTaskInput.trim();
     setNewTaskInput('');
-    showToast('Task logged to Assistant Register.');
+    try {
+      const res = await fetch(`${API_BASE}/lab/tasks`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ text: taskText })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.task) {
+          setLabTasks(prev => [...prev, data.task]);
+        }
+        showToast('Task logged to Assistant Register.');
+      } else {
+        setLabTasks(prev => [...prev, { id: Date.now(), text: taskText, done: false }]);
+        showToast('Task logged to Assistant Register.');
+      }
+    } catch {
+      setLabTasks(prev => [...prev, { id: Date.now(), text: taskText, done: false }]);
+      showToast('Task logged to Assistant Register.');
+    }
   };
 
   const handleOpenAddModal = (type = 'equipment') => {
@@ -487,12 +534,180 @@ const LabDashboard = () => {
         </div>
       )}
 
+      {/* ─── TOP COMMAND HEADER (MODERN WHITE SURFACE) ─── */}
+      <div className="card no-print" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+        flexShrink: 0
+      }}>
+        <div style={{ maxWidth: '750px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <FlaskConical size={13} color="#4338ca" /> Science & Laboratories Command
+            </span>
+            <span style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <CheckCircle2 size={12} color="#15803d" /> Live Registry & Inventory Sync
+            </span>
+          </div>
+
+          <h1 style={{ margin: '0 0 12px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            Hi, {userInfo.name || 'Mr. Sujal Vishwa'}! 🔬
+          </h1>
+
+          {/* Quick Action Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => handleOpenScheduleModal()}
+              style={{
+                background: '#4F46E5',
+                border: 'none',
+                color: 'white',
+                padding: '7px 15px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <CalendarPlus size={14} /> Schedule Practical Class
+            </button>
+
+            <button 
+              onClick={() => handleOpenAddModal('equipment')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Microscope size={14} color="#0284c7" /> Log Apparatus
+            </button>
+
+            <button 
+              onClick={() => handleOpenAddModal('chemical')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <FlaskConical size={14} color="#d97706" /> Catalog Reagent
+            </button>
+
+            <button 
+              onClick={() => switchTab('safety')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <ShieldCheck size={14} color="#059669" /> Safety Compliance ({safetyChecklist.length > 0 ? Math.round((safetyChecklist.filter(s => s.checked).length / safetyChecklist.length) * 100) : 98}%)
+            </button>
+          </div>
+        </div>
+
+        {/* Right Info Box */}
+        <div style={{
+          background: '#f8fafc',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: '4px'
+        }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Laboratory Facility Status
+          </div>
+          <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#1e293b' }}>
+            4 Science Labs • {inventory.length} Cataloged Items
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
+            {practicals.length} Sessions Active Today ({stats.todayStudentsCount || practicals.reduce((sum, p) => sum + (p.studentCount || 0), 0)} Students)
+          </div>
+        </div>
+      </div>
+
+      {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
+      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+        <StaffPunchClock />
+      </div>
+
       {/* 4 TELEMETRY SCIENTIFIC KPIS */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         {[
           { 
             label: 'Scheduled Practicals', 
-            value: stats.todayPracticals, 
+            value: practicals.length || stats.todayPracticals || 0, 
             icon: Calendar, 
             color: '#4F46E5', 
             bg: 'rgba(79, 70, 229, 0.1)',
@@ -503,18 +718,18 @@ const LabDashboard = () => {
           },
           { 
             label: 'Total Students in Labs', 
-            value: stats.todayStudentsCount, 
+            value: stats.todayStudentsCount || practicals.reduce((sum, p) => sum + (p.studentCount || 0), 0), 
             icon: Users, 
             color: '#059669', 
             bg: 'rgba(5, 150, 105, 0.1)',
-            badge: 'Aggregate Count Only',
+            badge: 'Live Cohort',
             badgeBg: 'rgba(5, 150, 105, 0.08)',
             badgeColor: '#059669',
             tab: 'schedule'
           },
           { 
             label: 'Apparatus Units', 
-            value: inventory.filter(i => i.category !== 'Chemical').length || stats.totalEquipments, 
+            value: inventory.filter(i => i.category !== 'Chemical').length || stats.totalEquipments || 0, 
             icon: Microscope, 
             color: '#0284c7', 
             bg: 'rgba(2, 132, 199, 0.1)',
@@ -525,7 +740,7 @@ const LabDashboard = () => {
           },
           { 
             label: 'Reagents Cataloged', 
-            value: inventory.filter(i => i.category === 'Chemical').length || stats.totalChemicals, 
+            value: inventory.filter(i => i.category === 'Chemical').length || stats.totalChemicals || 0, 
             icon: FlaskConical, 
             color: '#d97706', 
             bg: 'rgba(217, 119, 6, 0.1)',

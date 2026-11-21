@@ -4,6 +4,7 @@ const LabItem = require('../models/LabItem');
 const Staff = require('../models/Staff');
 const ClassSection = require('../models/ClassSection');
 const PracticalSession = require('../models/PracticalSession');
+const Student = require('../models/Student');
 
 // Comprehensive laboratory inventory catalogue (Equipments, Apparatus & Chemicals)
 const STARTER_LAB_ITEMS = [
@@ -348,7 +349,9 @@ router.get('/stats', async (req, res) => {
 
     const practicals = await PracticalSession.find({ entityId, readinessStatus: { $ne: 'Cancelled' } });
     const todayPracticals = practicals.length;
-    const todayStudentsCount = practicals.reduce((sum, p) => sum + (p.studentCount || 0), 0);
+    const enrolledStudents = await Student.countDocuments({ entityId });
+    const rawStudents = practicals.reduce((sum, p) => sum + (p.studentCount || 0), 0);
+    const todayStudentsCount = enrolledStudents > 0 ? Math.min(enrolledStudents * todayPracticals, rawStudents) : 0;
 
     return res.json({
       success: true,
@@ -776,6 +779,145 @@ router.delete('/practicals/:id', async (req, res) => {
     return res.json({ success: true, message: `Cancelled & deleted scheduled practical for ${practical.classSection}.` });
   } catch (error) {
     console.error('Error deleting practical session:', error);
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// --- LAB ASSISTANT DUTY TASKS SCHEMA & ROUTES ---
+const mongoose = require('mongoose');
+
+const labTaskSchema = new mongoose.Schema({
+  text: { type: String, required: true, trim: true },
+  done: { type: Boolean, default: false },
+  entityId: { type: String, required: true, index: true },
+  schoolSlug: { type: String, default: '' },
+}, { timestamps: true });
+
+const LabTask = mongoose.models.LabTask || mongoose.model('LabTask', labTaskSchema);
+
+const DEFAULT_LAB_TASKS = [
+  { text: 'Prepare 1.5L 0.1M standard NaOH titration solution for Class 10-A', done: true },
+  { text: 'Clean and inspect 15 compound immersion lenses for Class 9 Biology', done: true },
+  { text: 'Calibrate optical bench light pins & convex lenses in Physics Lab 2', done: true },
+  { text: 'Restock safranin biological stain & cover slips in Biology Rack A', done: false },
+  { text: 'Lock master gas supply cylinder and check fume hood dampers', done: false }
+];
+
+const ensureSeedLabTasks = async (entityId, schoolSlug) => {
+  const count = await LabTask.countDocuments({ entityId });
+  if (count === 0) {
+    const seeded = DEFAULT_LAB_TASKS.map(t => ({ ...t, entityId, schoolSlug: schoolSlug || '' }));
+    await LabTask.insertMany(seeded).catch(() => {});
+  }
+};
+
+// GET /api/lab/tasks
+router.get('/tasks', async (req, res) => {
+  try {
+    const entityId = req.entityId || 'default';
+    const schoolSlug = req.schoolSlug || '';
+    await ensureSeedLabTasks(entityId, schoolSlug);
+    const tasks = await LabTask.find({ entityId }).sort({ createdAt: 1 });
+    return res.json({ success: true, tasks });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// POST /api/lab/tasks
+router.post('/tasks', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Task text is required' });
+    }
+    const newTask = new LabTask({
+      text: text.trim(),
+      done: false,
+      entityId: req.entityId || 'default',
+      schoolSlug: req.schoolSlug || ''
+    });
+    await newTask.save();
+    return res.status(201).json({ success: true, task: newTask, message: 'Duty task added to Lab Register!' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// PUT /api/lab/tasks/:id/toggle
+router.put('/tasks/:id/toggle', async (req, res) => {
+  try {
+    const task = await LabTask.findOne({ _id: req.params.id, entityId: req.entityId });
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    task.done = !task.done;
+    await task.save();
+    return res.json({ success: true, task });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// DELETE /api/lab/tasks/:id
+router.delete('/tasks/:id', async (req, res) => {
+  try {
+    await LabTask.findOneAndDelete({ _id: req.params.id, entityId: req.entityId });
+    return res.json({ success: true, message: 'Task deleted' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// --- LAB SAFETY CHECKLIST SCHEMA & ROUTES ---
+const labSafetySchema = new mongoose.Schema({
+  label: { type: String, required: true, trim: true },
+  lab: { type: String, default: 'All Science Labs' },
+  checked: { type: Boolean, default: true },
+  entityId: { type: String, required: true, index: true },
+  schoolSlug: { type: String, default: '' },
+}, { timestamps: true });
+
+const LabSafetyCheck = mongoose.models.LabSafetyCheck || mongoose.model('LabSafetyCheck', labSafetySchema);
+
+const DEFAULT_SAFETY_ITEMS = [
+  { label: 'Emergency Chemical Eye-Wash Station Purged & Flow Certified', lab: 'Chemistry & Biology', checked: true },
+  { label: 'CO2 & Dry Chemical Fire Extinguishers Pressure In Green Zone', lab: 'All Science Labs', checked: true },
+  { label: 'Fume Hood Air Extraction Flow Certified at 0.5 m/s velocity', lab: 'Chemistry Lab 1', checked: true },
+  { label: 'Acid/Base Neutralizer Spill Kit Fully Stocked on Stand 1', lab: 'Chemistry Lab 1', checked: true },
+  { label: 'Biological Glassware Sharps Bin Disinfected & Labeled', lab: 'Biology Lab (205)', checked: true },
+  { label: 'Master LPG & Bunsen Gas Supply Valve Locked After Shift', lab: 'Chemistry Lab 1', checked: true },
+  { label: 'First Aid Burn & Chemical Trauma Kit Inspected for Expired Ointments', lab: 'Infirmary Corridor', checked: false }
+];
+
+const ensureSeedSafety = async (entityId, schoolSlug) => {
+  const count = await LabSafetyCheck.countDocuments({ entityId });
+  if (count === 0) {
+    const seeded = DEFAULT_SAFETY_ITEMS.map(s => ({ ...s, entityId, schoolSlug: schoolSlug || '' }));
+    await LabSafetyCheck.insertMany(seeded).catch(() => {});
+  }
+};
+
+// GET /api/lab/safety
+router.get('/safety', async (req, res) => {
+  try {
+    const entityId = req.entityId || 'default';
+    const schoolSlug = req.schoolSlug || '';
+    await ensureSeedSafety(entityId, schoolSlug);
+    const items = await LabSafetyCheck.find({ entityId }).sort({ createdAt: 1 });
+    return res.json({ success: true, items });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error', message: error.message });
+  }
+});
+
+// PUT /api/lab/safety/:id/toggle
+router.put('/safety/:id/toggle', async (req, res) => {
+  try {
+    const item = await LabSafetyCheck.findOne({ _id: req.params.id, entityId: req.entityId });
+    if (!item) return res.status(404).json({ error: 'Safety item not found' });
+    item.checked = !item.checked;
+    await item.save();
+    return res.json({ success: true, item });
+  } catch (error) {
     return res.status(500).json({ error: 'Server error', message: error.message });
   }
 });

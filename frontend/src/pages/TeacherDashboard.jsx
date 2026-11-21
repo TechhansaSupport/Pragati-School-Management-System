@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { 
-  Users, BookOpen, Clock, FileText, CheckCircle, Calendar, 
+  Users, BookOpen, Clock, FileText, CheckCircle, CheckCircle2, Calendar, 
   ChevronRight, Award, Bell, Check, Plus, Trash2, X, Search, 
   CheckSquare, Square, AlertCircle, Sparkles, Send, UserCheck, 
   ArrowUpRight, Edit3, ClipboardList, BookMarked, User, RefreshCw
@@ -577,7 +577,7 @@ const TeacherDashboard = () => {
   };
 
   return (
-    <div className="dashboard-grid">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '22px', width: '100%', paddingBottom: '40px', boxSizing: 'border-box' }}>
       {/* Toast Notification */}
       {toast.show && (
         <div style={{
@@ -601,9 +601,8 @@ const TeacherDashboard = () => {
         </div>
       )}
 
-      {/* Top Header Card - Clean White Surface (TOP OF DASHBOARD) */}
-      <div className="no-print" style={{
-        gridColumn: '1 / -1',
+      {/* ─── TOP COMMAND HEADER (MODERN WHITE SURFACE) ─── */}
+      <div className="card no-print" style={{
         background: 'var(--color-surface, white)',
         borderRadius: '16px',
         padding: '20px 24px',
@@ -613,7 +612,8 @@ const TeacherDashboard = () => {
         justifyContent: 'space-between',
         alignItems: 'center',
         flexWrap: 'wrap',
-        gap: '16px'
+        gap: '16px',
+        flexShrink: 0
       }}>
         <div style={{ maxWidth: '750px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
@@ -630,12 +630,25 @@ const TeacherDashboard = () => {
               alignItems: 'center',
               gap: '5px'
             }}>
-              <BookOpen size={13} color="#4338ca" /> Faculty Command
+              <BookOpen size={13} color="#4338ca" /> Faculty & Academic Command
+            </span>
+            <span style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <CheckCircle2 size={12} color="#15803d" /> Live Academic Sync
             </span>
           </div>
 
-          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
-            {getGreeting()}, {teacherSummary.teacherName}! 👋
+          <h1 style={{ margin: '0 0 12px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            {getGreeting()}, {teacherSummary.teacherName || userInfo.name || 'Mr. Ramesh Singh'}! 👨‍🏫
           </h1>
 
           {/* Quick Action Pills */}
@@ -643,10 +656,10 @@ const TeacherDashboard = () => {
             <button 
               onClick={handleQuickAttendance}
               style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                color: '#1e293b',
-                padding: '7px 14px',
+                background: '#4F46E5',
+                border: 'none',
+                color: 'white',
+                padding: '7px 15px',
                 borderRadius: '10px',
                 fontSize: '0.82rem',
                 fontWeight: 700,
@@ -654,11 +667,12 @@ const TeacherDashboard = () => {
                 alignItems: 'center',
                 gap: '6px',
                 cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
                 transition: 'all 0.2s'
               }}
               className="hover-lift"
             >
-              <ClipboardList size={14} color="#4F46E5" /> Quick Attendance
+              <ClipboardList size={14} /> Quick Attendance
             </button>
             <button 
               onClick={() => setIsNewAssignmentModalOpen(true)}
@@ -725,52 +739,80 @@ const TeacherDashboard = () => {
 
         {/* Right side session card */}
         <div style={{
+          background: '#f8fafc',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          border: '1px solid #e2e8f0',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'flex-end',
-          background: 'var(--color-bg, #f8fafc)',
-          padding: '12px 18px',
-          borderRadius: '12px',
-          border: '1px solid var(--color-border, #e2e8f0)',
-          minWidth: '190px'
+          gap: '4px'
         }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Live Campus Session
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Faculty Profile & Academic Session
           </div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#1e293b' }}>
+            {teacherSummary.classesCount || 1} Assigned Class • {teacherSummary.totalStudents || 1} Students
           </div>
-          <div style={{
-            fontSize: '0.72rem',
-            color: '#4F46E5',
-            fontWeight: 700,
-            background: '#e0e7ff',
-            padding: '2px 8px',
-            borderRadius: '6px',
-            marginTop: '4px'
-          }}>
-            AY 2026-2027 • Term 2
+          <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
+            AY 2026-2027 • Term 2 (Live)
           </div>
         </div>
       </div>
 
       {/* ─── STAFF ATTENDANCE MODULE ─── */}
-      <div style={{ gridColumn: '1 / -1', width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
         <StaffPunchClock onPunchSuccess={(data) => showToast(data?.message || 'Attendance recorded')} />
       </div>
 
       {/* FULL-WIDTH 4-KPI SCORECARDS STRIP */}
       <div style={{
-        gridColumn: '1 / -1',
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
         gap: '16px'
       }}>
         {[
-          { label: 'Total Students', value: teacherSummary.totalStudents !== undefined ? teacherSummary.totalStudents : 0, icon: Users, color: '#4F46E5', bg: 'rgba(79,70,229,0.1)' },
-          { label: 'Active Classes', value: teacherSummary.classesCount ?? 0, icon: BookOpen, color: '#0284C7', bg: 'rgba(2,132,199,0.1)' },
-          { label: 'Pending Grading', value: teacherSummary.pendingGrading ?? 0, icon: FileText, color: '#0F766E', bg: 'rgba(15, 118, 110,0.1)' },
-          { label: 'Attendance Rate', value: teacherSummary.attendanceRate || '0%', icon: CheckCircle, color: '#16A34A', bg: 'rgba(22, 163, 74,0.1)' }
+          { 
+            label: 'Total Students', 
+            value: teacherSummary.totalStudents !== undefined ? teacherSummary.totalStudents : 0, 
+            icon: Users, 
+            color: '#4F46E5', 
+            bg: 'rgba(79,70,229,0.1)',
+            badge: 'Enrolled',
+            badgeBg: 'rgba(79,70,229,0.08)',
+            badgeColor: '#4F46E5'
+          },
+          { 
+            label: 'Active Classes', 
+            value: teacherSummary.classesCount ?? 0, 
+            icon: BookOpen, 
+            color: '#0284C7', 
+            bg: 'rgba(2,132,199,0.1)',
+            badge: 'Curriculum',
+            badgeBg: 'rgba(2,132,199,0.08)',
+            badgeColor: '#0284C7'
+          },
+          { 
+            label: 'Pending Grading', 
+            value: teacherSummary.pendingGrading ?? 0, 
+            icon: FileText, 
+            color: '#0F766E', 
+            bg: 'rgba(15, 118, 110,0.1)',
+            badge: (teacherSummary.pendingGrading ?? 0) > 0 ? 'Review Due' : 'All Graded',
+            badgeBg: (teacherSummary.pendingGrading ?? 0) > 0 ? 'rgba(217, 119, 6, 0.08)' : 'rgba(22, 163, 74, 0.08)',
+            badgeColor: (teacherSummary.pendingGrading ?? 0) > 0 ? '#D97706' : '#16A34A'
+          },
+          { 
+            label: 'Attendance Rate', 
+            value: teacherSummary.attendanceRate || '0%', 
+            icon: CheckCircle, 
+            color: '#16A34A', 
+            bg: 'rgba(22, 163, 74,0.1)',
+            badge: 'Campus Avg',
+            badgeBg: 'rgba(22, 163, 74, 0.08)',
+            badgeColor: '#16A34A'
+          }
         ].map((kpi, i) => (
           <div key={i} className="card hover-lift" style={{ 
             display: 'flex', flexDirection: 'column', gap: '10px', 
@@ -782,8 +824,8 @@ const TeacherDashboard = () => {
               <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: kpi.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <kpi.icon size={22} color={kpi.color} />
               </div>
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A34A', background: 'rgba(22, 163, 74, 0.08)', padding: '3px 8px', borderRadius: '12px' }}>
-                Active
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: kpi.badgeColor, background: kpi.badgeBg, padding: '3px 8px', borderRadius: '12px' }}>
+                {kpi.badge}
               </span>
             </div>
             <div>
@@ -796,8 +838,11 @@ const TeacherDashboard = () => {
         ))}
       </div>
 
-      {/* LEFT COLUMN: Academic Matrix & Performance Analytics */}
-      <div className="left-column">
+      {/* TWO-COLUMN COMMAND WORKSPACE: LEFT (SCHEDULE & CHARTS) + RIGHT (TASKS & GRADING) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: '22px', alignItems: 'start' }}>
+        
+        {/* LEFT COLUMN: Academic Matrix & Performance Analytics */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
         {/* Today's Teaching Schedule */}
         <div className="card" style={{ padding: '20px 24px', background: 'var(--color-surface, white)', borderRadius: '16px', border: '1px solid var(--color-border, #e2e8f0)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
@@ -1239,6 +1284,7 @@ const TeacherDashboard = () => {
           </div>
         </div>
       </div>
+    </div>
 
       {/* ========================================================================= */}
       {/* MODAL 1: MARK ATTENDANCE MODAL */}

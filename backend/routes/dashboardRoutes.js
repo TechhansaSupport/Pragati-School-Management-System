@@ -12,6 +12,8 @@ const Assignment = require('../models/Assignment');
 const TeacherTask = require('../models/TeacherTask');
 const Attendance = require('../models/Attendance');
 const Timetable = require('../models/Timetable');
+const CalendarEvent = require('../models/CalendarEvent');
+const ClassMaterial = require('../models/ClassMaterial');
 
 // Helper to parse time slot string (e.g. "08:00 AM - 09:00 AM") into start and end minutes
 const parseSlotMinutes = (timeStr) => {
@@ -62,20 +64,18 @@ const getSlotTimeForClassIndex = (idx) => {
 const seedInitialFeesIfEmpty = async (entityId, force = false) => {
   if (!entityId && !force) return;
   const count = await Fee.countDocuments(entityId ? { entityId } : {});
-  if (count === 0 || force) {
-    const sampleFees = [
-      { studentName: 'Aarav Sharma', classSection: 'Class 10 - A', parentContact: '+91 98201 12345', amount: 45000, dueDate: new Date('2026-10-15'), status: 'Collected', entityId: entityId || 'default-school' },
-      { studentName: 'Diya Patel', classSection: 'Class 10 - A', parentContact: '+91 98201 12346', amount: 45000, dueDate: new Date('2026-10-15'), status: 'Collected', entityId: entityId || 'default-school' },
-      { studentName: 'Kabir Mehta', classSection: 'Class 9 - B', parentContact: '+91 98201 12349', amount: 38000, dueDate: new Date('2026-10-25'), status: 'Due this month', entityId: entityId || 'default-school' },
-      { studentName: 'Rohan Gupta', classSection: 'Class 12 - Science', parentContact: '+91 98201 12351', amount: 48000, dueDate: new Date('2026-10-05'), status: 'Overdue', entityId: entityId || 'default-school' },
-      { studentName: 'Vihaan Verma', classSection: 'Class 10 - B', parentContact: '+91 98201 12347', amount: 42000, dueDate: new Date('2026-09-28'), status: 'Overdue', entityId: entityId || 'default-school' },
-      { studentName: 'Ananya Iyer', classSection: 'Class 9 - A', parentContact: '+91 98201 12348', amount: 38000, dueDate: new Date('2026-10-28'), status: 'Due this month', entityId: entityId || 'default-school' },
-    ];
-    for (const f of sampleFees) {
-      try {
-        await Fee.create(f);
-      } catch (e) {
-        // ignore duplicate
+  if (count === 0 && force) {
+    const student = await Student.findOne(entityId ? { entityId } : {});
+    if (student) {
+      const sampleFees = [
+        { studentName: student.name, classSection: `${student.grade} - ${student.section}`, parentContact: student.parentContact || '+91 7007604347', amount: 30000, dueDate: new Date('2026-11-15'), status: 'Collected', entityId: entityId || 'default-school' },
+      ];
+      for (const f of sampleFees) {
+        try {
+          await Fee.create(f);
+        } catch (e) {
+          // ignore duplicate
+        }
       }
     }
   }
@@ -225,13 +225,6 @@ router.get('/principal-summary', async (req, res) => {
         });
       });
       attendanceData = attendanceData.slice(0, 6);
-    } else {
-      attendanceData = [
-        { grade: 'Class 8', present: 96, absent: 4 },
-        { grade: 'Class 9', present: 94, absent: 6 },
-        { grade: 'Class 10', present: 97, absent: 3 },
-        { grade: 'Class 11', present: 91, absent: 9 },
-      ];
     }
 
     // Early Academic-Risk Indicator (students with attendance < 92%)
@@ -247,18 +240,6 @@ router.get('/principal-summary', async (req, res) => {
         recommendedAction: isCrit ? 'Immediate Guardian Intervention & Remedial Counseling' : 'Assign Subject Mentor'
       });
     });
-
-    if (riskStudents.length === 0 && students.length > 0) {
-      const sample = students[0];
-      riskStudents.push({
-        id: sample._id || 1,
-        name: sample.name,
-        grade: `${sample.grade} - ${sample.section}`,
-        issue: 'Term 1 Subject Evaluation Review',
-        risk: 'Medium',
-        recommendedAction: 'Weekly Academic Progress Tracking'
-      });
-    }
 
     // Teacher Workloads
     const teachers = await Staff.find({ ...schoolFilter, role: 'Teacher' });
@@ -998,176 +979,7 @@ router.delete('/teacher/tasks/:id', async (req, res) => {
   }
 });
 
-// GET /api/dashboard/principal-summary — Real school averages, attendance by grade, at-risk students
-router.get('/principal-summary', async (req, res) => {
-  try {
-    const isSuperAdmin = (req.user?.role || '').toLowerCase() === 'superadmin';
-    const effectiveSchoolSlug = (!isSuperAdmin || (req.schoolSlug && req.schoolSlug !== 'central' && req.schoolSlug !== 'all')) ? req.schoolSlug : null;
-
-    let studentFilter = { entityId: req.entityId };
-    let staffFilter = { entityId: req.entityId, role: { $in: ['Teacher', 'Principal'] } };
-
-    if (effectiveSchoolSlug) {
-      const primarySchool = await User.findOne({ role: 'school', entityId: req.entityId }).sort({ createdAt: 1 });
-      const isPrimary = !primarySchool || primarySchool.slug === effectiveSchoolSlug;
-      if (isPrimary) {
-        studentFilter = {
-          entityId: req.entityId,
-          $or: [
-            { schoolSlug: effectiveSchoolSlug },
-            { schoolSlug: { $exists: false } },
-            { schoolSlug: null },
-            { schoolSlug: '' }
-          ]
-        };
-        staffFilter = {
-          entityId: req.entityId,
-          role: { $in: ['Teacher', 'Principal'] },
-          $or: [
-            { schoolSlug: effectiveSchoolSlug },
-            { schoolSlug: { $exists: false } },
-            { schoolSlug: null },
-            { schoolSlug: '' }
-          ]
-        };
-      } else {
-        studentFilter = { entityId: req.entityId, schoolSlug: effectiveSchoolSlug };
-        staffFilter = { entityId: req.entityId, role: { $in: ['Teacher', 'Principal'] }, schoolSlug: effectiveSchoolSlug };
-      }
-    }
-
-    let totalStudents = await Student.countDocuments(studentFilter);
-    if (totalStudents === 0 && req.entityId) {
-      const sampleStudents = [
-        { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 96, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 92, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Vihaan Verma', rollNo: 'STU-1003', grade: 'Class 10', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 88, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Ananya Iyer', rollNo: 'STU-1004', grade: 'Class 9', section: 'A', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 98, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Kabir Mehta', rollNo: 'STU-1005', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 91, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Riya Sen', rollNo: 'STU-1006', grade: 'Class 11', section: 'SCIENCE', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Rohan Gupta', rollNo: 'STU-1007', grade: 'Class 11', section: 'SCIENCE', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 82, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-        { name: 'Sneha Reddy', rollNo: 'STU-1008', grade: 'Class 8', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 95, status: 'Active', entityId: req.entityId, schoolSlug: effectiveSchoolSlug },
-      ];
-      for (const s of sampleStudents) {
-        try {
-          await Student.create(s);
-        } catch (e) {}
-      }
-      totalStudents = await Student.countDocuments(studentFilter);
-    }
-
-    const attResult = await Student.aggregate([
-      { $match: studentFilter },
-      { $group: { _id: null, avgAttendance: { $avg: '$attendance' } } },
-    ]);
-    const schoolAvgAtt = attResult.length > 0 ? Math.round(attResult[0].avgAttendance * 10) / 10 : 94.6;
-
-    // Real Grade-wise attendance from MongoDB
-    const gradeAttAgg = await Student.aggregate([
-      { $match: studentFilter },
-      {
-        $group: {
-          _id: '$grade',
-          avgAtt: { $avg: '$attendance' },
-          count: { $sum: 1 },
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    const attendanceData = gradeAttAgg.length > 0
-      ? gradeAttAgg.map(g => ({
-          grade: g._id,
-          present: Math.round(g.avgAtt || 95),
-          absent: Math.max(1, 100 - Math.round(g.avgAtt || 95)),
-        }))
-      : [
-          { grade: 'Class 8', present: 95, absent: 5 },
-          { grade: 'Class 9', present: 94, absent: 6 },
-          { grade: 'Class 10', present: 92, absent: 8 },
-          { grade: 'Class 11', present: 88, absent: 12 },
-        ];
-
-    // Real At-Risk students from MongoDB (lowest attendance or fee overdue)
-    const atRiskStudents = await Student.find(studentFilter)
-      .sort({ attendance: 1 })
-      .limit(5);
-
-    const riskStudents = atRiskStudents.map((s, idx) => ({
-      id: s._id,
-      name: s.name,
-      grade: `${s.grade} - ${s.section}`,
-      issue: s.attendance < 85 ? `Chronic Absenteeism (${s.attendance}%)` : s.attendance < 90 ? `Low Attendance (${s.attendance}%)` : `Academic Monitoring Required`,
-      risk: s.attendance < 85 ? 'Critical' : s.attendance < 92 ? 'High' : 'Medium',
-      recommendedAction: s.attendance < 85 ? 'Immediate Guardian Intervention' : s.attendance < 92 ? 'Assign Peer Study Buddy' : 'Weekly Progress Check'
-    }));
-
-    // Fetch teachers for Workload Analytics
-    let teachers = await Staff.find(staffFilter).limit(8);
-    if (teachers.length === 0) {
-      teachers = await Staff.find({ entityId: req.entityId, role: { $in: ['Teacher', 'Principal'] } }).limit(8);
-    }
-    const teacherWorkloads = teachers.length > 0 ? teachers.map((t, idx) => {
-      const periods = 22 + (idx * 3) % 10;
-      const studentLoad = 75 + (idx * 15) % 40;
-      const pendingEvals = 6 + (idx * 4) % 12;
-      return {
-        id: t._id,
-        name: t.name,
-        department: t.department || 'Science & Math',
-        periodsPerWeek: periods,
-        maxPeriods: 30,
-        studentCount: studentLoad,
-        pendingEvaluations: pendingEvals,
-        status: periods > 28 ? 'Overloaded' : periods >= 24 ? 'Optimal' : 'Capacity Available',
-        statusColor: periods > 28 ? '#dc2626' : periods >= 24 ? '#16a34a' : '#2563eb'
-      };
-    }) : [
-      { id: '1', name: 'Mr. Ramesh Singh', department: 'Mathematics', periodsPerWeek: 26, maxPeriods: 30, studentCount: 88, pendingEvaluations: 8, status: 'Optimal', statusColor: '#16a34a' },
-      { id: '2', name: 'Dr. Vikram Malhotra', department: 'Physics & Chemistry', periodsPerWeek: 29, maxPeriods: 30, studentCount: 110, pendingEvaluations: 14, status: 'Overloaded', statusColor: '#dc2626' },
-      { id: '3', name: 'Ms. Sunita Sharma', department: 'English', periodsPerWeek: 22, maxPeriods: 30, studentCount: 72, pendingEvaluations: 5, status: 'Capacity Available', statusColor: '#2563eb' },
-      { id: '4', name: 'Mr. Rajesh Verma', department: 'Social Studies', periodsPerWeek: 24, maxPeriods: 30, studentCount: 80, pendingEvaluations: 6, status: 'Optimal', statusColor: '#16a34a' },
-    ];
-
-    // 5-Pillar School Health Dashboard
-    const healthDashboard = {
-      compositeScore: 93,
-      healthGrade: 'A+',
-      status: 'Optimal Operations',
-      pillars: [
-        { name: 'Academics', score: 91, benchmark: '90%', status: 'Exceeding', color: '#4F46E5', detail: '79.2% school avg across 12 subjects' },
-        { name: 'Attendance', score: 96, benchmark: '92%', status: 'Strong', color: '#0F766E', detail: `${schoolAvgAtt}% campus average attendance` },
-        { name: 'Finance & Fee Collection', score: 92, benchmark: '85%', status: 'Healthy', color: '#16a34a', detail: '92.4% fee realization rate for Term 1' },
-        { name: 'Faculty Workload Balance', score: 89, benchmark: '85%', status: 'Balanced', color: '#f59e0b', detail: '88% of teachers within optimal 26 hr limit' },
-        { name: 'Infrastructure & Safety', score: 98, benchmark: '95%', status: 'Verified', color: '#0284c7', detail: 'Fire, labs, and GPS bus clearance up to date' },
-      ]
-    };
-
-    const chronicCount = atRiskStudents.filter(s => s.attendance < 85).length;
-
-    res.json({
-      schoolAverage: '79.2%',
-      overallAttendance: `${schoolAvgAtt}%`,
-      totalStudents: totalStudents || 8,
-      attendanceData,
-      riskStudents,
-      teacherWorkloads,
-      healthDashboard,
-      chronicCount,
-      academicTrend: [
-        { term: 'Term 1', avg: 74 },
-        { term: 'Term 2', avg: 76 },
-        { term: 'Mid-Year', avg: 78 },
-        { term: 'Term 3', avg: 80 },
-        { term: 'Finals (Proj)', avg: 83 },
-      ],
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// GET /api/dashboard/student-summary — Real student metrics
+// GET /api/dashboard/student-summary — Real student metrics from MongoDB
 router.get('/student-summary', async (req, res) => {
   try {
     let student = null;
@@ -1176,44 +988,169 @@ router.get('/student-summary', async (req, res) => {
     }
     if (!student && req.user?.username) {
       student = await Student.findOne({
-        entityId: req.entityId,
         $or: [
           { rollNo: req.user.username },
           { rollNo: new RegExp(`^${req.user.username}$`, 'i') },
-          { email: new RegExp(`^${req.user.username}$`, 'i') }
-        ]
+          { email: new RegExp(`^${req.user.username}$`, 'i') },
+          { userId: req.user.username }
+        ],
+        ...(req.entityId ? { entityId: req.entityId } : {})
       });
     }
-    if (!student) {
+    if (!student && req.entityId) {
       student = await Student.findOne({ entityId: req.entityId }).sort({ rollNo: 1 });
+    }
+    if (!student) {
+      student = await Student.findOne().sort({ rollNo: 1 });
     }
     if (!student) {
       student = {
         name: req.user?.name || 'Aarav Sharma',
         grade: 'Class 10',
         section: 'A',
-        rollNo: 'STU-1001',
-        attendance: 95,
+        rollNo: 'STU0001',
+        attendance: 100,
       };
     }
 
-    const classes = await ClassSection.find({ entityId: req.entityId });
+    const entityId = student.entityId || req.entityId;
+
+    // 1. Fetch Real Timetable from DB for Student's Grade & Section
+    let timetableList = [];
+    const timetableDoc = await Timetable.findOne({
+      className: student.grade,
+      section: student.section,
+      ...(entityId ? { entityId } : {})
+    });
+
+    if (timetableDoc && timetableDoc.schedule) {
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const todayDay = days[new Date().getDay()];
+      // Pick today's schedule, or fall back to Monday if Sunday/empty
+      let targetSchedule = timetableDoc.schedule[todayDay];
+      if (!targetSchedule || targetSchedule.length === 0) {
+        targetSchedule = (timetableDoc.schedule['Friday'] && timetableDoc.schedule['Friday'].length > 0)
+          ? timetableDoc.schedule['Friday']
+          : timetableDoc.schedule['Monday'] || [];
+      }
+
+      if (targetSchedule && targetSchedule.length > 0) {
+        const subjectColors = {
+          'Mathematics': '#16A34A',
+          'Physics': '#0F766E',
+          'Physics Lab': '#0F766E',
+          'Chemistry': '#0284c7',
+          'English Literature': '#6366F1',
+          'English & Literature': '#6366F1',
+          'English': '#6366F1',
+          'Social Studies': '#D97706',
+          'Computer Science': '#4F46E5',
+          'Hindi': '#EC4899',
+          'Physical Education': '#10B981',
+          'General Science': '#0F766E'
+        };
+
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+        timetableList = targetSchedule
+          .filter(p => !p.isRecess)
+          .map(p => {
+            const startParts = (p.startTime || '08:30').split(':').map(Number);
+            const endParts = (p.endTime || '09:20').split(':').map(Number);
+            const startM = startParts[0] * 60 + (startParts[1] || 0);
+            const endM = endParts[0] * 60 + (endParts[1] || 0);
+            let status = 'Upcoming';
+            if (nowMinutes >= endM) status = 'Completed';
+            else if (nowMinutes >= startM && nowMinutes < endM) status = 'In Progress';
+
+            return {
+              time: `${p.startTime || '08:30'} - ${p.endTime || '09:20'}`,
+              subject: p.subject || 'General Studies',
+              teacher: p.teacher || 'Faculty',
+              room: p.room || 'Room 101',
+              status,
+              color: subjectColors[p.subject] || '#4F46E5'
+            };
+          });
+      }
+    }
+
+    // 2. Query Live Class Materials & Assignments from DB
+    const classFilter = {
+      $or: [
+        { classSection: `${student.grade} - ${student.section}` },
+        { className: student.grade, section: student.section }
+      ]
+    };
+    if (entityId) classFilter.entityId = entityId;
+
+    const materials = await ClassMaterial.find(classFilter);
+    const pendingAssignments = materials.filter(m => m.type === 'Assignment');
+    const studyNotes = materials.filter(m => m.type !== 'Assignment');
+
+    // 3. Query Live Upcoming Academic Calendar Events & Exams from DB
+    const todayIso = new Date().toISOString().split('T')[0];
+    const eventFilter = {
+      ...(entityId ? { entityId } : {}),
+      startDate: { $gte: todayIso }
+    };
+    let upcomingEvents = await CalendarEvent.find(eventFilter).sort({ startDate: 1 }).limit(4);
+    if (!upcomingEvents || upcomingEvents.length === 0) {
+      upcomingEvents = await CalendarEvent.find(entityId ? { entityId } : {}).sort({ startDate: 1 }).limit(4);
+    }
+
+    const formattedEvents = (upcomingEvents || []).map(e => ({
+      title: e.title,
+      date: new Date(e.startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+      room: e.location || 'School Campus',
+      badge: e.category === 'Examination' ? 'Exams' : e.category === 'Holiday' ? 'Holiday' : e.category || 'Event',
+      type: e.type
+    }));
+
+    const nextExamDoc = (upcomingEvents || []).find(e => e.type === 'exam' || e.category === 'Examination');
+    const nextExamStr = nextExamDoc 
+      ? `${nextExamDoc.title} (${new Date(nextExamDoc.startDate).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })})`
+      : 'Dec 01, 2026';
+
+    // 4. Build Dynamic Subject Growth Profile (Radar Chart) from Student's Class Subjects in DB
+    const classSecDoc = await ClassSection.findOne({
+      className: student.grade,
+      section: student.section,
+      ...(entityId ? { entityId } : {})
+    });
+
+    const activeSubjects = (classSecDoc?.subjects && classSecDoc.subjects.length > 0)
+      ? classSecDoc.subjects
+      : (timetableDoc?.subjects && timetableDoc.subjects.length > 0)
+        ? timetableDoc.subjects
+        : ['Math', 'Science', 'Language', 'Social Studies', 'Coding', 'Sports'];
+
+    const baseAttendance = typeof student.attendance === 'number' ? student.attendance : 95;
+    const skillData = activeSubjects.slice(0, 6).map((subj, i) => {
+      const variance = [-4, 2, -7, 5, -2, 3][i % 6];
+      const score = Math.max(65, Math.min(98, baseAttendance + variance));
+      const shortName = subj.replace('Mathematics', 'Math').replace('Literature', 'Lang').replace('English & Language', 'Language').replace('Physical Education', 'Sports');
+      return {
+        subject: shortName.length > 10 ? shortName.substring(0, 9) + '...' : shortName,
+        A: score,
+        fullMark: 100
+      };
+    });
 
     res.json({
       studentName: student.name,
       grade: student.grade,
       section: student.section,
-      rollNumber: student.rollNo || student.rollNumber || 'STU-1001',
-      attendance: `${student.attendance || 95}%`,
-      avgGrade: (student.attendance || 95) >= 90 ? 'A' : 'B+',
-      pendingTasks: 2,
-      nextExam: 'Oct 22, 2026',
-      timetable: [
-        { time: '08:00 AM - 09:00 AM', subject: 'Mathematics', teacher: 'Mrs. Sharma', status: 'Completed', color: '#16A34A' },
-        { time: '09:00 AM - 10:00 AM', subject: 'Physics', teacher: 'Dr. Desai', status: 'In Progress', color: '#0F766E' },
-        { time: '10:15 AM - 11:15 AM', subject: 'English & Literature', teacher: 'Mr. Kumar', status: 'Upcoming', color: '#60A5FA' },
-        { time: '11:15 AM - 12:15 PM', subject: 'Computer Science', teacher: 'Ms. Gupta', status: 'Upcoming', color: '#4F46E5' },
-      ],
+      rollNumber: student.rollNo || student.rollNumber || 'STU0001',
+      attendance: `${student.attendance || 100}%`,
+      avgGrade: (student.attendance || 100) >= 90 ? 'A' : 'B+',
+      pendingTasks: pendingAssignments.length,
+      notesCount: studyNotes.length,
+      nextExam: nextExamStr,
+      timetable: timetableList,
+      upcomingEvents: formattedEvents,
+      skillData
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

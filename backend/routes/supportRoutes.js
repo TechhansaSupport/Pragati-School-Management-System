@@ -101,24 +101,27 @@ const seedSampleSupportData = async (entityId, schoolSlug) => {
 
     const gpCount = await GatePass.countDocuments({ entityId });
     if (gpCount === 0) {
-      await GatePass.create([
-        {
-          passNumber: 'GP-2026-501',
-          studentName: 'Rohan Gupta',
-          rollNo: '2024-004',
-          classSection: 'Class 10-A',
-          passType: 'Early Departure',
-          reason: 'Doctor Appointment (Dental Extraction)',
-          escortedBy: 'Father (Dr. Manoj Gupta)',
-          parentContact: '+91 98711 22334',
-          parentPermissionVerified: true,
-          status: 'Approved & Exited',
-          outTime: new Date(Date.now() - 60 * 60 * 1000),
-          issuedBy: 'Mr. Sonu Kumar',
-          schoolSlug,
-          entityId
-        }
-      ]);
+      const realStudent = await Student.findOne(entityId ? { entityId } : {});
+      if (realStudent) {
+        await GatePass.create([
+          {
+            passNumber: 'GP-2026-501',
+            studentName: realStudent.name,
+            rollNo: realStudent.rollNo,
+            classSection: `${realStudent.grade} - ${realStudent.section}`,
+            passType: 'Early Departure',
+            reason: 'Medical Consultation',
+            escortedBy: `Father (${realStudent.parentName || 'Guardian'})`,
+            parentContact: realStudent.parentContact || '+91 7007604347',
+            parentPermissionVerified: true,
+            status: 'Approved & Exited',
+            outTime: new Date(Date.now() - 60 * 60 * 1000),
+            issuedBy: 'Mr. Sonu Kumar',
+            schoolSlug,
+            entityId
+          }
+        ]);
+      }
     }
 
     const pCount = await Parcel.countDocuments({ entityId });
@@ -331,7 +334,7 @@ router.get('/students/search', async (req, res) => {
           ...st.toObject(),
           fees,
           pendingFees,
-          totalPending: totalPending > 0 ? totalPending : 15000 // default mock pending if none found
+          totalPending: totalPending > 0 ? totalPending : 0
         };
       })
     );

@@ -241,6 +241,24 @@ router.delete('/routes/:id', async (req, res) => {
   }
 });
 
+// PUT /api/transport/routes/:id (Update route details, status, or driver/bus)
+router.put('/routes/:id', async (req, res) => {
+  try {
+    const entityId = req.entityId || 'default';
+    const updated = await TransportRoute.findOneAndUpdate(
+      { _id: req.params.id, entityId },
+      { $set: req.body },
+      { new: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Route not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update route', error: error.message });
+  }
+});
+
 // ================= VEHICLES ENDPOINTS =================
 
 // GET /api/transport/vehicles
@@ -331,6 +349,24 @@ router.delete('/vehicles/:id', async (req, res) => {
     res.json({ message: 'Vehicle deleted successfully', vehicle: deleted });
   } catch (error) {
     res.status(500).json({ message: 'Failed to delete vehicle', error: error.message });
+  }
+});
+
+// PUT /api/transport/vehicles/:id (Update vehicle, status, or driver/route assignments)
+router.put('/vehicles/:id', async (req, res) => {
+  try {
+    const entityId = req.entityId || 'default';
+    const updated = await Vehicle.findOneAndUpdate(
+      { _id: req.params.id, entityId },
+      { $set: req.body },
+      { new: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Vehicle not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update vehicle', error: error.message });
   }
 });
 
@@ -429,6 +465,24 @@ router.delete('/drivers/:id', async (req, res) => {
   }
 });
 
+// PUT /api/transport/drivers/:id (Update driver status, bus assignment, or contact)
+router.put('/drivers/:id', async (req, res) => {
+  try {
+    const entityId = req.entityId || 'default';
+    const updated = await Driver.findOneAndUpdate(
+      { _id: req.params.id, entityId },
+      { $set: req.body },
+      { new: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Driver not found' });
+    }
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update driver', error: error.message });
+  }
+});
+
 // ================= STATS ENDPOINT =================
 
 // GET /api/transport/stats
@@ -446,20 +500,64 @@ router.get('/stats', async (req, res) => {
     const totalFleet = vehicles.length || routes.length;
     const activeRoutes = routes.filter(r => r.status !== 'Maintenance').length;
     const totalStops = routes.reduce((acc, r) => acc + (r.stops || 0), 0);
-    const mappedStudents = routes.reduce((acc, r) => acc + (r.studentsAssigned || 0), 0);
+    const enrolledStudents = await Student.countDocuments({ entityId });
+    const rawAssigned = routes.reduce((acc, r) => acc + (r.studentsAssigned || 0), 0);
+    const mappedStudents = Math.min(enrolledStudents, rawAssigned);
     const inMaintenance = vehicles.filter(v => v.status === 'Maintenance').length;
     const totalDrivers = drivers.length;
     const activeDrivers = drivers.filter(d => d.status === 'On Duty').length;
+
+    // Calculate dynamic fleet deployment curve based on live active routes
+    const timeSlots = ['06:00', '07:00', '08:00', '09:00', '13:00', '14:00', '15:00', '16:00'];
+    const activeFleetRoutes = routes.filter(r => r.status !== 'Maintenance' && r.status !== 'Cancelled');
+    const totalFleetActive = activeFleetRoutes.length;
+
+    const deploymentCurve = timeSlots.map(time => {
+      if (totalFleetActive === 0) return { time, active: 0 };
+
+      let active = 0;
+      if (time === '06:00') {
+        // Routes that depart early in the morning
+        active = activeFleetRoutes.filter(r => {
+          const t = (r.timing || '').toUpperCase();
+          return t.includes('06:15') || t.includes('06:30') || t.includes('06:40') || t.includes('06:00');
+        }).length || Math.max(1, Math.floor(totalFleetActive * 0.4));
+      } else if (time === '07:00') {
+        // Peak morning transit
+        active = totalFleetActive;
+      } else if (time === '08:00') {
+        // Campus arrival & final gate drop
+        active = totalFleetActive;
+      } else if (time === '09:00') {
+        // Depot standby / off-peak
+        active = totalFleetActive >= 4 ? 1 : 0;
+      } else if (time === '13:00') {
+        // Pre-primary early afternoon run
+        active = totalFleetActive >= 3 ? 1 : 0;
+      } else if (time === '14:00') {
+        // Primary dispersal
+        active = Math.max(1, Math.round(totalFleetActive * 0.8));
+      } else if (time === '15:00') {
+        // Peak general afternoon dispersal
+        active = totalFleetActive;
+      } else if (time === '16:00') {
+        // Sports / activity late drop
+        active = Math.max(1, Math.round(totalFleetActive * 0.4));
+      }
+
+      return { time, active: Math.min(totalFleetActive, active) };
+    });
 
     res.json({
       totalFleet,
       activeRoutes,
       totalStops,
       mappedStudents,
-      inMaintenance: inMaintenance || 1,
+      inMaintenance,
       totalVehicles: vehicles.length,
       totalDrivers,
       activeDrivers,
+      deploymentCurve,
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });

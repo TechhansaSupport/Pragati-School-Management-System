@@ -20,6 +20,10 @@ const SupportStaffDashboard = () => {
   const token = userInfo.token || sessionStorage.getItem('token') || '';
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'support_staff').toLowerCase().trim();
 
+  // Dynamic time-based greeting
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
+
   // Student Admission State (Support Staff Authority)
   const [isAdmitStudentModalOpen, setIsAdmitStudentModalOpen] = useState(false);
   const [isSubmittingAdmission, setIsSubmittingAdmission] = useState(false);
@@ -597,16 +601,16 @@ const SupportStaffDashboard = () => {
               alignItems: 'center',
               gap: '5px'
             }}>
-              <Building2 size={13} color="#4338ca" /> Front Desk & Support
+              <Building2 size={13} color="#4338ca" /> Front Desk & Support Command
             </span>
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
-              Active Shift
+              Live Registry Sync
             </span>
           </div>
 
           <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
-            Front Desk & Support Command Center
+            {greeting}, {userInfo.name || 'Mr. Sonu Kumar'}! 🏢
           </h1>
 
           {/* Quick Action Pills */}
@@ -672,7 +676,7 @@ const SupportStaffDashboard = () => {
               <Mail size={14} color="#d97706" /> New Walk-In Inquiry
             </button>
             <button 
-              onClick={() => switchTab('parcels')}
+              onClick={() => setIsGatePassModalOpen(true)}
               style={{
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
@@ -689,7 +693,27 @@ const SupportStaffDashboard = () => {
               }}
               className="hover-lift"
             >
-              <Package size={14} color="#7c3aed" /> Gate Passes & Parcels
+              <ShieldCheck size={14} color="#7c3aed" /> Issue Gate Pass
+            </button>
+            <button 
+              onClick={() => setIsParcelModalOpen(true)}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Package size={14} color="#0f766e" /> Log Inbound Parcel
             </button>
             <button 
               onClick={() => setIsAdmitStudentModalOpen(true)}
@@ -740,7 +764,7 @@ const SupportStaffDashboard = () => {
             borderRadius: '6px',
             marginTop: '4px'
           }}>
-            EMP-108 • Front Desk
+            EMP-108 • Front Desk Command
           </div>
         </div>
       </div>
@@ -809,6 +833,7 @@ const SupportStaffDashboard = () => {
                 tab: 'reception',
                 label: 'Active Campus Visitors',
                 value: telemetry.activeVisitors,
+                subtext: 'Inside Campus Perimeter',
                 icon: Users,
                 color: '#2563eb',
                 bg: 'rgba(37, 99, 235, 0.1)',
@@ -819,38 +844,54 @@ const SupportStaffDashboard = () => {
               {
                 id: 'fees',
                 tab: 'fees',
-                label: 'Fee Counter Total (Today)',
+                label: 'Fee Counter Collections',
                 value: `₹${(telemetry.todayCollectionTotal || 0).toLocaleString()}`,
+                subtext: `${telemetry.todayReceiptCount || 0} Receipts Issued Today`,
                 icon: CreditCard,
                 color: '#059669',
                 bg: 'rgba(5, 150, 105, 0.1)',
-                badge: 'Today',
+                badge: 'Counter Live',
                 badgeColor: '#059669',
                 badgeBg: 'rgba(5, 150, 105, 0.08)'
               },
               {
                 id: 'inquiries',
                 tab: 'inquiries',
-                label: 'Admission Inquiries',
+                label: 'Walk-In Inquiries',
                 value: telemetry.todayInquiries,
+                subtext: 'Prospective Admissions',
                 icon: Mail,
                 color: '#d97706',
                 bg: 'rgba(217, 119, 6, 0.1)',
-                badge: 'Pending',
+                badge: 'New Leads',
                 badgeColor: '#d97706',
                 badgeBg: 'rgba(217, 119, 6, 0.08)'
               },
               {
-                id: 'parcels',
-                tab: 'parcels',
-                label: 'Gate Passes & Parcels',
-                value: (telemetry.pendingParcels || 0) + (telemetry.activeGatePasses || 0),
-                icon: Package,
+                id: 'gatepasses',
+                tab: 'gatepasses',
+                label: 'Student Gate Passes',
+                value: telemetry.activeGatePasses || 0,
+                subtext: 'Authorized Departures',
+                icon: ShieldCheck,
                 color: '#7c3aed',
                 bg: 'rgba(124, 58, 237, 0.1)',
-                badge: 'Dispatches',
+                badge: 'Security Cleared',
                 badgeColor: '#7c3aed',
                 badgeBg: 'rgba(124, 58, 237, 0.08)'
+              },
+              {
+                id: 'parcels',
+                tab: 'parcels',
+                label: 'Inbound Couriers & Parcels',
+                value: telemetry.pendingParcels || 0,
+                subtext: 'At Front Desk Registry',
+                icon: Package,
+                color: '#0f766e',
+                bg: 'rgba(15, 118, 110, 0.1)',
+                badge: 'Pending Pickup',
+                badgeColor: '#0f766e',
+                badgeBg: 'rgba(15, 118, 110, 0.08)'
               }
             ].map((kpi) => (
               <div 
@@ -908,6 +949,11 @@ const SupportStaffDashboard = () => {
                   }}>
                     {kpi.label}
                   </div>
+                  {kpi.subtext && (
+                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px' }}>
+                      {kpi.subtext}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -1309,6 +1355,79 @@ const SupportStaffDashboard = () => {
                 </div>
               </div>
             </div>
+
+            {/* Live Gate Pass & Parcel Dispatch Hub Widget */}
+            <div style={{
+              background: 'var(--color-surface, #ffffff)',
+              borderRadius: '16px',
+              border: '1px solid var(--color-border, #e2e8f0)',
+              padding: '20px 22px',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>
+                  Gate Movement & Couriers
+                </div>
+                <button
+                  onClick={() => switchTab('gatepasses')}
+                  style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                >
+                  View All →
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  background: '#f5f3ff',
+                  border: '1px solid #ddd6fe',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#5b21b6' }}>Student Gate Passes</div>
+                    <div style={{ fontSize: '0.72rem', color: '#6d28d9' }}>{gatePasses.length} Total Issued Today</div>
+                  </div>
+                  <button
+                    onClick={() => setIsGatePassModalOpen(true)}
+                    style={{
+                      background: '#7c3aed', color: 'white', border: 'none',
+                      padding: '4px 10px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    + Pass
+                  </button>
+                </div>
+
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  background: '#f0fdfa',
+                  border: '1px solid #99f6e4',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: '0.8rem'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#0f766e' }}>Inbound Parcels</div>
+                    <div style={{ fontSize: '0.72rem', color: '#115e59' }}>{parcels.filter(p => p.status === 'Received at Desk').length} Pending Handover</div>
+                  </div>
+                  <button
+                    onClick={() => setIsParcelModalOpen(true)}
+                    style={{
+                      background: '#0f766e', color: 'white', border: 'none',
+                      padding: '4px 10px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer'
+                    }}
+                  >
+                    + Log
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1551,7 +1670,7 @@ const SupportStaffDashboard = () => {
                         setSelectedStudentForFee(st);
                         setFeeForm(prev => ({
                           ...prev,
-                          amount: st.totalPending || 15000,
+                          amount: st.totalPending > 0 ? st.totalPending : '',
                           payerName: st.parentName || st.name,
                           payerPhone: st.parentContact || ''
                         }));
@@ -1579,8 +1698,8 @@ const SupportStaffDashboard = () => {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 700 }}>Pending Dues</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 900, color: '#b91c1c' }}>
-                          ₹{(st.totalPending || 15000).toLocaleString()}
+                        <div style={{ fontSize: '1rem', fontWeight: 900, color: (st.totalPending || 0) > 0 ? '#b91c1c' : '#15803d' }}>
+                          {(st.totalPending || 0) > 0 ? `₹${(st.totalPending).toLocaleString()}` : '₹0 (All Cleared)'}
                         </div>
                       </div>
                     </div>
@@ -1613,8 +1732,8 @@ const SupportStaffDashboard = () => {
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                     <div style={{ textAlign: 'right', marginRight: '10px' }}>
                       <div style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 700 }}>Outstanding Balance</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#b91c1c' }}>
-                        ₹{(selectedStudentForFee.totalPending || 15000).toLocaleString()}
+                      <div style={{ fontSize: '1.5rem', fontWeight: 900, color: (selectedStudentForFee.totalPending || 0) > 0 ? '#b91c1c' : '#15803d' }}>
+                        {(selectedStudentForFee.totalPending || 0) > 0 ? `₹${(selectedStudentForFee.totalPending).toLocaleString()}` : '₹0 (All Cleared)'}
                       </div>
                     </div>
                     <button

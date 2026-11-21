@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   ChevronRight
 } from 'lucide-react';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const LibraryDashboard = () => {
   const navigate = useNavigate();
@@ -69,101 +70,18 @@ const LibraryDashboard = () => {
   });
 
   const [libraryStats, setLibraryStats] = useState({
-    totalTitles: 7,
-    totalCopies: 120,
-    availableCopies: 71,
-    issuedCopies: 49,
-    overdueCopies: 5,
-    finesCollected: 4500,
+    totalTitles: 0,
+    totalCopies: 0,
+    availableCopies: 0,
+    issuedCopies: 0,
+    overdueCopies: 0,
+    finesCollected: 0,
+    circulationDemand: [],
   });
 
-  const [transactions, setTransactions] = useState([
-    { 
-      id: 'TRX-101', 
-      student: 'Aarav Sharma', 
-      classSection: '10th A', 
-      rollNo: '10-A-01',
-      phone: '+91 98765 43210',
-      email: 'aarav.sharma@school.edu',
-      book: 'Concepts of Physics (Vol 1)', 
-      category: 'Science', 
-      action: 'Issued', 
-      date: 'Oct 08, 2026', 
-      dueDate: 'Oct 22, 2026',
-      status: 'Active' 
-    },
-    { 
-      id: 'TRX-102', 
-      student: 'Diya Patel', 
-      classSection: '10th A', 
-      rollNo: '10-A-14',
-      phone: '+91 98765 43211',
-      email: 'diya.patel@school.edu',
-      book: 'Advanced Mathematics for Secondary', 
-      category: 'Mathematics', 
-      action: 'Returned', 
-      date: 'Oct 08, 2026', 
-      dueDate: 'Oct 22, 2026',
-      status: 'Completed' 
-    },
-    { 
-      id: 'TRX-103', 
-      student: 'Kabir Mehta', 
-      classSection: '9th B', 
-      rollNo: '09-B-08',
-      phone: '+91 98765 43212',
-      email: 'kabir.mehta@school.edu',
-      book: 'Computer Science with Python', 
-      category: 'Technology', 
-      action: 'Issued', 
-      date: 'Oct 07, 2026', 
-      dueDate: 'Oct 11, 2026',
-      status: 'Active' 
-    },
-    { 
-      id: 'TRX-104', 
-      student: 'Ananya Iyer', 
-      classSection: '9th A', 
-      rollNo: '09-A-21',
-      phone: '+91 98765 43213',
-      email: 'ananya.iyer@school.edu',
-      book: 'Atomic Habits', 
-      category: 'Self Help', 
-      action: 'Returned', 
-      date: 'Oct 07, 2026', 
-      dueDate: 'Oct 21, 2026',
-      status: 'Completed' 
-    },
-    { 
-      id: 'TRX-105', 
-      student: 'Rohan Gupta', 
-      classSection: '12th Sci', 
-      rollNo: '12-S-05',
-      phone: '+91 98765 43214',
-      email: 'rohan.gupta@school.edu',
-      book: 'A Brief History of Time', 
-      category: 'Science', 
-      action: 'Issued', 
-      date: 'Oct 06, 2026', 
-      dueDate: 'Oct 13, 2026',
-      status: 'Active' 
-    },
-  ]);
-
-  const [overdueList, setOverdueList] = useState([
-    { id: 'OD-1', student: 'Kabir Mehta', classSection: 'Class 9 B', rollNo: '09-B-08', phone: '+91 98765 43212', book: 'Atomic Habits', days: 5, fine: 50 },
-    { id: 'OD-2', student: 'Rohan Gupta', classSection: 'Class 12 Sci', rollNo: '12-S-05', phone: '+91 98765 43214', book: 'Concepts of Physics (Vol 1)', days: 3, fine: 30 }
-  ]);
-
-  const [booksList, setBooksList] = useState([
-    { bookId: 'BK-1001', title: 'Concepts of Physics (Vol 1)', author: 'H.C. Verma', category: 'Science', totalCopies: 25, availableCopies: 18, issuesCount: 42 },
-    { bookId: 'BK-1002', title: 'Advanced Mathematics for Secondary', author: 'R.D. Sharma', category: 'Mathematics', totalCopies: 30, availableCopies: 22, issuesCount: 35 },
-    { bookId: 'BK-1003', title: 'Atomic Habits', author: 'James Clear', category: 'Self Help', totalCopies: 10, availableCopies: 2, issuesCount: 28 },
-    { bookId: 'BK-1004', title: 'Computer Science with Python', author: 'Sumita Arora', category: 'Technology', totalCopies: 20, availableCopies: 14, issuesCount: 24 },
-    { bookId: 'BK-1005', title: 'A Brief History of Time', author: 'Stephen Hawking', category: 'Science', totalCopies: 8, availableCopies: 3, issuesCount: 19 },
-    { bookId: 'BK-1006', title: 'History of Modern India', author: 'Bipan Chandra', category: 'History', totalCopies: 15, availableCopies: 12, issuesCount: 16 },
-    { bookId: 'BK-1007', title: 'To Kill a Mockingbird', author: 'Harper Lee', category: 'Literature', totalCopies: 12, availableCopies: 0, issuesCount: 12 }
-  ]);
+  const [transactions, setTransactions] = useState([]);
+  const [overdueList, setOverdueList] = useState([]);
+  const [booksList, setBooksList] = useState([]);
 
   const showToast = (msg, type = 'success') => {
     setToastMessage(msg);
@@ -180,175 +98,172 @@ const LibraryDashboard = () => {
     return headers;
   };
 
-  useEffect(() => {
-    fetch('http://localhost:5000/api/library/stats', { headers: getHeaders() })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) {
-          setLibraryStats(prev => ({
-            ...prev,
-            totalCopies: data.totalCopies || prev.totalCopies,
-            availableCopies: data.availableCopies || prev.availableCopies,
-            issuedCopies: data.issuedCopies || prev.issuedCopies,
-            overdueCopies: data.overdueCopies || prev.overdueCopies,
-            totalTitles: data.totalTitles || prev.totalTitles,
-          }));
-        }
-      })
-      .catch(() => {});
+  const fetchLibraryData = async () => {
+    try {
+      const headers = getHeaders();
+      const [statsRes, booksRes, txRes, overdueRes] = await Promise.all([
+        fetch('http://localhost:5000/api/library/stats', { headers }),
+        fetch('http://localhost:5000/api/library/books', { headers }),
+        fetch('http://localhost:5000/api/library/transactions', { headers }),
+        fetch('http://localhost:5000/api/library/overdue', { headers }),
+      ]);
 
-    fetch('http://localhost:5000/api/library/books', { headers: getHeaders() })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setBooksList(data.map(b => ({
-            ...b,
-            issuesCount: Math.max(8, (b.totalCopies || 5) - (b.availableCopies || 0)) * 3
-          })));
-        }
-      })
-      .catch(() => {});
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setLibraryStats(statsData);
+      }
+      if (booksRes.ok) {
+        const booksData = await booksRes.json();
+        setBooksList(Array.isArray(booksData) ? booksData : []);
+      }
+      if (txRes.ok) {
+        const txData = await txRes.json();
+        setTransactions(Array.isArray(txData) ? txData : []);
+      }
+      if (overdueRes.ok) {
+        const overdueData = await overdueRes.json();
+        setOverdueList(Array.isArray(overdueData) ? overdueData : []);
+      }
+    } catch (err) {
+      console.warn('Failed to load library data:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLibraryData();
   }, [tenantSlug]);
 
   // Filtered Transactions
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
+      const studentName = t.student || '';
+      const bookTitle = t.book || '';
+      const txId = t.id || t.transactionId || '';
+      const section = t.classSection || '';
+
       const matchSearch = 
-        t.student.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.book.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (t.classSection && t.classSection.toLowerCase().includes(searchQuery.toLowerCase()));
+        studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        bookTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        txId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        section.toLowerCase().includes(searchQuery.toLowerCase());
 
       if (!matchSearch) return false;
       if (activeTab === 'all') return true;
       if (activeTab === 'issued') return t.action === 'Issued' && t.status === 'Active';
       if (activeTab === 'returned') return t.status === 'Completed';
-      if (activeTab === 'overdue') return t.status === 'Overdue' || overdueList.some(o => o.student.includes(t.student));
+      if (activeTab === 'overdue') return t.status === 'Overdue' || overdueList.some(o => (o.student || '').includes(studentName));
       return true;
     });
   }, [transactions, searchQuery, activeTab, overdueList]);
 
   // Handle Book Issue
-  const handleIssueBookSubmit = (e) => {
+  const handleIssueBookSubmit = async (e) => {
     e.preventDefault();
     if (!issueForm.student || !issueForm.bookId) {
       showToast('Please specify student name and select a book', 'error');
       return;
     }
 
-    const targetBook = booksList.find(b => b.bookId === issueForm.bookId);
-    if (!targetBook) return;
+    try {
+      const res = await fetch('http://localhost:5000/api/library/issue', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(issueForm),
+      });
 
-    if (targetBook.availableCopies <= 0) {
-      showToast('No copies available on shelf for this title', 'error');
-      return;
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to issue book', 'error');
+        return;
+      }
+
+      setIsIssueModalOpen(false);
+      setIssueForm({
+        student: '',
+        classSection: 'Class 10 - A',
+        bookId: '',
+        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      });
+      showToast(data.message || 'Book successfully issued!');
+      fetchLibraryData();
+    } catch (err) {
+      showToast('Network error while issuing book', 'error');
     }
-
-    const newTxId = `TRX-${100 + transactions.length + 1}`;
-    const newTx = {
-      id: newTxId,
-      student: issueForm.student.trim(),
-      classSection: issueForm.classSection,
-      rollNo: `Roll-${Math.floor(10 + Math.random() * 80)}`,
-      phone: '+91 98765 ' + Math.floor(10000 + Math.random() * 90000),
-      email: `${issueForm.student.trim().toLowerCase().replace(/\s+/g, '.')}@school.edu`,
-      book: targetBook.title,
-      category: targetBook.category,
-      action: 'Issued',
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      dueDate: issueForm.dueDate,
-      status: 'Active'
-    };
-
-    setTransactions([newTx, ...transactions]);
-    setBooksList(prev => prev.map(b => b.bookId === targetBook.bookId ? { ...b, availableCopies: Math.max(0, b.availableCopies - 1), issuesCount: (b.issuesCount || 0) + 1 } : b));
-    setLibraryStats(prev => ({
-      ...prev,
-      issuedCopies: prev.issuedCopies + 1,
-      availableCopies: Math.max(0, prev.availableCopies - 1)
-    }));
-
-    setIsIssueModalOpen(false);
-    setIssueForm({
-      student: '',
-      classSection: 'Class 10 - A',
-      bookId: '',
-      dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    });
-    showToast(`Book "${targetBook.title}" successfully issued to ${newTx.student}!`);
   };
 
   // Handle Book Return
-  const handleConfirmReturn = (trx) => {
-    setTransactions(prev => prev.map(t => t.id === trx.id ? { ...t, status: 'Completed', action: 'Returned' } : t));
-    setBooksList(prev => prev.map(b => b.title === trx.book ? { ...b, availableCopies: b.availableCopies + 1 } : b));
-    setLibraryStats(prev => ({
-      ...prev,
-      issuedCopies: Math.max(0, prev.issuedCopies - 1),
-      availableCopies: prev.availableCopies + 1
-    }));
-    setIsReturnModalOpen(false);
-    showToast(`Book "${trx.book}" returned successfully and returned to catalog shelf!`);
+  const handleConfirmReturn = async (trx) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/library/return', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ id: trx.id || trx._id, transactionId: trx.transactionId || trx.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to return book', 'error');
+        return;
+      }
+
+      setIsReturnModalOpen(false);
+      showToast(data.message || `Book "${trx.book}" returned successfully!`);
+      fetchLibraryData();
+    } catch (err) {
+      showToast('Network error while returning book', 'error');
+    }
   };
 
   // Handle Overdue Settlement
-  const handleSettleOverdue = (overdueItem) => {
-    setOverdueList(prev => prev.filter(o => o.id !== overdueItem.id));
-    setLibraryStats(prev => ({
-      ...prev,
-      overdueCopies: Math.max(0, prev.overdueCopies - 1),
-      issuedCopies: Math.max(0, prev.issuedCopies - 1),
-      availableCopies: prev.availableCopies + 1,
-      finesCollected: (prev.finesCollected || 0) + overdueItem.fine
-    }));
-    showToast(`Overdue settled for ${overdueItem.student}. Fine of ₹${overdueItem.fine} collected.`);
+  const handleSettleOverdue = async (overdueItem) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/library/settle-overdue', {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ id: overdueItem.id || overdueItem._id, transactionId: overdueItem.transactionId || overdueItem.id }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to settle overdue', 'error');
+        return;
+      }
+
+      showToast(data.message || `Overdue settled for ${overdueItem.student}!`);
+      fetchLibraryData();
+    } catch (err) {
+      showToast('Network error while settling overdue', 'error');
+    }
   };
 
   // Handle Add New Book
   const handleAddBookSubmit = async (e) => {
     e.preventDefault();
-    if (!addBookForm.title || !addBookForm.author) {
+    if (!addBookForm.title.trim() || !addBookForm.author.trim()) {
       showToast('Title and author are required', 'error');
       return;
     }
 
-    const copies = Number(addBookForm.totalCopies) || 5;
-    const newBook = {
-      bookId: `BK-${1001 + booksList.length}`,
-      title: addBookForm.title.trim(),
-      author: addBookForm.author.trim(),
-      category: addBookForm.category,
-      totalCopies: copies,
-      availableCopies: copies,
-      issuesCount: 0
-    };
-
     try {
-      await fetch('http://localhost:5000/api/library/books', {
+      const res = await fetch('http://localhost:5000/api/library/books', {
         method: 'POST',
         headers: getHeaders(),
-        body: JSON.stringify({
-          title: addBookForm.title,
-          author: addBookForm.author,
-          category: addBookForm.category,
-          totalCopies: copies
-        })
+        body: JSON.stringify(addBookForm),
       });
-    } catch {
-      // Offline fallback
+
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to create book', 'error');
+        return;
+      }
+
+      setIsAddBookModalOpen(false);
+      setAddBookForm({ title: '', author: '', category: 'Science', totalCopies: 5 });
+      showToast(`New title "${data.title}" added to library inventory!`);
+      fetchLibraryData();
+    } catch (err) {
+      showToast('Network error while saving book', 'error');
     }
-
-    setBooksList([...booksList, newBook]);
-    setLibraryStats(prev => ({
-      ...prev,
-      totalTitles: prev.totalTitles + 1,
-      totalCopies: prev.totalCopies + copies,
-      availableCopies: prev.availableCopies + copies
-    }));
-
-    setIsAddBookModalOpen(false);
-    setAddBookForm({ title: '', author: '', category: 'Science', totalCopies: 5 });
-    showToast(`New title "${newBook.title}" added to library inventory!`);
   };
 
   return (
@@ -381,12 +296,180 @@ const LibraryDashboard = () => {
         </div>
       )}
 
+      {/* ─── TOP COMMAND HEADER (MODERN WHITE SURFACE) ─── */}
+      <div className="card no-print" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '16px',
+        flexShrink: 0
+      }}>
+        <div style={{ maxWidth: '750px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <BookOpen size={13} color="#4338ca" /> Library & Resource Command
+            </span>
+            <span style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <CheckCircle2 size={12} color="#15803d" /> Live Catalog Sync
+            </span>
+          </div>
+
+          <h1 style={{ margin: '0 0 12px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            Hi, {userInfo.name || 'Mr. Ganesh Kumar'}! 📚
+          </h1>
+
+          {/* Quick Action Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => setIsIssueModalOpen(true)}
+              style={{
+                background: '#4F46E5',
+                border: 'none',
+                color: 'white',
+                padding: '7px 15px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Plus size={14} /> Issue Book
+            </button>
+
+            <button 
+              onClick={() => setIsAddBookModalOpen(true)}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Book size={14} color="#059669" /> Add New Title
+            </button>
+
+            <button 
+              onClick={() => navigate(tenantSlug ? `/${tenantSlug}/books` : '/books')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Layers size={14} color="#2563EB" /> Catalog Inventory ({booksList.length})
+            </button>
+
+            <button 
+              onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
+              style={{
+                background: overdueList.length > 0 ? '#fff1f2' : '#f8fafc',
+                border: overdueList.length > 0 ? '1px solid #fecdd3' : '1px solid #e2e8f0',
+                color: overdueList.length > 0 ? '#e11d48' : '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Bell size={14} color={overdueList.length > 0 ? '#e11d48' : '#D97706'} /> Overdue Alerts ({overdueList.length})
+            </button>
+          </div>
+        </div>
+
+        {/* Right Info Box */}
+        <div style={{
+          background: '#f8fafc',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          border: '1px solid #e2e8f0',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          gap: '4px'
+        }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Library Repository Status
+          </div>
+          <div style={{ fontSize: '1.08rem', fontWeight: 800, color: '#1e293b' }}>
+            {booksList.length} Titles • {libraryStats.totalCopies || 0} Total Copies
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#16a34a' }} />
+            {libraryStats.issuedCopies || 0} Books in Circulation
+          </div>
+        </div>
+      </div>
+
+      {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
+      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+        <StaffPunchClock />
+      </div>
+
       {/* FULL-WIDTH BALANCED 5-KPI METRIC STRIP */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         {[
           { 
             label: 'Total Volume Copies', 
-            value: libraryStats.totalCopies || 120, 
+            value: libraryStats.totalCopies ?? booksList.reduce((acc, b) => acc + (b.totalCopies || 0), 0), 
             icon: Book, 
             color: '#4F46E5', 
             bg: 'rgba(79,70,229,0.1)',
@@ -396,7 +479,7 @@ const LibraryDashboard = () => {
           },
           { 
             label: 'Books Issued', 
-            value: libraryStats.issuedCopies || 49, 
+            value: libraryStats.issuedCopies ?? 0, 
             icon: Bookmark, 
             color: '#2563EB', 
             bg: 'rgba(37,99,235,0.1)',
@@ -406,7 +489,7 @@ const LibraryDashboard = () => {
           },
           { 
             label: 'Available on Shelf', 
-            value: libraryStats.availableCopies || 71, 
+            value: libraryStats.availableCopies ?? booksList.reduce((acc, b) => acc + (b.availableCopies || 0), 0), 
             icon: Clock, 
             color: '#059669', 
             bg: 'rgba(5, 150, 105, 0.1)',
@@ -416,7 +499,7 @@ const LibraryDashboard = () => {
           },
           { 
             label: 'Overdue Returns', 
-            value: overdueList.length || libraryStats.overdueCopies || 5, 
+            value: overdueList.length || libraryStats.overdueCopies || 0, 
             icon: AlertTriangle, 
             color: '#DC2626', 
             bg: 'rgba(220, 38, 38, 0.1)',
@@ -426,7 +509,7 @@ const LibraryDashboard = () => {
           },
           { 
             label: 'Catalog Titles', 
-            value: booksList.length || libraryStats.totalTitles || 7, 
+            value: booksList.length || libraryStats.totalTitles || 0, 
             icon: Layers, 
             color: '#D97706', 
             bg: 'rgba(217, 119, 6, 0.1)',
@@ -707,7 +790,49 @@ const LibraryDashboard = () => {
                           </span>
                         </td>
                         <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                          {t.status === 'Active' ? (
+                          {t.status === 'Overdue' ? (
+                            <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                              <button
+                                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
+                                title="Open Borrower Alerts Dispatcher"
+                                className="hover-lift"
+                                style={{
+                                  padding: '6px 9px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #fecdd3',
+                                  background: '#fff1f2',
+                                  color: '#e11d48',
+                                  fontWeight: 700,
+                                  fontSize: '0.76rem',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <Bell size={13} /> Alert
+                              </button>
+                              <button
+                                onClick={() => handleSettleOverdue(t)}
+                                className="hover-lift"
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '8px',
+                                  border: 'none',
+                                  background: '#dc2626',
+                                  color: 'white',
+                                  fontWeight: 700,
+                                  fontSize: '0.76rem',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                Settle & Return
+                              </button>
+                            </div>
+                          ) : t.status === 'Active' ? (
                             <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                               <button
                                 onClick={() => navigate(tenantSlug ? `/${tenantSlug}/library-alerts` : '/library-alerts')}
@@ -793,9 +918,10 @@ const LibraryDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {booksList.slice(0, 5).map((book, idx) => {
-                const maxIssues = 50;
-                const percentage = Math.min(100, Math.round(((book.issuesCount || (20 - idx * 3)) / maxIssues) * 100));
+              {(libraryStats.circulationDemand && libraryStats.circulationDemand.length > 0 ? libraryStats.circulationDemand.slice(0, 5) : booksList.slice(0, 5)).map((book, idx) => {
+                const maxIssues = Math.max(...(libraryStats.circulationDemand || []).map(b => b.issuesCount || 1), 10);
+                const issues = book.issuesCount || 0;
+                const percentage = Math.min(100, Math.max(12, Math.round((issues / maxIssues) * 100)));
                 return (
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -803,7 +929,7 @@ const LibraryDashboard = () => {
                         {book.title}
                       </span>
                       <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#4F46E5', background: '#eef2ff', padding: '1px 6px', borderRadius: '4px' }}>
-                        {book.issuesCount || (20 - idx * 3)} Loans
+                        {issues} Loans
                       </span>
                     </div>
                     <div style={{ width: '100%', height: '7px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>

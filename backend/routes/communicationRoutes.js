@@ -387,9 +387,9 @@ router.get('/grievances', checkLeaderAuthority, (req, res) => {
   const entityId = req.entityId || 'default';
   if (!grievancesStore[entityId]) {
     grievancesStore[entityId] = [
-      { id: 'GRV-101', title: 'Route 4 Bus Delayed Repeatedly', category: 'Transport', raisedBy: 'Ramesh Patel (Parent)', student: 'Aarav Patel (Class 10 - A)', priority: 'High', status: 'In Progress', date: '2026-10-14', remarks: 'Transport in-charge reviewing stop schedule with driver.' },
-      { id: 'GRV-102', title: 'Lab Equipment Maintenance Request', category: 'Facilities', raisedBy: 'Dr. Vikram Malhotra (Faculty)', student: 'Physics Lab', priority: 'Medium', status: 'Open', date: '2026-10-12', remarks: 'Requisition sent to admin store.' },
-      { id: 'GRV-103', title: 'Duplicate Fee Receipt Query', category: 'Fees', raisedBy: 'Kiran Patel (Parent)', student: 'Diya Patel (Class 10 - A)', priority: 'Low', status: 'Resolved', date: '2026-10-08', remarks: 'Corrected receipt re-issued via portal.' },
+      { id: 'GRV-101', title: 'Route 1 Bus Delayed Repeatedly', category: 'Transport', raisedBy: 'Arnav Sharma (Parent)', student: 'Aarav Sharma (Class 10 - A)', priority: 'Medium', status: 'Resolved', date: '2026-10-14', remarks: 'Transport in-charge reviewed stop schedule with driver.' },
+      { id: 'GRV-102', title: 'Lab Equipment Maintenance Request', category: 'Facilities', raisedBy: 'Dr. Srijeet Mukherjee (Principal)', student: 'Physics Lab', priority: 'Medium', status: 'Resolved', date: '2026-10-12', remarks: 'Requisition fulfilled by admin store.' },
+      { id: 'GRV-103', title: 'Annual Fee Receipt Verification', category: 'Fees', raisedBy: 'Arnav Sharma (Parent)', student: 'Aarav Sharma (Class 10 - A)', priority: 'Low', status: 'Resolved', date: '2026-10-08', remarks: 'Official verified receipt issued via accounts portal.' },
     ];
   }
   res.json(grievancesStore[entityId]);

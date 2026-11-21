@@ -52,6 +52,7 @@ const Sidebar = () => {
           title: 'Science Laboratories',
           items: [
             { id: 'Lab Dashboard', label: 'Lab Command Center', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'Lab Schedule', label: 'Scheduled Classes', icon: Clock },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Lab Equipments', label: 'Equipments & Apparatus', icon: Microscope },
@@ -69,6 +70,7 @@ const Sidebar = () => {
           title: 'Front Desk & Support',
           items: [
             { id: 'Support Overview', label: 'Support Command Center', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Reception Desk', label: 'Reception & Visitors', icon: Users },
             { id: 'Fee Window', label: 'Fee Accounts Window', icon: CreditCard },
@@ -88,6 +90,7 @@ const Sidebar = () => {
           title: 'Faculty Portal',
           items: [
             { id: 'Teacher Dashboard', label: 'Dashboard', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'Classes & Grading', icon: BookOpen },
             { id: 'Students & IDs', label: 'My Students', icon: GraduationCap },
@@ -118,6 +121,7 @@ const Sidebar = () => {
           title: 'Parent Portal',
           items: [
             { id: 'Parent Dashboard', label: 'Parent Portal', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'Student Progress', icon: BookOpen },
             { id: 'Finance & Fees', label: 'Fee Payments', icon: CreditCard },
@@ -133,6 +137,7 @@ const Sidebar = () => {
           title: 'Library Portal',
           items: [
             { id: 'Library Dashboard', label: 'Library Overview', icon: Library },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Book Catalog', label: 'Books & Inventory', icon: BookOpen },
             { id: 'Communication & Reports', label: 'Announcements', icon: Mail },
@@ -147,6 +152,7 @@ const Sidebar = () => {
           title: 'Fleet & Transit',
           items: [
             { id: 'Transport Dashboard', label: 'Transport Hub', icon: Bus },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Routes', label: 'Routes & Stops', icon: Navigation },
             { id: 'Communication & Reports', label: 'Parent Alerts', icon: Mail },
@@ -161,10 +167,10 @@ const Sidebar = () => {
           title: 'Academic Leadership',
           items: [
             { id: 'Principal Command', label: 'Executive Health', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'Timetable Matrix', label: 'Timetable Matrix', icon: Clock },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Academics & Exams', label: 'Curriculum & Classes', icon: BookOpen },
-            { id: 'Attendance Register', label: 'Attendance Telemetry', icon: CalendarCheck },
             { id: 'Students & IDs', label: 'Student 360° Profiles', icon: GraduationCap },
             { id: 'Teachers', label: 'Faculty & Workload', icon: Users },
             { id: 'Communication & Reports', label: 'Academic Notices', icon: Mail },
@@ -180,6 +186,7 @@ const Sidebar = () => {
           title: 'Accounts & Finance',
           items: [
             { id: 'Finance Overview', label: 'Financial Overview', icon: LayoutDashboard },
+            { id: 'Attendance Register', label: 'Attendance', icon: CalendarCheck },
             { id: 'School Calendar', label: 'School Calendar', icon: CalendarDays },
             { id: 'Fees Collection', label: 'Fees Collection', icon: CreditCard },
             { id: 'Due Fees', label: 'Due / Overdue Fees', icon: AlertCircle },

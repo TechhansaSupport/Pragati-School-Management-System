@@ -51,76 +51,8 @@ const LibraryAlerts = () => {
   });
 
   // Active Borrowers Data
-  const [activeBorrowers, setActiveBorrowers] = useState([
-    {
-      id: 'TRX-101',
-      student: 'Aarav Sharma',
-      classSection: '10th A',
-      rollNo: '10-A-01',
-      phone: '+91 98765 43210',
-      email: 'aarav.sharma@school.edu',
-      book: 'Concepts of Physics (Vol 1)',
-      category: 'Science',
-      date: 'Oct 08, 2026',
-      dueDate: 'Oct 22, 2026',
-      isOverdue: false,
-      daysOverdue: 0,
-      fine: 0,
-      daysRemaining: 6,
-      urgency: 'normal'
-    },
-    {
-      id: 'TRX-103',
-      student: 'Kabir Mehta',
-      classSection: '9th B',
-      rollNo: '09-B-08',
-      phone: '+91 98765 43212',
-      email: 'kabir.mehta@school.edu',
-      book: 'Computer Science with Python',
-      category: 'Technology',
-      date: 'Oct 07, 2026',
-      dueDate: 'Oct 11, 2026',
-      isOverdue: true,
-      daysOverdue: 5,
-      fine: 50,
-      daysRemaining: -5,
-      urgency: 'overdue'
-    },
-    {
-      id: 'TRX-105',
-      student: 'Rohan Gupta',
-      classSection: '12th Sci',
-      rollNo: '12-S-05',
-      phone: '+91 98765 43214',
-      email: 'rohan.gupta@school.edu',
-      book: 'A Brief History of Time',
-      category: 'Science',
-      date: 'Oct 06, 2026',
-      dueDate: 'Oct 13, 2026',
-      isOverdue: true,
-      daysOverdue: 3,
-      fine: 30,
-      daysRemaining: -3,
-      urgency: 'overdue'
-    },
-    {
-      id: 'TRX-106',
-      student: 'Meera Nambiar',
-      classSection: '11th Sci',
-      rollNo: '11-S-19',
-      phone: '+91 98765 43215',
-      email: 'meera.n@school.edu',
-      book: 'Organic Chemistry Reactions',
-      category: 'Science',
-      date: 'Oct 10, 2026',
-      dueDate: 'Oct 18, 2026',
-      isOverdue: false,
-      daysOverdue: 0,
-      fine: 0,
-      daysRemaining: 2,
-      urgency: 'due_soon'
-    }
-  ]);
+  const [activeBorrowers, setActiveBorrowers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const showToast = (msg, type = 'success') => {
     setToastMessage(msg);
@@ -136,6 +68,46 @@ const LibraryAlerts = () => {
     if (tenantSlug) headers['x-tenant-slug'] = tenantSlug;
     return headers;
   };
+
+  const fetchBorrowers = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/library/transactions?status=active', { headers: getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        const mapped = (Array.isArray(data) ? data : []).map(trx => {
+          const isOverdue = trx.status === 'Overdue' || (trx.daysOverdue > 0) || (trx.dueDate && new Date(trx.dueDate) < new Date());
+          const daysRem = trx.daysRemaining !== undefined ? trx.daysRemaining : (trx.dueDate ? Math.ceil((new Date(trx.dueDate) - new Date()) / (1000 * 60 * 60 * 24)) : 0);
+          return {
+            id: trx.transactionId || trx.id || 'TRX-0',
+            student: trx.student,
+            classSection: trx.classSection || 'Class 10-A',
+            rollNo: trx.rollNo || '10-A-01',
+            phone: trx.phone || '+91 98200 12345',
+            email: trx.email || `${(trx.student || 'student').toLowerCase().replace(/\s+/g, '.')}@school.edu`,
+            book: trx.book,
+            category: trx.category || 'General',
+            date: trx.date,
+            dueDate: trx.dueDate,
+            isOverdue: isOverdue,
+            daysOverdue: trx.daysOverdue || (isOverdue ? Math.abs(daysRem) : 0),
+            fine: trx.fine || (isOverdue ? Math.abs(daysRem) * 10 : 0),
+            daysRemaining: daysRem,
+            urgency: isOverdue ? 'overdue' : (daysRem <= 3 ? 'due_soon' : 'normal')
+          };
+        });
+        setActiveBorrowers(mapped);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch active library borrowers:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBorrowers();
+  }, [tenantSlug]);
 
   // Filtered Active Borrowers
   const filteredActiveBorrowers = useMemo(() => {

@@ -228,30 +228,19 @@ router.get('/export', async (req, res) => {
         csvContent += `"${e.name}","${e.employeeId}","${e.role}","${e.department}","${e.email}",${e.dealsHandled},${e.dealsClosed},${e.winRate}%,${e.revenue},${e.avgDealSize},${e.activities},"Active"\n`;
       });
     } else if (type === 'academic' || type === 'demographics') {
-      const students = await Student.find(query).sort({ grade: 1, section: 1, rollNumber: 1 });
+      const students = await Student.find(query).sort({ grade: 1, section: 1, rollNo: 1 });
       csvContent = 'Roll Number,Student Name,Grade,Section,Gender,Attendance %,Fee Status,Parent Contact\n';
       students.forEach(s => {
-        csvContent += `"${s.rollNumber || ''}","${s.name || ''}","${s.grade || ''}","${s.section || ''}","${s.gender || 'N/A'}",${s.attendance || 95},"${s.feeStatus || 'Paid'}","${s.parentContact || 'N/A'}"\n`;
+        csvContent += `"${s.rollNo || s.rollNumber || ''}","${s.name || ''}","${s.grade || ''}","${s.section || ''}","${s.gender || 'N/A'}",${s.attendance || 100},"${s.feeStatus || 'Paid'}","${s.parentContact || 'N/A'}"\n`;
       });
-      if (students.length === 0) {
-        csvContent += '"101","Rahul Sharma","Class 10","A","Male",96,"Paid","9876543210"\n';
-        csvContent += '"102","Priya Patel","Class 10","A","Female",94,"Paid","9876543211"\n';
-        csvContent += '"103","Aman Verma","Class 10","B","Male",91,"Pending","9876543212"\n';
-        csvContent += '"104","Ananya Gupta","Class 9","A","Female",98,"Paid","9876543213"\n';
-      }
     } else if (type === 'attendance') {
       const students = await Student.find(query).sort({ attendance: 1 });
       csvContent = 'Roll Number,Student Name,Class,Attendance %,Status,Risk Level\n';
       students.forEach(s => {
-        const att = s.attendance || 95;
+        const att = s.attendance != null ? s.attendance : 100;
         const risk = att < 85 ? 'High Risk' : att < 92 ? 'Moderate Risk' : 'Good Standing';
-        csvContent += `"${s.rollNumber || ''}","${s.name || ''}","${s.grade || ''} - ${s.section || ''}",${att},"${s.status || 'Active'}","${risk}"\n`;
+        csvContent += `"${s.rollNo || s.rollNumber || ''}","${s.name || ''}","${s.grade || ''} - ${s.section || ''}",${att},"${s.status || 'Active'}","${risk}"\n`;
       });
-      if (students.length === 0) {
-        csvContent += '"101","Rahul Sharma","Class 10 - A",96,"Active","Good Standing"\n';
-        csvContent += '"102","Priya Patel","Class 10 - A",94,"Active","Good Standing"\n';
-        csvContent += '"103","Aman Verma","Class 10 - B",82,"Active","High Risk"\n';
-      }
     } else if (type === 'finance') {
       const fees = await Fee.find(query).sort({ dueDate: -1 });
       csvContent = 'Student Name,Class / Section,Amount,Due Date,Status,Parent Contact\n';
@@ -259,22 +248,12 @@ router.get('/export', async (req, res) => {
         const dueStr = f.dueDate ? new Date(f.dueDate).toLocaleDateString() : 'N/A';
         csvContent += `"${f.studentName || ''}","${f.classSection || ''}",${f.amount || 0},"${dueStr}","${f.status || 'Paid'}","${f.parentContact || 'N/A'}"\n`;
       });
-      if (fees.length === 0) {
-        csvContent += '"Rahul Sharma","Class 10 - A",12500,"11/30/2026","Collected","9876543210"\n';
-        csvContent += '"Priya Patel","Class 10 - A",12500,"11/30/2026","Collected","9876543211"\n';
-        csvContent += '"Aman Verma","Class 10 - B",12500,"11/15/2026","Overdue","9876543212"\n';
-      }
     } else {
       const staff = await Staff.find(query);
       csvContent = 'Employee ID,Name,Role,Department,Email,Phone,Status\n';
       staff.forEach(st => {
         csvContent += `"${st.employeeId || 'N/A'}","${st.name || ''}","${st.role || 'Staff'}","${st.department || 'General'}","${st.email || ''}","${st.phone || 'N/A'}","${st.status || 'Active'}"\n`;
       });
-      if (staff.length === 0) {
-        csvContent += '"EMP001","Dr. Ramesh Chandra","Principal","Administration","principal@school.edu","9876500001","Active"\n';
-        csvContent += '"TCH001","Sunita Rao","Senior Faculty","Mathematics","sunita@school.edu","9876500002","Active"\n';
-        csvContent += '"TCH002","Vikram Mehta","Faculty","Physics","vikram@school.edu","9876500003","Active"\n';
-      }
     }
 
     res.setHeader('Content-Type', 'text/csv');

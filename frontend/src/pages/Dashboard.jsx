@@ -17,6 +17,7 @@ import CreateSchoolModal from '../components/CreateSchoolModal';
 import AppointPrincipalModal from '../components/AppointPrincipalModal';
 import AppointAdminModal from '../components/AppointAdminModal';
 import DeleteSchoolModal from '../components/DeleteSchoolModal';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const initialAuditLogs = [
   { id: 1, action: 'User Role Updated', user: 'Admin (Admin Account)', target: 'TCH045', time: '10 mins ago', status: 'Success', color: '#16A34A' },
@@ -1267,8 +1268,8 @@ const Dashboard = () => {
         color: '#F59E0B',
         bg: 'rgba(245, 158, 11, 0.08)',
         subColor: 'var(--color-text-muted, #64748b)',
-        onClick: () => handleModuleChange('Academics & Exams'),
-        title: 'Click to view Academic Classes'
+        onClick: () => handleModuleChange('Attendance Register'),
+        title: 'Click to view Attendance Register'
       },
       {
         label: 'Pending Approvals',
@@ -1307,6 +1308,11 @@ const Dashboard = () => {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
+        {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
+        <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+          <StaffPunchClock />
+        </div>
+
         {/* ─── 1. FULL-WIDTH EXECUTIVE KPI STRIP (6 PROPORTIONAL CARDS) ─── */}
         <div style={{
           display: 'grid',

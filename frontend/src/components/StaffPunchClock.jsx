@@ -32,8 +32,8 @@ const StaffPunchClock = ({ onPunchSuccess, customStaffId = null, compact = false
   const userRole = (userInfo.role || sessionStorage.getItem('userRole') || '').toLowerCase();
   const isSuperAdmin = userRole === 'superadmin' || userInfo.isSuperAdmin || (sessionStorage.getItem('userRole') || '').toLowerCase() === 'superadmin';
 
-  // Super Admin is platform governance and is never subject to campus punch clocks
-  if (isSuperAdmin) {
+  // Super Admin and Students are never subject to staff punch clocks
+  if (isSuperAdmin || userRole === 'student') {
     return null;
   }
 

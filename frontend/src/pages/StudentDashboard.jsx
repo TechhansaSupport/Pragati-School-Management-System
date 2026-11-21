@@ -9,13 +9,13 @@ import {
 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
-const skillData = [
+const defaultSkillData = [
   { subject: 'Math', A: 90, fullMark: 100 },
   { subject: 'Science', A: 85, fullMark: 100 },
   { subject: 'Language', A: 78, fullMark: 100 },
-  { subject: 'Arts', A: 95, fullMark: 100 },
-  { subject: 'Sports', A: 70, fullMark: 100 },
-  { subject: 'Coding', A: 88, fullMark: 100 },
+  { subject: 'Social Studies', A: 88, fullMark: 100 },
+  { subject: 'Coding', A: 92, fullMark: 100 },
+  { subject: 'Sports', A: 80, fullMark: 100 },
 ];
 
 const StudentDashboard = () => {
@@ -26,58 +26,26 @@ const StudentDashboard = () => {
   const token = userInfo.token || sessionStorage.getItem('token') || '';
 
   const [studentSummary, setStudentSummary] = useState({
-    studentName: userInfo.name || 'Aarav Sharma',
-    grade: 'Class 10',
-    section: 'A',
-    rollNumber: userInfo.rollNumber || 'STU0001',
+    studentName: userInfo.name || '',
+    grade: userInfo.grade || 'Class 10',
+    section: userInfo.section || 'A',
+    rollNumber: userInfo.rollNumber || userInfo.uniqueId || 'STU0001',
     attendance: '100%',
     avgGrade: 'A',
-    pendingTasks: 1,
-    nextExam: 'Dec 01, 2026',
-    timetable: []
+    pendingTasks: 0,
+    nextExam: '',
+    timetable: [],
+    upcomingEvents: [],
+    skillData: []
   });
 
-  const [classMaterials, setClassMaterials] = useState([
-    {
-      _id: 'MAT-101',
-      id: 'MAT-101',
-      type: 'Assignment',
-      subject: 'Mathematics',
-      chapter: 'Chapter 4: Quadratic Equations',
-      title: 'Weekly Homework Assignment: Calculus & Quadratic Equations Problem Set',
-      content: 'Please solve questions 1 through 15 from Chapter 4 Exercise 4.3 in your assignment workbook. Ensure intermediate steps and discriminant analysis are clearly shown.',
-      dueDate: '2026-11-03',
-      maxMarks: 50,
-      teacherName: 'Mr. Ramesh Singh',
-      classSection: 'Class 10 - A'
-    },
-    {
-      _id: 'MAT-102',
-      id: 'MAT-102',
-      type: 'Notes',
-      subject: 'Mathematics',
-      chapter: 'Chapter 4: Quadratic Equations',
-      title: 'Chapter 4: Quadratic Equations - Formula Cheat Sheet & Core Derivations',
-      content: 'Comprehensive Lecture Notes for Class 10: 1. Standard Form: ax² + bx + c = 0 (where a ≠ 0). 2. Nature of Roots: D = b² - 4ac. Real and distinct when D > 0, equal when D = 0, complex when D < 0.',
-      attachments: [{ title: 'Quadratic_Formulas_Summary.pdf', fileSize: '1.8 MB' }],
-      teacherName: 'Mr. Ramesh Singh',
-      classSection: 'Class 10 - A'
-    }
-  ]);
-
+  const [classMaterials, setClassMaterials] = useState([]);
+  const [isMaterialsLoading, setIsMaterialsLoading] = useState(true);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [activeMaterialTab, setActiveMaterialTab] = useState('all'); // 'all', 'notes', 'assignments'
 
   // Fee state
-  const [feeData, setFeeData] = useState({
-    summary: {
-      totalSubmitted: 62000,
-      submittedMonthsCount: 8,
-      totalMonthsCount: 12,
-      latestReceiptNo: 'REC-2026-414858-1002',
-      status: 'Cleared Up-to-Date'
-    }
-  });
+  const [feeData, setFeeData] = useState(null);
   const [isFeeLoading, setIsFeeLoading] = useState(false);
 
   // Smooth scroll to fees section if requested
@@ -123,24 +91,25 @@ const StudentDashboard = () => {
           fetch(`http://localhost:5000/api/communication/class-materials?classSection=${encodeURIComponent(targetClass)}`, { headers })
             .then(mRes => mRes.ok ? mRes.json() : null)
             .then(mData => {
-              if (mData && Array.isArray(mData.materials) && mData.materials.length > 0) {
+              if (mData && Array.isArray(mData.materials)) {
                 setClassMaterials(mData.materials);
               }
             })
-            .catch(e => console.warn('Class materials fetch error:', e));
+            .catch(e => console.warn('Class materials fetch error:', e))
+            .finally(() => setIsMaterialsLoading(false));
         }
       })
-      .catch(err => console.warn('Student summary error:', err));
+      .catch(err => console.warn('Student summary error:', err))
+      .finally(() => setIsMaterialsLoading(false));
 
     fetchFeeHistory();
   }, [tenantSlug]);
 
-  const timetableList = studentSummary.timetable && studentSummary.timetable.length > 0 ? studentSummary.timetable : [
-    { time: '08:00 AM - 09:00 AM', subject: 'Mathematics', teacher: 'Mrs. Sharma', status: 'Completed', color: '#16A34A' },
-    { time: '09:00 AM - 10:00 AM', subject: 'Physics', teacher: 'Dr. Desai', status: 'In Progress', color: '#0F766E' },
-    { time: '10:15 AM - 11:15 AM', subject: 'English & Literature', teacher: 'Mr. Kumar', status: 'Upcoming', color: '#60A5FA' },
-    { time: '11:15 AM - 12:15 PM', subject: 'Computer Science', teacher: 'Ms. Gupta', status: 'Upcoming', color: '#4F46E5' }
-  ];
+  const skillData = (studentSummary.skillData && studentSummary.skillData.length > 0)
+    ? studentSummary.skillData
+    : defaultSkillData;
+
+  const timetableList = studentSummary.timetable || [];
 
   const filteredMaterials = classMaterials.filter(m => {
     if (activeMaterialTab === 'notes') return m.type !== 'Assignment';
@@ -652,33 +621,39 @@ const StudentDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {timetableList.map((cls, i) => (
-                <div key={i} style={{ 
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                  padding: '14px 18px', background: '#f8fafc', 
-                  borderRadius: '12px', borderLeft: `4px solid ${cls.color || '#4F46E5'}`,
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
-                    <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>{cls.time.split(' - ')[0]}</div>
-                      <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{cls.time.split(' - ')[1]}</div>
-                    </div>
-                    <div style={{ width: '1px', height: '26px', background: '#cbd5e1' }}></div>
-                    <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#1e293b' }}>{cls.subject}</div>
-                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '1px' }}>{cls.teacher}</div>
-                    </div>
-                  </div>
-                  <div style={{ 
-                    padding: '4px 10px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 800,
-                    background: cls.status === 'Completed' ? '#dcfce7' : cls.status === 'In Progress' ? '#e0e7ff' : '#f1f5f9',
-                    color: cls.status === 'Completed' ? '#15803d' : cls.status === 'In Progress' ? '#4338ca' : '#64748b'
-                  }}>
-                    {cls.status}
-                  </div>
+              {timetableList.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+                  No classes scheduled for today. Check Timetable for full week.
                 </div>
-              ))}
+              ) : (
+                timetableList.map((cls, i) => (
+                  <div key={i} style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    padding: '14px 18px', background: '#f8fafc', 
+                    borderRadius: '12px', borderLeft: `4px solid ${cls.color || '#4F46E5'}`,
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                      <div style={{ textAlign: 'right', minWidth: '120px' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e293b' }}>{cls.time.split(' - ')[0]}</div>
+                        <div style={{ fontSize: '0.74rem', color: '#64748b' }}>{cls.time.split(' - ')[1]}</div>
+                      </div>
+                      <div style={{ width: '1px', height: '26px', background: '#cbd5e1' }}></div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#1e293b' }}>{cls.subject}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '1px' }}>{cls.teacher}</div>
+                      </div>
+                    </div>
+                    <div style={{ 
+                      padding: '4px 10px', borderRadius: '12px', fontSize: '0.74rem', fontWeight: 800,
+                      background: cls.status === 'Completed' ? '#dcfce7' : cls.status === 'In Progress' ? '#e0e7ff' : '#f1f5f9',
+                      color: cls.status === 'Completed' ? '#15803d' : cls.status === 'In Progress' ? '#4338ca' : '#64748b'
+                    }}>
+                      {cls.status}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -795,21 +770,30 @@ const StudentDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { title: 'Science Practical Board Session', date: 'Nov 20, 2026', room: 'Physics Lab 2', badge: 'Practical' },
-                { title: 'Mathematics Revision Seminar', date: 'Nov 25, 2026', room: 'Hall B', badge: 'Revision' },
-                { title: 'Term 1 Evaluation Begins', date: 'Dec 01, 2026', room: 'Main Wing', badge: 'Exams' }
-              ].map((item, idx) => (
-                <div key={idx} style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#1e293b' }}>{item.title}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>{item.date} • {item.room}</div>
-                  </div>
-                  <span style={{ fontSize: '0.68rem', fontWeight: 800, background: '#e0e7ff', color: '#4338ca', padding: '2px 6px', borderRadius: '6px' }}>
-                    {item.badge}
-                  </span>
+              {(!studentSummary.upcomingEvents || studentSummary.upcomingEvents.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: '#64748b', fontSize: '0.82rem' }}>
+                  No upcoming key dates or examinations.
                 </div>
-              ))}
+              ) : (
+                studentSummary.upcomingEvents.map((item, idx) => (
+                  <div key={idx} style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.84rem', color: '#1e293b' }}>{item.title}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>{item.date} • {item.room}</div>
+                    </div>
+                    <span style={{ 
+                      fontSize: '0.68rem', 
+                      fontWeight: 800, 
+                      background: item.badge === 'Holiday' ? '#fee2e2' : item.badge === 'Exams' ? '#fef3c7' : '#e0e7ff', 
+                      color: item.badge === 'Holiday' ? '#dc2626' : item.badge === 'Exams' ? '#b45309' : '#4338ca', 
+                      padding: '2px 6px', 
+                      borderRadius: '6px' 
+                    }}>
+                      {item.badge}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

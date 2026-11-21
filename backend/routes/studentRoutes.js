@@ -115,14 +115,7 @@ const seedInitialStudentsIfEmpty = async (entityId, force = false, schoolSlug = 
   const count = await Student.countDocuments(entityId ? { entityId } : {});
   if (count === 0 || force) {
     const sampleStudents = [
-      { name: 'Aarav Sharma', rollNo: 'STU-1001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Rajesh Sharma', parentContact: '+91 98201 12345', email: 'aarav.sharma@pragati.edu', attendance: 96, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Diya Patel', rollNo: 'STU-1002', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Kiran Patel', parentContact: '+91 98201 12346', email: 'diya.patel@pragati.edu', attendance: 92, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Vihaan Verma', rollNo: 'STU-1003', grade: 'Class 10', section: 'B', gender: 'Male', parentName: 'Alok Verma', parentContact: '+91 98201 12347', email: 'vihaan.verma@pragati.edu', attendance: 88, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Ananya Iyer', rollNo: 'STU-1004', grade: 'Class 9', section: 'A', gender: 'Female', parentName: 'Subramanian Iyer', parentContact: '+91 98201 12348', email: 'ananya.iyer@pragati.edu', attendance: 98, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Kabir Mehta', rollNo: 'STU-1005', grade: 'Class 9', section: 'B', gender: 'Male', parentName: 'Sunil Mehta', parentContact: '+91 98201 12349', email: 'kabir.mehta@pragati.edu', attendance: 91, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Riya Sen', rollNo: 'STU-1006', grade: 'Class 11', section: 'Science', gender: 'Female', parentName: 'Debashis Sen', parentContact: '+91 98201 12350', email: 'riya.sen@pragati.edu', attendance: 94, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Rohan Gupta', rollNo: 'STU-1007', grade: 'Class 12', section: 'Science', gender: 'Male', parentName: 'Mahesh Gupta', parentContact: '+91 98201 12351', email: 'rohan.gupta@pragati.edu', attendance: 89, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
-      { name: 'Sneha Reddy', rollNo: 'STU-1008', grade: 'Class 10', section: 'A', gender: 'Female', parentName: 'Venkatesh Reddy', parentContact: '+91 98201 12352', email: 'sneha.reddy@pragati.edu', attendance: 95, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'student123' },
+      { name: 'Aarav Sharma', rollNo: 'STU0001', grade: 'Class 10', section: 'A', gender: 'Male', parentName: 'Arnav Sharma', parentContact: '+91 7007604347', email: 'student@pragati.edu', attendance: 100, status: 'Active', entityId: entityId || 'default-school', schoolSlug, portalPassword: 'password123' },
     ];
     for (const s of sampleStudents) {
       let existingStudent = await Student.findOne({ rollNo: s.rollNo, entityId: s.entityId });
@@ -134,7 +127,7 @@ const seedInitialStudentsIfEmpty = async (entityId, force = false, schoolSlug = 
         }
       }
       if (existingStudent) {
-        await syncStudentUser(existingStudent, 'student123');
+        await syncStudentUser(existingStudent, 'password123');
       }
     }
   }

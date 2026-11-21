@@ -36,16 +36,13 @@ const seedInitialTransactionsIfEmpty = async (entityId, force = false, schoolSlu
   const count = await Transaction.countDocuments(entityId ? { entityId } : {});
   if (count === 0 || force) {
     const timestamp = Date.now().toString().slice(-6);
+    const existingStudent = await Student.findOne(entityId ? { entityId } : {});
+    const sName = existingStudent ? existingStudent.name : 'Aarav Sharma';
     const sampleTransactions = [
-      { refId: `TXN-${timestamp}-1001`, type: 'Fee Collection', category: 'Tuition Fee', amount: 45000, date: new Date('2026-09-15'), studentName: 'Aarav Sharma', description: 'Term 1 Tuition & Lab Fees', paymentMethod: 'Bank Transfer', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1002`, type: 'Fee Collection', category: 'Tuition Fee', amount: 45000, date: new Date('2026-09-18'), studentName: 'Diya Patel', description: 'Term 1 Tuition Fee', paymentMethod: 'UPI', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1003`, type: 'Fee Collection', category: 'Transport', amount: 12000, date: new Date('2026-09-20'), studentName: 'Vihaan Verma', description: 'Q2 Bus Transportation Pass', paymentMethod: 'Online', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1004`, type: 'Expense', category: 'Faculty Payroll', amount: 62000, date: new Date('2026-09-30'), studentName: 'R. K. Sharma (Staff)', description: 'September Staff Compensation', paymentMethod: 'Bank Transfer', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1005`, type: 'Expense', category: 'Faculty Payroll', amount: 58000, date: new Date('2026-09-30'), studentName: 'Pooja Iyer (Staff)', description: 'September Staff Compensation', paymentMethod: 'Bank Transfer', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1006`, type: 'Expense', category: 'Campus Maintenance', amount: 24500, date: new Date('2026-10-02'), description: 'HVAC and Electrical Servicing', paymentMethod: 'Cheque', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1007`, type: 'Expense', category: 'Library & Learning', amount: 18000, date: new Date('2026-10-05'), description: 'Annual Science Journal Subscriptions', paymentMethod: 'Online', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1008`, type: 'Fee Collection', category: 'Tuition Fee', amount: 42000, date: new Date('2026-10-08'), studentName: 'Kabir Mehta', description: 'Term 1 Outstanding Dues', paymentMethod: 'Cash', status: 'Pending', entityId: entityId || 'default-school', schoolSlug },
-      { refId: `TXN-${timestamp}-1009`, type: 'Fee Collection', category: 'Tuition Fee', amount: 48000, date: new Date('2026-10-10'), studentName: 'Rohan Gupta', description: 'Senior Secondary Lab & Tuition', paymentMethod: 'UPI', status: 'Pending', entityId: entityId || 'default-school', schoolSlug },
+      { refId: `TXN-${timestamp}-1001`, type: 'Fee Collection', category: 'Tuition Fee', amount: 30000, date: new Date('2026-10-15'), studentName: sName, description: 'Term 1 Tuition & Lab Access', paymentMethod: 'Bank Transfer', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
+      { refId: `TXN-${timestamp}-1002`, type: 'Expense', category: 'Faculty Payroll', amount: 60000, date: new Date('2026-10-31'), studentName: 'Mr. Ramesh Singh (Teacher)', description: 'October Faculty Compensation', paymentMethod: 'Bank Transfer', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
+      { refId: `TXN-${timestamp}-1003`, type: 'Expense', category: 'Campus Maintenance', amount: 24500, date: new Date('2026-11-02'), description: 'HVAC and Electrical Servicing', paymentMethod: 'Cheque', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
+      { refId: `TXN-${timestamp}-1004`, type: 'Expense', category: 'Library & Learning', amount: 18000, date: new Date('2026-11-05'), description: 'Annual Science Journal Subscriptions', paymentMethod: 'Online', status: 'Completed', entityId: entityId || 'default-school', schoolSlug },
     ];
     for (const t of sampleTransactions) {
       try {

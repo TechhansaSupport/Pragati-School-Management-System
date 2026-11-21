@@ -233,6 +233,7 @@ const Header = () => {
     }
     return [
       { title: 'Student Directory & Profiles', category: 'Students', icon: '🎓', path: '/students', keywords: 'student students admission rolls directory roll' },
+      { title: 'Student & Staff Attendance Register', category: 'Attendance', icon: '📋', path: '/attendance', keywords: 'attendance roll register present absent telemetry' },
       { title: 'Faculty & Staff Roster', category: 'Staff', icon: '👨‍🏫', path: '/staff', keywords: 'staff teachers faculty employee teachers provision' },
       { title: 'Curriculum & Class Architecture', category: 'Academics', icon: '📚', path: '/academics', keywords: 'academics curriculum class classes exams subject section' },
       { title: 'Fee Ledgers & Financials', category: 'Finance', icon: '💳', path: '/finance', keywords: 'finance fee fees ledger collections balance payment transactions' },

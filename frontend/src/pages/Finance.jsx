@@ -7,6 +7,7 @@ import {
   Plus, RefreshCw, Layers, ArrowUpRight, ArrowDownLeft, Calendar, Filter,
   Users, Check, Wallet, Send, Receipt, Clock
 } from 'lucide-react';
+import StaffPunchClock from '../components/StaffPunchClock';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -18,6 +19,10 @@ const Finance = () => {
   const userRole = (sessionStorage.getItem('userRole') || userInfo.role || 'admin').toLowerCase();
   const isPrincipal = userRole === 'principal';
   const isAdmin = ['admin', 'superadmin', 'accountant', 'accounts'].includes(userRole);
+
+  // Dynamic time-based greeting
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   // Tabs & URL synchronization
   const [searchParams, setSearchParams] = useSearchParams();
@@ -480,10 +485,206 @@ const Finance = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%', minHeight: '100%', paddingBottom: '32px' }}>
       {renderTransactionDrawer()}
 
+      {/* 1. Modern Accounts Command Center Header Card */}
+      <div className="no-print" style={{
+        background: 'var(--color-surface, white)',
+        borderRadius: '16px',
+        padding: '20px 24px',
+        border: '1px solid var(--color-border, #e2e8f0)',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '16px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{ maxWidth: '780px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#e0e7ff',
+              color: '#4338ca',
+              padding: '3px 10px',
+              borderRadius: '8px',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <Wallet size={13} color="#4338ca" /> Accounts & Finance Command
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 800 }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+              Live Ledger Sync
+            </span>
+          </div>
+
+          <h1 style={{ margin: '0 0 14px 0', fontSize: '1.45rem', fontWeight: 800, color: 'var(--color-text-main, #1e293b)', letterSpacing: '-0.01em' }}>
+            {greeting}, {userInfo.name || 'Mr. Hardik Salgaokar'}! 💳
+          </h1>
+
+          {/* Quick Action Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => {
+                setFormError('');
+                setFormData({ ...initialForm, type: 'Fee Collection', category: 'Tuition Fee' });
+                setIsAddModalOpen(true);
+              }}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <CreditCard size={14} color="#059669" /> Record Fee Receipt
+            </button>
+            <button 
+              onClick={() => {
+                setFormError('');
+                setFormData({ ...initialForm, type: 'Expense', category: 'Campus Maintenance' });
+                setIsAddModalOpen(true);
+              }}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <TrendingUp size={14} color="#dc2626" /> Record Campus Expense
+            </button>
+            <button 
+              onClick={() => handleTabChange('pending')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <AlertCircle size={14} color="#d97706" /> Collect Due Fees {totalPendingFees > 0 ? `(${totalPendingFees})` : ''}
+            </button>
+            <button 
+              onClick={() => handleTabChange('salaries')}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <Users size={14} color="#7c3aed" /> Disburse Payroll {(salariesData.dueCount || 0) > 0 ? `(${salariesData.dueCount})` : ''}
+            </button>
+            <button 
+              onClick={() => window.print()}
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                color: '#1e293b',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              className="hover-lift"
+            >
+              <FileText size={14} color="#2563eb" /> Export Statement
+            </button>
+          </div>
+        </div>
+
+        {/* Right side fiscal status */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'flex-end',
+          background: 'var(--color-bg, #f8fafc)',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border, #e2e8f0)',
+          minWidth: '200px'
+        }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Fiscal Operations Session
+          </div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#1e293b', marginTop: '2px' }}>
+            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div style={{
+            fontSize: '0.72rem',
+            color: '#1e3a8a',
+            fontWeight: 800,
+            background: '#e0e7ff',
+            padding: '2px 8px',
+            borderRadius: '6px',
+            marginTop: '4px'
+          }}>
+            FY 2026-2027 • Q3 Active Ledger
+          </div>
+        </div>
+      </div>
+
+      {/* ─── STAFF ATTENDANCE PUNCH IN / PUNCH OUT MODULE ─── */}
+      <div style={{ width: '100%', minHeight: 'fit-content', flexShrink: 0 }}>
+        <StaffPunchClock onPunchSuccess={() => fetchFinanceData()} />
+      </div>
+
       {/* Financial KPI Cards — Collections, Expenses, Due Fees, Due Salaries, Balance */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
         {/* Total Collections */}
-        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        <div 
+          className="card hover-lift" 
+          onClick={() => handleTabChange('collections')}
+          title="Click to view all fee collections"
+          style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Collections</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -499,7 +700,12 @@ const Finance = () => {
         </div>
 
         {/* Total Expenses */}
-        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        <div 
+          className="card hover-lift" 
+          onClick={() => handleTabChange('expenses')}
+          title="Click to view all campus expenses"
+          style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Expenses</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -515,7 +721,12 @@ const Finance = () => {
         </div>
 
         {/* Pending / Overdue Fees */}
-        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        <div 
+          className="card hover-lift" 
+          onClick={() => handleTabChange('pending')}
+          title="Click to inspect due / overdue student fees"
+          style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Due / Overdue Fees</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -531,7 +742,12 @@ const Finance = () => {
         </div>
 
         {/* Due Salaries */}
-        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        <div 
+          className="card hover-lift" 
+          onClick={() => handleTabChange('salaries')}
+          title="Click to view staff salaries & payroll"
+          style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Due Salaries</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -547,7 +763,12 @@ const Finance = () => {
         </div>
 
         {/* Net Operating Balance */}
-        <div className="card" style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+        <div 
+          className="card hover-lift" 
+          onClick={() => handleTabChange('ledger')}
+          title="Click to view entire general transaction ledger"
+          style={{ padding: '18px 20px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', cursor: 'pointer', transition: 'all 0.2s' }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Net Operating Balance</span>
             <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
