@@ -6,313 +6,6 @@ const ClassSection = require('../models/ClassSection');
 const PracticalSession = require('../models/PracticalSession');
 const Student = require('../models/Student');
 
-// Comprehensive laboratory inventory catalogue (Equipments, Apparatus & Chemicals)
-const STARTER_LAB_ITEMS = [
-  // --- EQUIPMENTS, APPARATUS & GLASSWARE ---
-  {
-    name: 'Compound Monocular Microscope (1000x)',
-    labType: 'Biology',
-    category: 'Instrument',
-    quantity: 18,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Optics Cabinet B-1',
-    hazardLevel: 'None',
-    minimumThreshold: 5,
-    notes: 'Calibrated lenses and LED illumination stage.'
-  },
-  {
-    name: 'Borosilicate Glass Beakers Set (100ml, 250ml, 500ml)',
-    labType: 'Chemistry',
-    category: 'Glassware',
-    quantity: 120,
-    unit: 'pcs',
-    status: 'Operational',
-    location: 'Glassware Bay 3',
-    hazardLevel: 'None',
-    minimumThreshold: 30,
-    notes: 'Heat resistant Class A volumetric calibration.'
-  },
-  {
-    name: 'Burette with PTFE Stopcock (50ml Class A)',
-    labType: 'Chemistry',
-    category: 'Glassware',
-    quantity: 36,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Glassware Rack 2',
-    hazardLevel: 'None',
-    minimumThreshold: 10,
-    notes: '0.1ml graduation, acid-resistant stopcock.'
-  },
-  {
-    name: 'Optical Bench & Convex / Concave Lens Kit',
-    labType: 'Physics',
-    category: 'Apparatus',
-    quantity: 24,
-    unit: 'sets',
-    status: 'Operational',
-    location: 'Optics Shelf 4',
-    hazardLevel: 'None',
-    minimumThreshold: 8,
-    notes: 'Includes millimeter ruled scale & light pin mounts.'
-  },
-  {
-    name: 'Digital Vernier Caliper & Micrometer Screw Gauge',
-    labType: 'Physics',
-    category: 'Instrument',
-    quantity: 30,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Precision Drawer 2A',
-    hazardLevel: 'None',
-    minimumThreshold: 10,
-    notes: '0.01mm resolution digital zero-calibrated.'
-  },
-  {
-    name: 'Galvanometer & Ammeter DC Panel Meters',
-    labType: 'Physics',
-    category: 'Electronic Instrument',
-    quantity: 22,
-    unit: 'units',
-    status: 'Needs Calibration',
-    location: 'Electronics Rack 3',
-    hazardLevel: 'Low',
-    minimumThreshold: 6,
-    notes: 'Internal shunt resistance verification due.'
-  },
-  {
-    name: 'Retort Stand with Heavy Iron Base & Bosshead Clamps',
-    labType: 'Chemistry',
-    category: 'Apparatus',
-    quantity: 32,
-    unit: 'sets',
-    status: 'Operational',
-    location: 'Heavy Apparatus Bay 1',
-    hazardLevel: 'None',
-    minimumThreshold: 12,
-    notes: 'Anti-corrosion coated steel rod & brass clamp.'
-  },
-  {
-    name: 'Analytical Precision Digital Balance (0.001g Resolution)',
-    labType: 'Chemistry',
-    category: 'Instrument',
-    quantity: 4,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Balance Room Counter 1',
-    hazardLevel: 'None',
-    minimumThreshold: 2,
-    notes: 'Glass draft shield installed; level calibrated.'
-  },
-  {
-    name: 'Bunsen Burners with Airflow Collar & Neoprene Tubing',
-    labType: 'Chemistry',
-    category: 'Apparatus',
-    quantity: 26,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Burner Station Locker 2',
-    hazardLevel: 'Low',
-    minimumThreshold: 8,
-    notes: 'Inspect hose connections before each practical period.'
-  },
-  {
-    name: 'Permanent Plant & Animal Histology Slide Box',
-    labType: 'Biology',
-    category: 'Specimen & Kit',
-    quantity: 60,
-    unit: 'boxes (25 slides)',
-    status: 'Operational',
-    location: 'Slide Case 1',
-    hazardLevel: 'None',
-    minimumThreshold: 15,
-    notes: 'Onion root tip mitosis, xylem, phloem, human blood smear.'
-  },
-  {
-    name: 'Human Anatomical Torso & Skeleton Model (Life Size)',
-    labType: 'Biology',
-    category: 'Apparatus',
-    quantity: 2,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Biology Display Pod A',
-    hazardLevel: 'None',
-    minimumThreshold: 1,
-    notes: 'Removable visceral organs and numbered bones guide.'
-  },
-  {
-    name: 'Arduino STEM Microcontroller Robotics Kits',
-    labType: 'Computer & STEM',
-    category: 'Electronic Instrument',
-    quantity: 35,
-    unit: 'kits',
-    status: 'Operational',
-    location: 'STEM Lab Locker 5',
-    hazardLevel: 'Low',
-    minimumThreshold: 10,
-    notes: 'Includes sensor shields, breadboards, servo motors.'
-  },
-  {
-    name: 'Heavy Duty Fume Hood & Chemical Extraction Unit',
-    labType: 'Chemistry',
-    category: 'Safety & Protective',
-    quantity: 2,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Chemistry Lab Wall North',
-    hazardLevel: 'None',
-    minimumThreshold: 1,
-    notes: 'Airflow certified compliant (0.5 m/s face velocity).'
-  },
-  {
-    name: 'Emergency Chemical Eye-Wash & Drench Shower Pod',
-    labType: 'General Science',
-    category: 'Safety & Protective',
-    quantity: 4,
-    unit: 'units',
-    status: 'Operational',
-    location: 'Lab Entrance Corridor',
-    hazardLevel: 'None',
-    minimumThreshold: 4,
-    notes: 'Weekly water purge completed & pressure verified.'
-  },
-
-  // --- CHEMICALS, REAGENTS & SOLUTIONS ---
-  {
-    name: 'Hydrochloric Acid Solution (HCl 0.1M & 1.0M)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 8,
-    unit: 'bottles (2.5L)',
-    status: 'Operational',
-    location: 'Acid Storage Locker 1',
-    hazardLevel: 'Corrosive / Toxic',
-    minimumThreshold: 3,
-    notes: 'Fume cupboard handling protocol required.'
-  },
-  {
-    name: 'Sodium Hydroxide Pellets (Analytical Reagent NaOH)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 2,
-    unit: 'bottles (500g)',
-    status: 'Low Stock',
-    location: 'Base Cabinet 2',
-    hazardLevel: 'Corrosive / Toxic',
-    minimumThreshold: 4,
-    notes: 'Hygroscopic; store tightly sealed. Reorder placed.'
-  },
-  {
-    name: 'Sulfuric Acid (H2SO4 98% Concentrated)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 4,
-    unit: 'bottles (2.5L)',
-    status: 'Operational',
-    location: 'Acid Storage Locker 1',
-    hazardLevel: 'Corrosive / Toxic',
-    minimumThreshold: 2,
-    notes: 'Double locked cabinet; teacher authorization only.'
-  },
-  {
-    name: 'Copper (II) Sulphate Pentahydrate Crystals (CuSO4.5H2O)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 6,
-    unit: 'bottles (500g)',
-    status: 'Operational',
-    location: 'Reagent Shelf 3',
-    hazardLevel: 'Moderate',
-    minimumThreshold: 2,
-    notes: 'Bright blue crystalline reagent for salt analysis.'
-  },
-  {
-    name: 'Phenolphthalein pH Indicator Solution (1% w/v)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 5,
-    unit: 'bottles (500ml)',
-    status: 'Operational',
-    location: 'Indicator Shelf 1',
-    hazardLevel: 'Low',
-    minimumThreshold: 2,
-    notes: 'Clear in acid, magenta/pink in alkaline (pH 8.2 - 10.0).'
-  },
-  {
-    name: 'Methyl Orange pH Indicator Solution (0.1% aqueous)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 4,
-    unit: 'bottles (500ml)',
-    status: 'Operational',
-    location: 'Indicator Shelf 1',
-    hazardLevel: 'Low',
-    minimumThreshold: 2,
-    notes: 'Red in acid, yellow in alkaline (pH 3.1 - 4.4).'
-  },
-  {
-    name: 'Safranin Staining Solution (0.5% Aqueous Biological Stain)',
-    labType: 'Biology',
-    category: 'Chemical',
-    quantity: 6,
-    unit: 'dropper bottles (100ml)',
-    status: 'Operational',
-    location: 'Biology Stain Rack A',
-    hazardLevel: 'Low',
-    minimumThreshold: 3,
-    notes: 'Nuclear counterstain for histology & plant stomata mounts.'
-  },
-  {
-    name: 'Iodine Solution for Starch Test (Lugol\'s Iodine)',
-    labType: 'Biology',
-    category: 'Chemical',
-    quantity: 8,
-    unit: 'dropper bottles (100ml)',
-    status: 'Operational',
-    location: 'Biology Stain Rack A',
-    hazardLevel: 'Low',
-    minimumThreshold: 3,
-    notes: 'Dark blue/black reaction with starch in leaves.'
-  },
-  {
-    name: 'Ethanol Absolute (99.9% Analytical Grade Reagent)',
-    labType: 'Chemistry',
-    category: 'Chemical',
-    quantity: 2,
-    unit: 'bottles (1.0L)',
-    status: 'Low Stock',
-    location: 'Flammable Storage Locker F-1',
-    hazardLevel: 'Moderate',
-    minimumThreshold: 4,
-    notes: 'Flammable liquid; keep away from open flame or Bunsen burners.'
-  },
-  {
-    name: 'Benedict\'s Reagent Solution (Qualitative Sugar Test)',
-    labType: 'Biology',
-    category: 'Chemical',
-    quantity: 5,
-    unit: 'bottles (500ml)',
-    status: 'Operational',
-    location: 'Bio Reagent Shelf 2',
-    hazardLevel: 'Low',
-    minimumThreshold: 2,
-    notes: 'Tests reducing sugars; color shifts blue -> green -> brick red.'
-  }
-];
-
-// Seed starter data if entity inventory is empty
-const ensureSeedData = async (entityId, schoolSlug) => {
-  const count = await LabItem.countDocuments({ entityId });
-  if (count === 0) {
-    const items = STARTER_LAB_ITEMS.map(item => ({
-      ...item,
-      entityId,
-      schoolSlug: schoolSlug || ''
-    }));
-    await LabItem.insertMany(items).catch(() => {});
-  }
-};
 
 // @desc    Get Lab telemetry KPIs and stats
 // @route   GET /api/lab/stats
@@ -320,8 +13,6 @@ router.get('/stats', async (req, res) => {
   try {
     const entityId = req.entityId;
     const schoolSlug = req.schoolSlug;
-    await ensureSeedData(entityId, schoolSlug);
-
     const totalItems = await LabItem.countDocuments({ entityId });
     const totalEquipments = await LabItem.countDocuments({ entityId, category: { $ne: 'Chemical' } });
     const totalChemicals = await LabItem.countDocuments({ entityId, category: 'Chemical' });
@@ -344,8 +35,6 @@ router.get('/stats', async (req, res) => {
         { portalUsername: req.user?.username }
       ]
     }).catch(() => null);
-
-    await ensureSeedPracticals(entityId, schoolSlug);
 
     const practicals = await PracticalSession.find({ entityId, readinessStatus: { $ne: 'Cancelled' } });
     const todayPracticals = practicals.length;
@@ -384,8 +73,6 @@ router.get('/inventory', async (req, res) => {
   try {
     const entityId = req.entityId;
     const schoolSlug = req.schoolSlug;
-    await ensureSeedData(entityId, schoolSlug);
-
     const { search, labType, category, status, type } = req.query;
     const filter = { entityId };
 
@@ -493,129 +180,6 @@ router.delete('/inventory/:id', async (req, res) => {
   }
 });
 
-// Initial starter schedule for seed initialization
-const STARTER_PRACTICALS = [
-  {
-    title: 'Light Refraction & Focal Length Determination',
-    subject: 'Physics Practical',
-    labRoom: 'Physics Lab 2 (Room 304)',
-    classSection: 'Class 11 - Science',
-    studentCount: 28,
-    workstationsCount: 14,
-    instructor: 'Dr. Ramesh Singh',
-    timeSlot: '08:30 AM - 10:00 AM',
-    requiredEquipments: [
-      '14x Optical Bench Sets with millimeter rulers',
-      '14x Convex Lenses (f=15cm) & Lens Holders',
-      '14x Illuminated Object Pins',
-      '2x Spherometers & Plane Mirrors'
-    ],
-    requiredChemicals: [],
-    safetyRequirements: [
-      'Safety goggles for optical pin alignment',
-      'Align benches away from direct sunlight'
-    ],
-    readinessStatus: 'Ready & Sanitized',
-    color: '#4F46E5',
-    notes: '14 workstations configured (2 students per optical bench).'
-  },
-  {
-    title: 'Acid-Base Titration & pH Neutralization Curve',
-    subject: 'Chemistry Practical',
-    labRoom: 'Chemistry Lab 1 (Room 208)',
-    classSection: 'Class 10 - Section A',
-    studentCount: 32,
-    workstationsCount: 16,
-    instructor: 'Mrs. Neha Verma',
-    timeSlot: '10:15 AM - 11:45 AM',
-    requiredEquipments: [
-      '16x Class A Burettes (50ml) with PTFE Stopcocks',
-      '16x Retort Stands & Double Burette Clamps',
-      '32x Conical Flasks (250ml Borosilicate)',
-      '16x Graduated Pipettes (10ml & 25ml)',
-      '16x White Tile Titration Bases'
-    ],
-    requiredChemicals: [
-      '1.5L Standard 0.1M Hydrochloric Acid (HCl)',
-      '1.5L Standard 0.1M Sodium Hydroxide (NaOH)',
-      '4x Dropper Bottles Phenolphthalein pH Indicator (1%)',
-      '16x Distilled Water Wash Bottles (500ml)'
-    ],
-    safetyRequirements: [
-      'Mandatory cotton lab coats & splash goggles',
-      'Fume extraction hoods on active cycle',
-      'Acid-base spill neutralizer bucket on Stand 1'
-    ],
-    readinessStatus: 'In Progress',
-    color: '#059669',
-    notes: '16 workstations (2 students per bench). Solutions pre-titrated by assistant.'
-  },
-  {
-    title: 'Plant Epidermis & Stomata Slide Mount Examination',
-    subject: 'Biology Practical',
-    labRoom: 'Biology Lab (Room 205)',
-    classSection: 'Class 9 - Section B',
-    studentCount: 30,
-    workstationsCount: 15,
-    instructor: 'Mr. Arvind Gupta',
-    timeSlot: '12:30 PM - 01:45 PM',
-    requiredEquipments: [
-      '15x Compound Monocular Microscopes (1000x)',
-      '30x Plain Glass Slides & Glass Cover Slips',
-      '15x Watch Glasses & Petri Dishes',
-      '15x Dissection Needles & Precision Forceps'
-    ],
-    requiredChemicals: [
-      '3x Dropper Bottles Safranin Staining Solution (0.5%)',
-      '3x Dropper Bottles Glycerine Mountant (50% v/v)',
-      'Distilled Water for Rinsing Peels'
-    ],
-    safetyRequirements: [
-      'Glass coverslip disposal sharps bin placed on every aisle',
-      'Microscope lens paper provided for clean immersion lenses'
-    ],
-    readinessStatus: 'Setup Required',
-    color: '#0284c7',
-    notes: '15 workstations (2 students per microscope). Fresh Tradescantia / Bryophyllum leaves sourced.'
-  },
-  {
-    title: 'Obstacle Avoidance Ultrasonic Sensor Interfacing',
-    subject: 'STEM & Robotics Lab',
-    labRoom: 'STEM Innovation Pod (Room 110)',
-    classSection: 'Class 8 - Section A',
-    studentCount: 24,
-    workstationsCount: 12,
-    instructor: 'Ms. Pooja Nair',
-    timeSlot: '02:00 PM - 03:15 PM',
-    requiredEquipments: [
-      '12x Arduino Uno R3 Microcontroller Boards',
-      '12x HC-SR04 Ultrasonic Distance Sensor Modules',
-      '12x Solderless Breadboards & Jumper Wire Bundles',
-      '12x USB-B Interface Cables'
-    ],
-    requiredChemicals: [],
-    safetyRequirements: [
-      'Low 5V USB bus voltage only; no mains line connections',
-      'ESD antistatic work mats on all 12 benches'
-    ],
-    readinessStatus: 'Setup Required',
-    color: '#7c3aed',
-    notes: '12 workstations (2 students per robotics kit). IDE libraries pre-flashed.'
-  }
-];
-
-// Ensure initial practicals are seeded in database
-const ensureSeedPracticals = async (entityId, schoolSlug) => {
-  const count = await PracticalSession.countDocuments({ entityId });
-  if (count === 0) {
-    const items = STARTER_PRACTICALS.map(p => ({
-      ...p,
-      entityId,
-      schoolSlug: schoolSlug || ''
-    }));
-    await PracticalSession.insertMany(items).catch(() => {});
-  }
-};
 
 // @desc    Get scheduled practical laboratory sessions
 // @route   GET /api/lab/practicals
@@ -623,8 +187,6 @@ router.get('/practicals', async (req, res) => {
   try {
     const entityId = req.entityId;
     const schoolSlug = req.schoolSlug;
-    await ensureSeedPracticals(entityId, schoolSlug);
-
     const practicals = await PracticalSession.find({ entityId }).sort({ scheduledDate: 1, createdAt: 1 });
     return res.json({ success: true, practicals });
   } catch (error) {
@@ -795,28 +357,12 @@ const labTaskSchema = new mongoose.Schema({
 
 const LabTask = mongoose.models.LabTask || mongoose.model('LabTask', labTaskSchema);
 
-const DEFAULT_LAB_TASKS = [
-  { text: 'Prepare 1.5L 0.1M standard NaOH titration solution for Class 10-A', done: true },
-  { text: 'Clean and inspect 15 compound immersion lenses for Class 9 Biology', done: true },
-  { text: 'Calibrate optical bench light pins & convex lenses in Physics Lab 2', done: true },
-  { text: 'Restock safranin biological stain & cover slips in Biology Rack A', done: false },
-  { text: 'Lock master gas supply cylinder and check fume hood dampers', done: false }
-];
-
-const ensureSeedLabTasks = async (entityId, schoolSlug) => {
-  const count = await LabTask.countDocuments({ entityId });
-  if (count === 0) {
-    const seeded = DEFAULT_LAB_TASKS.map(t => ({ ...t, entityId, schoolSlug: schoolSlug || '' }));
-    await LabTask.insertMany(seeded).catch(() => {});
-  }
-};
 
 // GET /api/lab/tasks
 router.get('/tasks', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
     const schoolSlug = req.schoolSlug || '';
-    await ensureSeedLabTasks(entityId, schoolSlug);
     const tasks = await LabTask.find({ entityId }).sort({ createdAt: 1 });
     return res.json({ success: true, tasks });
   } catch (error) {
@@ -878,30 +424,12 @@ const labSafetySchema = new mongoose.Schema({
 
 const LabSafetyCheck = mongoose.models.LabSafetyCheck || mongoose.model('LabSafetyCheck', labSafetySchema);
 
-const DEFAULT_SAFETY_ITEMS = [
-  { label: 'Emergency Chemical Eye-Wash Station Purged & Flow Certified', lab: 'Chemistry & Biology', checked: true },
-  { label: 'CO2 & Dry Chemical Fire Extinguishers Pressure In Green Zone', lab: 'All Science Labs', checked: true },
-  { label: 'Fume Hood Air Extraction Flow Certified at 0.5 m/s velocity', lab: 'Chemistry Lab 1', checked: true },
-  { label: 'Acid/Base Neutralizer Spill Kit Fully Stocked on Stand 1', lab: 'Chemistry Lab 1', checked: true },
-  { label: 'Biological Glassware Sharps Bin Disinfected & Labeled', lab: 'Biology Lab (205)', checked: true },
-  { label: 'Master LPG & Bunsen Gas Supply Valve Locked After Shift', lab: 'Chemistry Lab 1', checked: true },
-  { label: 'First Aid Burn & Chemical Trauma Kit Inspected for Expired Ointments', lab: 'Infirmary Corridor', checked: false }
-];
-
-const ensureSeedSafety = async (entityId, schoolSlug) => {
-  const count = await LabSafetyCheck.countDocuments({ entityId });
-  if (count === 0) {
-    const seeded = DEFAULT_SAFETY_ITEMS.map(s => ({ ...s, entityId, schoolSlug: schoolSlug || '' }));
-    await LabSafetyCheck.insertMany(seeded).catch(() => {});
-  }
-};
 
 // GET /api/lab/safety
 router.get('/safety', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
     const schoolSlug = req.schoolSlug || '';
-    await ensureSeedSafety(entityId, schoolSlug);
     const items = await LabSafetyCheck.find({ entityId }).sort({ createdAt: 1 });
     return res.json({ success: true, items });
   } catch (error) {

@@ -918,34 +918,40 @@ const LibraryDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {(libraryStats.circulationDemand && libraryStats.circulationDemand.length > 0 ? libraryStats.circulationDemand.slice(0, 5) : booksList.slice(0, 5)).map((book, idx) => {
-                const maxIssues = Math.max(...(libraryStats.circulationDemand || []).map(b => b.issuesCount || 1), 10);
-                const issues = book.issuesCount || 0;
-                const percentage = Math.min(100, Math.max(12, Math.round((issues / maxIssues) * 100)));
-                return (
-                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '210px' }}>
-                        {book.title}
-                      </span>
-                      <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#4F46E5', background: '#eef2ff', padding: '1px 6px', borderRadius: '4px' }}>
-                        {issues} Loans
-                      </span>
+              {(libraryStats.circulationDemand && libraryStats.circulationDemand.length > 0 ? libraryStats.circulationDemand.slice(0, 5) : booksList.slice(0, 5)).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '24px 12px', color: '#94a3b8', fontSize: '0.85rem' }}>
+                  No circulation demand data yet.
+                </div>
+              ) : (
+                (libraryStats.circulationDemand && libraryStats.circulationDemand.length > 0 ? libraryStats.circulationDemand.slice(0, 5) : booksList.slice(0, 5)).map((book, idx) => {
+                  const maxIssues = Math.max(...(libraryStats.circulationDemand || []).map(b => b.issuesCount || 1), 10);
+                  const issues = book.issuesCount || 0;
+                  const percentage = Math.min(100, Math.max(12, Math.round((issues / maxIssues) * 100)));
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '210px' }}>
+                          {book.title}
+                        </span>
+                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#4F46E5', background: '#eef2ff', padding: '1px 6px', borderRadius: '4px' }}>
+                          {issues} Loans
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '7px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
+                        <div 
+                          style={{ 
+                            width: `${percentage}%`, 
+                            height: '100%', 
+                            background: idx === 0 ? '#4F46E5' : idx === 1 ? '#2563EB' : idx === 2 ? '#0284c7' : '#059669', 
+                            borderRadius: '999px',
+                            transition: 'width 0.6s ease'
+                          }} 
+                        />
+                      </div>
                     </div>
-                    <div style={{ width: '100%', height: '7px', background: '#f1f5f9', borderRadius: '999px', overflow: 'hidden' }}>
-                      <div 
-                        style={{ 
-                          width: `${percentage}%`, 
-                          height: '100%', 
-                          background: idx === 0 ? '#4F46E5' : idx === 1 ? '#2563EB' : idx === 2 ? '#0284c7' : '#059669', 
-                          borderRadius: '999px',
-                          transition: 'width 0.6s ease'
-                        }} 
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 

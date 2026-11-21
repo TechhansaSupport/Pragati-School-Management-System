@@ -142,24 +142,10 @@ const LabDashboard = () => {
   };
 
   // Safety Checklist State
-  const [safetyChecklist, setSafetyChecklist] = useState([
-    { id: 1, label: 'Emergency Chemical Eye-Wash Station Purged & Flow Certified', lab: 'Chemistry & Biology', checked: true },
-    { id: 2, label: 'CO2 & Dry Chemical Fire Extinguishers Pressure In Green Zone', lab: 'All Science Labs', checked: true },
-    { id: 3, label: 'Fume Hood Air Extraction Flow Certified at 0.5 m/s velocity', lab: 'Chemistry Lab 1', checked: true },
-    { id: 4, label: 'Acid/Base Neutralizer Spill Kit Fully Stocked on Stand 1', lab: 'Chemistry Lab 1', checked: true },
-    { id: 5, label: 'Biological Glassware Sharps Bin Disinfected & Labeled', lab: 'Biology Lab (205)', checked: true },
-    { id: 6, label: 'Master LPG & Bunsen Gas Supply Valve Locked After Shift', lab: 'Chemistry Lab 1', checked: true },
-    { id: 7, label: 'First Aid Burn & Chemical Trauma Kit Inspected for Expired Ointments', lab: 'Infirmary Corridor', checked: false }
-  ]);
+  const [safetyChecklist, setSafetyChecklist] = useState([]);
 
   // Daily Tasks Checklist
-  const [labTasks, setLabTasks] = useState([
-    { id: 1, text: 'Prepare 1.5L 0.1M standard NaOH titration solution for Class 10-A', done: true },
-    { id: 2, text: 'Clean and inspect 15 compound immersion lenses for Class 9 Biology', done: true },
-    { id: 3, text: 'Calibrate optical bench light pins & convex lenses in Physics Lab 2', done: true },
-    { id: 4, text: 'Restock safranin biological stain & cover slips in Biology Rack A', done: false },
-    { id: 5, text: 'Lock master gas supply cylinder and check fume hood dampers', done: false }
-  ]);
+  const [labTasks, setLabTasks] = useState([]);
   const [newTaskInput, setNewTaskInput] = useState('');
 
   // Toast notification
@@ -1586,42 +1572,48 @@ const LabDashboard = () => {
                 </h4>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {safetyChecklist.map(item => (
-                    <div 
-                      key={item.id}
-                      onClick={() => handleToggleSafetyItem(item.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 16px',
-                        borderRadius: '12px',
-                        background: item.checked ? '#f0fdf4' : '#fffbeb',
-                        border: `1px solid ${item.checked ? '#bbf7d0' : '#fde68a'}`,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{
-                          width: '22px', height: '22px', borderRadius: '6px',
-                          background: item.checked ? '#16a34a' : 'white',
-                          border: `2px solid ${item.checked ? '#16a34a' : '#cbd5e1'}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          {item.checked && <Check size={14} color="white" />}
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>{item.label}</div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Location: <strong>{item.lab}</strong></div>
-                        </div>
-                      </div>
-
-                      <span style={{ fontSize: '0.74rem', fontWeight: 800, color: item.checked ? '#15803d' : '#b45309' }}>
-                        {item.checked ? '✓ Verified Safe' : '⚠️ Pending Verification'}
-                      </span>
+                  {safetyChecklist.length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#64748b', fontSize: '0.85rem', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                      Zero mandatory safety items logged. Safety checklist is clean.
                     </div>
-                  ))}
+                  ) : (
+                    safetyChecklist.map(item => (
+                      <div 
+                        key={item.id}
+                        onClick={() => handleToggleSafetyItem(item.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 16px',
+                          borderRadius: '12px',
+                          background: item.checked ? '#f0fdf4' : '#fffbeb',
+                          border: `1px solid ${item.checked ? '#bbf7d0' : '#fde68a'}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '22px', height: '22px', borderRadius: '6px',
+                            background: item.checked ? '#16a34a' : 'white',
+                            border: `2px solid ${item.checked ? '#16a34a' : '#cbd5e1'}`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {item.checked && <Check size={14} color="white" />}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b' }}>{item.label}</div>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>Location: <strong>{item.lab}</strong></div>
+                          </div>
+                        </div>
+
+                        <span style={{ fontSize: '0.74rem', fontWeight: 800, color: item.checked ? '#15803d' : '#b45309' }}>
+                          {item.checked ? '✓ Verified Safe' : '⚠️ Pending Verification'}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -1658,25 +1650,31 @@ const LabDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {practicals.map((p, idx) => (
-                <div key={p._id || p.id || idx} style={{
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  background: '#f8fafc',
-                  border: '1px solid #f1f5f9'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#1e293b' }}>{p.classSection}</span>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '1px 8px', borderRadius: '6px', border: '1px solid #d1fae5' }}>
-                      👥 {p.studentCount || p.batchSize} Students
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{p.timeSlot}</span>
-                    <span style={{ fontWeight: 600, color: '#475569' }}>{p.labRoom}</span>
-                  </div>
+              {practicals.length === 0 ? (
+                <div style={{ padding: '16px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem', background: '#f8fafc', borderRadius: '10px' }}>
+                  No practicals scheduled today.
                 </div>
-              ))}
+              ) : (
+                practicals.map((p, idx) => (
+                  <div key={p._id || p.id || idx} style={{
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: '#f8fafc',
+                    border: '1px solid #f1f5f9'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#1e293b' }}>{p.classSection}</span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#059669', background: '#ecfdf5', padding: '1px 8px', borderRadius: '6px', border: '1px solid #d1fae5' }}>
+                        👥 {p.studentCount || p.batchSize} Students
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '3px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{p.timeSlot}</span>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>{p.labRoom}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -1692,42 +1690,48 @@ const LabDashboard = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {labTasks.map(t => (
-                <div 
-                  key={t.id}
-                  onClick={() => handleToggleTask(t.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '9px 12px',
-                    borderRadius: '10px',
-                    background: t.done ? '#f8fafc' : '#ffffff',
-                    border: `1px solid ${t.done ? '#f1f5f9' : '#e2e8f0'}`,
-                    cursor: 'pointer'
-                  }}
-                  className="hover-lift"
-                >
-                  <div style={{
-                    width: '18px', height: '18px', borderRadius: '5px',
-                    border: `2px solid ${t.done ? '#10b981' : '#cbd5e1'}`,
-                    background: t.done ? '#10b981' : 'transparent',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {t.done && <Check size={12} color="white" />}
-                  </div>
-                  <span style={{
-                    fontSize: '0.8rem',
-                    color: t.done ? '#94a3b8' : '#1e293b',
-                    textDecoration: t.done ? 'line-through' : 'none',
-                    fontWeight: t.done ? 500 : 600,
-                    lineHeight: 1.35
-                  }}>
-                    {t.text}
-                  </span>
+              {labTasks.length === 0 ? (
+                <div style={{ padding: '16px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.8rem', background: '#f8fafc', borderRadius: '10px' }}>
+                  No tasks logged. Type below to add a duty task.
                 </div>
-              ))}
+              ) : (
+                labTasks.map(t => (
+                  <div 
+                    key={t.id}
+                    onClick={() => handleToggleTask(t.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 12px',
+                      borderRadius: '10px',
+                      background: t.done ? '#f8fafc' : '#ffffff',
+                      border: `1px solid ${t.done ? '#f1f5f9' : '#e2e8f0'}`,
+                      cursor: 'pointer'
+                    }}
+                    className="hover-lift"
+                  >
+                    <div style={{
+                      width: '18px', height: '18px', borderRadius: '5px',
+                      border: `2px solid ${t.done ? '#10b981' : '#cbd5e1'}`,
+                      background: t.done ? '#10b981' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0
+                    }}>
+                      {t.done && <Check size={12} color="white" />}
+                    </div>
+                    <span style={{
+                      fontSize: '0.8rem',
+                      color: t.done ? '#94a3b8' : '#1e293b',
+                      textDecoration: t.done ? 'line-through' : 'none',
+                      fontWeight: t.done ? 500 : 600,
+                      lineHeight: 1.35
+                    }}>
+                      {t.text}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
 
             <form onSubmit={handleAddTask} style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>

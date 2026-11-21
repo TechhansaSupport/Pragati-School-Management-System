@@ -60,27 +60,6 @@ const getSlotTimeForClassIndex = (idx) => {
   return timeSlots[idx] || `${8 + idx}:00 AM - ${9 + idx}:00 AM`;
 };
 
-// Seed helper on-demand if school has 0 fee records
-const seedInitialFeesIfEmpty = async (entityId, force = false) => {
-  if (!entityId && !force) return;
-  const count = await Fee.countDocuments(entityId ? { entityId } : {});
-  if (count === 0 && force) {
-    const student = await Student.findOne(entityId ? { entityId } : {});
-    if (student) {
-      const sampleFees = [
-        { studentName: student.name, classSection: `${student.grade} - ${student.section}`, parentContact: student.parentContact || '+91 7007604347', amount: 30000, dueDate: new Date('2026-11-15'), status: 'Collected', entityId: entityId || 'default-school' },
-      ];
-      for (const f of sampleFees) {
-        try {
-          await Fee.create(f);
-        } catch (e) {
-          // ignore duplicate
-        }
-      }
-    }
-  }
-};
-
 // GET /api/dashboard/overview — Main dashboard KPIs from live MongoDB collections
 router.get('/overview', async (req, res) => {
   try {
@@ -594,17 +573,7 @@ router.get('/teacher-summary', async (req, res) => {
     });
 
     // Real Tasks from MongoDB
-    let tasks = await TeacherTask.find({ entityId: req.entityId }).sort({ createdAt: -1 });
-    if (tasks.length === 0) {
-      const defaultTasks = [
-        { text: 'Grade Mid-Term Unit Assessments', due: 'Due Today • 14 Pending', priority: 'Urgent', completed: false, entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { text: 'Prepare Lesson Plan for Term 2', due: 'By Friday', priority: 'Normal', completed: false, entityId: req.entityId, schoolSlug: req.schoolSlug },
-        { text: 'Review Student Attendance Defaulters', due: 'By Next Week', priority: 'Important', completed: false, entityId: req.entityId, schoolSlug: req.schoolSlug },
-      ];
-      try {
-        tasks = await TeacherTask.insertMany(defaultTasks);
-      } catch (e) {}
-    }
+    const tasks = await TeacherTask.find({ entityId: req.entityId }).sort({ createdAt: -1 });
 
     // Real Class Performance Metrics from MongoDB
     const performanceData = await Promise.all(classes.map(async (c) => {

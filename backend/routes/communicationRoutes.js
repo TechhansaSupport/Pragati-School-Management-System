@@ -29,152 +29,11 @@ const checkLeaderAuthority = (req, res, next) => {
   next();
 };
 
-// Seed helper for class-wise notes and assignments
-const seedInitialClassMaterialsIfEmpty = async (entityId) => {
-  if (!entityId) return;
-  const count = await ClassMaterial.countDocuments({ entityId });
-  if (count === 0) {
-    const starterMaterials = [
-      {
-        title: 'Chapter 4: Quadratic Equations - Formula Cheat Sheet & Core Derivations',
-        type: 'Note',
-        classSection: 'Class 10 - A',
-        className: 'Class 10',
-        section: 'A',
-        subject: 'Mathematics',
-        chapter: 'Chapter 4: Quadratic Equations',
-        content: `Comprehensive Lecture Notes for Class 10:\n\n1. Standard Form:\n   ax² + bx + c = 0 (where a ≠ 0, and a, b, c are real numbers)\n\n2. Nature of Roots (Discriminant D = b² - 4ac):\n   • If D > 0: Two distinct and real roots exist.\n   • If D = 0: Two equal real roots (x = -b / 2a).\n   • If D < 0: No real roots (roots are imaginary/complex).\n\n3. Methods to Solve:\n   • Factorisation (Splitting the middle term)\n   • Quadratic Formula: x = [-b ± √(b² - 4ac)] / (2a)\n\n4. Important Word Problems:\n   Review exercises 4.2 & 4.3 covering speed-distance problems, age problems, and consecutive integers. Complete the self-assessment before next lecture.`,
-        attachments: [
-          { title: 'Quadratic_Equations_Formulas.pdf', url: 'https://example.com/notes/math10-quadratic.pdf', fileType: 'PDF', fileSize: '2.1 MB' }
-        ],
-        teacherName: 'Mr. Ramesh Singh',
-        entityId
-      },
-      {
-        title: 'Weekly Homework Assignment: Calculus & Quadratic Equations Problem Set',
-        type: 'Assignment',
-        classSection: 'Class 10 - A',
-        className: 'Class 10',
-        section: 'A',
-        subject: 'Mathematics',
-        chapter: 'Chapter 4: Quadratic Equations',
-        content: `Please solve questions 1 through 15 from Chapter 4 Exercise 4.3 in your assignment notebook. Show complete step-by-step working for full marks.\n\nKey Focus Areas:\n1. Solve by completing the square method (Q1-Q5)\n2. Solve by quadratic formula (Q6-Q10)\n3. Applications in speed and time word problems (Q11-Q15)\n\nSubmit your scanned solutions before the due date.`,
-        dueDate: new Date(Date.now() + 4 * 86400000),
-        maxMarks: 50,
-        attachments: [
-          { title: 'Class10_Math_Assignment_4.pdf', url: 'https://example.com/assignments/math10-asg4.pdf', fileType: 'PDF', fileSize: '1.4 MB' }
-        ],
-        teacherName: 'Mr. Ramesh Singh',
-        entityId
-      },
-      {
-        title: 'Unit 3: Newton\'s Laws of Motion & Momentum Conservation Notes',
-        type: 'Note',
-        classSection: 'Class 9 - B',
-        className: 'Class 9',
-        section: 'B',
-        subject: 'Physics & Chemistry',
-        chapter: 'Unit 3: Force & Laws of Motion',
-        content: `Core Physics Concepts Summary:\n\n• First Law (Law of Inertia): An object remains at rest or in uniform motion unless acted upon by an external net force.\n• Second Law (Rate of Change of Momentum): F = dp/dt = ma (Force = mass × acceleration).\n• Third Law (Action-Reaction): For every action, there is an equal and opposite reaction acting on different bodies.\n• Conservation of Momentum: Total momentum before collision = Total momentum after collision (m₁u₁ + m₂u₂ = m₁v₁ + m₂v₂).`,
-        attachments: [
-          { title: 'Laws_of_Motion_Summary.pdf', url: 'https://example.com/notes/physics9-laws.pdf', fileType: 'PDF', fileSize: '1.8 MB' }
-        ],
-        teacherName: 'Dr. S. Mukherjee',
-        entityId
-      },
-      {
-        title: 'Algebra Homework Set #3: Polynomial Factoring & Identities',
-        type: 'Assignment',
-        classSection: 'Class 9 - B',
-        className: 'Class 9',
-        section: 'B',
-        subject: 'Mathematics',
-        chapter: 'Chapter 2: Polynomials',
-        content: `Complete factoring exercises 2.4 and 2.5 on algebraic identities:\n1. (x + y + z)² = x² + y² + z² + 2xy + 2yz + 2zx\n2. x³ + y³ + z³ - 3xyz = (x + y + z)(x² + y² + z² - xy - yz - zx)\n\nSubmit handwritten notebook scans or submit physical copy in Monday morning period.`,
-        dueDate: new Date(Date.now() + 5 * 86400000),
-        maxMarks: 40,
-        attachments: [
-          { title: 'Algebra_Problem_Set_3.pdf', url: 'https://example.com/assignments/algebra9-asg3.pdf', fileType: 'PDF', fileSize: '980 KB' }
-        ],
-        teacherName: 'Mr. Ramesh Singh',
-        entityId
-      },
-      {
-        title: 'Rational Numbers & Number Line Visualisation Guide',
-        type: 'Note',
-        classSection: 'Class 8 - A',
-        className: 'Class 8',
-        section: 'A',
-        subject: 'Mathematics',
-        chapter: 'Chapter 1: Rational Numbers',
-        content: `Key properties of Rational Numbers:\n1. Closure Property under addition, subtraction, and multiplication.\n2. Commutative and Associative Properties.\n3. Additive Identity (0) and Multiplicative Identity (1).\n4. Finding rational numbers between two given rational numbers using mean method.`,
-        attachments: [
-          { title: 'Rational_Numbers_Guide.pdf', url: 'https://example.com/notes/math8-rational.pdf', fileType: 'PDF', fileSize: '1.2 MB' }
-        ],
-        teacherName: 'Mrs. Sharma',
-        entityId
-      }
-    ];
 
-    try {
-      await ClassMaterial.insertMany(starterMaterials);
-    } catch (e) {
-      console.warn('ClassMaterial seed error:', e);
-    }
-  }
-};
-
-// Seed helper if tenant has 0 announcements
-const seedInitialAnnouncementsIfEmpty = async (entityId) => {
-  if (!entityId) return;
-  const count = await Announcement.countDocuments({ entityId });
-  if (count === 0) {
-    const sampleAnnouncements = [
-      {
-        title: 'Diwali Holidays & Festive Break Schedule',
-        content: 'School will remain closed from Oct 20th to Oct 25th on account of Diwali. Classes will resume with regular timings on Oct 26th.',
-        targetAudience: 'All Students & Parents',
-        priority: 'Important',
-        author: 'Principal Office',
-        date: new Date('2026-10-09'),
-        entityId
-      },
-      {
-        title: 'Emergency Alert: Heavy Rain Advisory',
-        content: 'Due to severe weather warnings issued by regional authorities, afternoon sports and transport routes will run 30 minutes earlier today.',
-        targetAudience: 'All',
-        priority: 'Urgent',
-        author: 'Administration',
-        date: new Date('2026-10-05'),
-        entityId
-      },
-      {
-        title: 'Annual Science & Tech Exhibition 2026',
-        content: 'Project submissions for Grades 8 through 12 are now open. Final prototypes must be submitted to the Science Department coordinator by Nov 2nd.',
-        targetAudience: 'Students',
-        priority: 'Normal',
-        author: 'Science Department',
-        date: new Date('2026-10-02'),
-        entityId
-      },
-      {
-        title: 'Term 2 Fee Payment Deadline Approaching',
-        content: 'Reminder that the Term 2 tuition fee payment portal is open. Families are requested to clear dues by Oct 15th to avoid late processing.',
-        targetAudience: 'All Students & Parents',
-        priority: 'Important',
-        author: 'Finance & Accounts',
-        date: new Date('2026-10-01'),
-        entityId
-      }
-    ];
-    await Announcement.insertMany(sampleAnnouncements).catch(() => {});
-  }
-};
 
 // GET /api/communication/announcements
 router.get('/announcements', async (req, res) => {
   try {
-    await seedInitialAnnouncementsIfEmpty(req.entityId);
     const announcements = await Announcement.find({ entityId: req.entityId }).sort({ date: -1 });
     res.json(announcements);
   } catch (error) {
@@ -448,8 +307,6 @@ router.delete('/grievances/:id', checkLeaderAuthority, (req, res) => {
 // GET /api/communication/class-materials — Fetch notes & assignments class-wise
 router.get('/class-materials', async (req, res) => {
   try {
-    await seedInitialClassMaterialsIfEmpty(req.entityId);
-
     const { classSection, className, section, type, search } = req.query;
     const filter = { entityId: req.entityId };
 

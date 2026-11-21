@@ -2063,7 +2063,14 @@ const SupportStaffDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {gatePasses.map(gp => (
+                {gatePasses.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                      No student gate passes issued yet.
+                    </td>
+                  </tr>
+                ) : (
+                  gatePasses.map(gp => (
                   <tr key={gp._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '12px', fontWeight: 800, color: '#7c3aed' }}>
                       {gp.passNumber}
@@ -2110,7 +2117,8 @@ const SupportStaffDashboard = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                ))
+              )}
               </tbody>
             </table>
           </div>
@@ -2163,7 +2171,14 @@ const SupportStaffDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {parcels.map(p => (
+                {parcels.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '36px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                      No inward or outward parcels logged at desk.
+                    </td>
+                  </tr>
+                ) : (
+                  parcels.map(p => (
                   <tr key={p._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '12px', fontWeight: 800, color: '#0f766e' }}>
                       {p.trackingNumber}
@@ -2204,7 +2219,8 @@ const SupportStaffDashboard = () => {
                       )}
                     </td>
                   </tr>
-                ))}
+                ))
+              )}
               </tbody>
             </table>
           </div>

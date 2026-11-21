@@ -4,56 +4,10 @@ const Book = require('../models/Book');
 const LibraryTransaction = require('../models/LibraryTransaction');
 const Student = require('../models/Student');
 
-// Seed helper if tenant has 0 books or transactions
-const seedInitialLibraryIfEmpty = async (entityId) => {
-  if (!entityId) return;
-
-  const count = await Book.countDocuments({ entityId });
-  if (count === 0) {
-    const sampleBooks = [
-      { bookId: 'BK-1001', title: 'Concepts of Physics (Vol 1)', author: 'H.C. Verma', category: 'Science', totalCopies: 25, availableCopies: 18, status: 'Available', entityId },
-      { bookId: 'BK-1002', title: 'Advanced Mathematics for Secondary', author: 'R.D. Sharma', category: 'Mathematics', totalCopies: 30, availableCopies: 22, status: 'Available', entityId },
-      { bookId: 'BK-1003', title: 'Atomic Habits', author: 'James Clear', category: 'Self Help', totalCopies: 10, availableCopies: 2, status: 'Low Stock', entityId },
-      { bookId: 'BK-1004', title: 'History of Modern India', author: 'Bipan Chandra', category: 'History', totalCopies: 15, availableCopies: 12, status: 'Available', entityId },
-      { bookId: 'BK-1005', title: 'To Kill a Mockingbird', author: 'Harper Lee', category: 'Literature', totalCopies: 12, availableCopies: 0, status: 'Issued Out', entityId },
-      { bookId: 'BK-1006', title: 'Computer Science with Python', author: 'Sumita Arora', category: 'Technology', totalCopies: 20, availableCopies: 14, status: 'Available', entityId },
-      { bookId: 'BK-1007', title: 'A Brief History of Time', author: 'Stephen Hawking', category: 'Science', totalCopies: 8, availableCopies: 3, status: 'Available', entityId },
-    ];
-    await Book.insertMany(sampleBooks).catch(() => {});
-  }
-
-  const txCount = await LibraryTransaction.countDocuments({ entityId });
-  if (txCount === 0) {
-    const existingStudent = await Student.findOne({ entityId });
-    if (existingStudent) {
-      await LibraryTransaction.create({
-        transactionId: 'TRX-101',
-        student: existingStudent.name,
-        classSection: `${existingStudent.grade} - Section ${existingStudent.section || 'A'}`,
-        rollNo: existingStudent.rollNo || 'STU0001',
-        phone: existingStudent.parentContact || '+91 98765 43210',
-        email: existingStudent.email || 'student@pragati.edu',
-        book: 'Concepts of Physics (Vol 1)',
-        bookId: 'BK-1001',
-        category: 'Science',
-        action: 'Issued',
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
-        dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: 'Active',
-        fine: 0,
-        finePaid: false,
-        daysOverdue: 0,
-        entityId,
-      }).catch(() => {});
-    }
-  }
-};
-
 // GET /api/library/books
 router.get('/books', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
-    await seedInitialLibraryIfEmpty(entityId);
     const { search, category } = req.query;
     const query = { entityId };
 
@@ -123,7 +77,6 @@ router.delete('/books/:id', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
-    await seedInitialLibraryIfEmpty(entityId);
 
     const [books, transactions] = await Promise.all([
       Book.find({ entityId }),
@@ -183,7 +136,6 @@ router.get('/stats', async (req, res) => {
 router.get('/transactions', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
-    await seedInitialLibraryIfEmpty(entityId);
 
     const { status, search } = req.query;
     const query = { entityId };
@@ -228,7 +180,6 @@ router.get('/transactions', async (req, res) => {
 router.get('/overdue', async (req, res) => {
   try {
     const entityId = req.entityId || 'default';
-    await seedInitialLibraryIfEmpty(entityId);
 
     const overdue = await LibraryTransaction.find({
       entityId,
